@@ -1,0 +1,11 @@
+node_modules/
+source/dist/
+.DS_Store
+# never on GitHub: client data and accounts
+private/
+Accord_accounts.txt
+*.starting-data.json
+accord-starting-data.json
+source/src/seed/crm.json
+backend/.clasp.json
+backend/.claspignore

@@ -1,0 +1,68 @@
+/* e-Brochure · one scrolling page. Uses the app's theme tokens, so it follows light and dark. */
+.eb { background: var(--bg); color: var(--fg); min-height: 100vh; scroll-behavior: smooth }
+.eb em { font-style: italic; font-weight: 300; color: var(--accent-2) }
+.eb-k { font: 400 11px var(--mono); letter-spacing: .24em; text-transform: uppercase; color: var(--accent-2) }
+.eb h1 { font: 700 clamp(56px, 10vw, 148px)/.92 var(--sans); letter-spacing: -.055em; margin: 18px 0 22px; color: #F4ECEA }
+.eb h2 { font: 600 clamp(32px, 4.4vw, 64px)/1.04 var(--sans); letter-spacing: -.04em; margin-top: 14px; max-width: 16ch }
+.eb h3 { font: 600 clamp(26px, 2.6vw, 38px)/1.1 var(--sans); letter-spacing: -.03em; margin: 10px 0 14px }
+.eb h4 { font: 500 19px/1.3 var(--sans); margin: 10px 0 6px }
+.eb-body { font: 300 clamp(16px, 1.25vw, 19px)/1.65 var(--sans); color: var(--fg2); max-width: 60ch; margin: 0 }
+.eb-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 24px; padding: 0 clamp(16px, 4vw, 56px); height: 64px; background: var(--glass); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line) }
+.eb-mark { font: 700 20px var(--sans); letter-spacing: -.04em; color: var(--fg) }
+.eb-links { display: flex; gap: 22px; flex: 1; overflow-x: auto; white-space: nowrap } .eb-links a { color: var(--fg2); font-size: 13.5px } .eb-links a:hover { color: var(--fg) }
+.eb-tools { display: flex; gap: 8px } .eb-btn { font: 400 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--fg2); border: 1px solid var(--line-3); background: none; padding: 0 12px; min-height: 36px; display: inline-flex; align-items: center }
+.eb-btn:hover { color: var(--fg) }
+.eb-hero { position: relative; min-height: calc(100vh - 64px); background: #0b0808 center/cover; display: flex; align-items: flex-end; padding: clamp(24px, 6vw, 88px) }
+.eb-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(10, 6, 6, .92) 5%, rgba(10, 6, 6, .25) 60%, rgba(10, 6, 6, .45) 100%) }
+.eb-in { position: relative; z-index: 1; max-width: 1100px } .eb-hero .eb-k { color: #D07384 } .eb-hero h1 em { color: #D07384 }
+.eb-lede { font: 300 clamp(18px, 1.6vw, 24px)/1.5 var(--sans); color: rgba(244, 236, 234, .78); max-width: 46ch; margin: 0 }
+.eb-scroll { position: absolute; z-index: 1; right: clamp(24px, 6vw, 88px); bottom: clamp(24px, 6vw, 88px); font: 400 10px var(--mono); letter-spacing: .3em; text-transform: uppercase; color: rgba(244, 236, 234, .6); writing-mode: vertical-rl }
+.eb-sec { padding: clamp(64px, 10vw, 140px) clamp(16px, 6vw, 88px); border-bottom: 1px solid var(--line) }
+.eb-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 6vw, 96px); align-items: end }
+.eb-head { margin-bottom: clamp(36px, 5vw, 72px); display: flex; flex-direction: column; gap: 14px }
+.eb-res { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 64px); align-items: center; padding: clamp(28px, 4vw, 56px) 0; border-top: 1px solid var(--line) }
+.eb-res.flip .eb-res-img { order: 2 }
+.eb-res-img { aspect-ratio: 4 / 3; background: var(--bg3) center/cover }
+.eb-dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; margin: 26px 0 }
+.eb-dl dt { font: 400 10px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--fg3) } .eb-dl dd { margin: 6px 0 0; font: 500 20px var(--sans) } .eb-dl dd.acc { color: var(--accent-2) }
+.eb-plan { width: 100%; max-height: 260px; object-fit: contain; background: #0f0c0b; border: 1px solid var(--line); padding: 10px }
+.eb-gal { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
+.eb-gal figure { margin: 0; position: relative; overflow: hidden } .eb-gal figure:nth-child(1), .eb-gal figure:nth-child(5) { grid-row: span 2 }
+.eb-gal img { width: 100%; height: 100%; min-height: 220px; object-fit: cover; display: block; transition: transform .8s } .eb-gal figure:hover img { transform: scale(1.03) }
+.eb-gal figcaption { position: absolute; left: 14px; bottom: 12px; font: 400 10px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: #F4ECEA; text-shadow: 0 1px 8px rgba(0, 0, 0, .6) }
+.eb-dark { background: var(--bg2) }
+.eb-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line) }
+.eb-facts > div { background: var(--bg2); padding: 28px 24px 32px } .eb-facts p, .eb-list p { color: var(--fg2); margin: 0; font-weight: 300; line-height: 1.6 }
+.eb-n { font: 400 11px var(--mono); color: var(--accent-2) }
+.eb-note { margin: 28px 0 0; font: 400 12px var(--mono); letter-spacing: .06em; color: var(--fg3) }
+.eb-list { display: flex; flex-direction: column; gap: 22px } .eb-list > div { border-top: 1px solid var(--line); padding-top: 14px }
+.eb-av { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px } .eb-av p { margin: 10px 0 0; color: var(--fg2) }
+.eb-bar { height: 3px; background: var(--accent-2); margin-top: 14px } .eb-bar span { display: block; height: 100%; background: var(--bg4) }
+.eb-close { text-align: left; background: var(--bg2) } .eb-close h2 { max-width: 20ch }
+.eb-sign { display: flex; flex-direction: column; gap: 4px; margin-top: 36px; border-top: 1px solid var(--line-3); padding-top: 18px; max-width: 420px } .eb-sign span { color: var(--fg3); font-size: 13.5px }
+.eb-foot { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 22px clamp(16px, 6vw, 88px); font: 400 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg3) }
+.rv { opacity: 0; transform: translateY(18px); transition: opacity .8s ease, transform .8s ease } .rv.in { opacity: 1; transform: none }
+@media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; transition: none } }
+@media (max-width: 900px) {
+  .eb-two, .eb-res { grid-template-columns: 1fr } .eb-res.flip .eb-res-img { order: 0 } .eb-facts, .eb-av { grid-template-columns: repeat(2, minmax(0, 1fr)) } .eb-gal { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .eb-links { display: none } .eb-scroll { display: none }
+}
+@media print { .eb-nav { display: none } .rv { opacity: 1; transform: none } .eb-hero { min-height: 60vh } }
+
+/* 1 Nov: launcher (who is visiting, which visit), film, greeting, personal tags */
+.eb-launch { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: #0b0908 radial-gradient(circle at 70% 20%, rgba(122, 28, 46, .35), transparent 60%) }
+.eb-launch-card { width: min(640px, 100%); background: rgba(20, 16, 14, .92); border: 1px solid rgba(255, 255, 255, .12); padding: 36px; display: flex; flex-direction: column; gap: 18px; color: #f3ede3 }
+.eb-launch-card h1 { font: 300 44px/1.05 var(--sans); letter-spacing: -.03em; margin: 0 }
+.eb-launch-card .input { background: rgba(255, 255, 255, .06); color: #f3ede3; border-color: rgba(255, 255, 255, .18) }
+.eb-launch-card .field-label { color: rgba(243, 237, 227, .7) }
+.eb-or { font: 400 10.5px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: rgba(243, 237, 227, .5) }
+.eb-visits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 6px }
+.eb-visits button { text-align: left; background: none; border: 1px solid rgba(255, 255, 255, .18); color: #f3ede3; padding: 12px; display: flex; flex-direction: column; gap: 4px; cursor: pointer }
+.eb-visits button span { font-size: 12px; color: rgba(243, 237, 227, .65); line-height: 1.4 } .eb-visits button.on { border-color: #c2405a; background: rgba(122, 28, 46, .35) }
+.eb-go { background: #7A1C2E !important; border-color: #7A1C2E !important; color: #fff !important }
+.eb-sop summary { cursor: pointer; font-size: 13px; color: rgba(243, 237, 227, .75) } .eb-sop p { font-size: 13px; line-height: 1.6; color: rgba(243, 237, 227, .8) }
+.eb-greet { font: 300 clamp(20px, 3vw, 30px)/1.2 var(--sans); margin-bottom: 10px; color: #f3ede3 }
+.eb-film { position: relative; background: #000; min-height: 70vh; display: grid } .eb-film video, .eb-film iframe { width: 100%; height: 100%; min-height: 70vh; object-fit: cover; border: 0 }
+.eb-film-cap { position: absolute; left: 6vw; bottom: 6vh; max-width: 520px; color: #fff; text-shadow: 0 2px 20px rgba(0, 0, 0, .6) }
+.eb-img { background-size: cover; background-position: center }
+.eb-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px } .eb-tags span { border: 1px solid currentColor; padding: 4px 12px; font-size: 12px; opacity: .8 }

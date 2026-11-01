@@ -1,0 +1,134 @@
+/* Tower and floor plans, from the Accord experience (OuTSDe), in the app's theme. The drawings stay on a dark plate in both themes. */
+.tw-stage { position: relative; background: radial-gradient(ellipse at 45% 60%, #171112 0%, #0C0A0A 72%); border: 1px solid var(--line); overflow: hidden; --sold: #C9473C; --blocked: #D2A04A }
+.tw-stage::before, .tw-stage::after { content: ''; position: absolute; left: 0; right: 0; height: 48px; z-index: 2; pointer-events: none }
+.tw-stage::before { top: 0; background: linear-gradient(#0C0A0A, transparent) } .tw-stage::after { bottom: 56px; background: linear-gradient(transparent, #0C0A0A) }
+.tower-wrap { position: absolute; inset: 0 0 56px 0; padding: 0 6.5rem 0 1rem; cursor: pointer; user-select: none; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain }
+.tower-content { position: relative; width: 100% }
+.tower-scene { position: absolute; left: 50%; top: 50%; transform-style: preserve-3d }
+.floor { position: absolute; inset: 0; transform-style: preserve-3d }
+.floor img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity .22s ease }
+.floor-idle img.line { opacity: .5 } .floor-marked img.mark { opacity: .85 }
+.floor-sibling img.line { opacity: .7 } .floor-sibling img.on { opacity: .22 }
+.floor-hover img.on { opacity: 1 } .floor-hover img.mark { opacity: .6 } .floor-sel img.on { opacity: 1 }
+.floor.dimmed.floor-idle img.line { opacity: .22 } .floor.dimmed.floor-marked img.mark { opacity: .35 }
+.floor.ghost img.line { opacity: .35 } .floor.ghost.dimmed img.line { opacity: .15 }
+/* the drawings are rendered in copper; shift them to the burgundy accent */
+.floor img.mark { filter: hue-rotate(-38deg) saturate(1.35) brightness(.92) }
+/* the floor you are on reads in white, so it never looks like a sold (red) or blocked (amber) residence */
+.floor img.on { filter: grayscale(1) brightness(2.2) }
+.floor-status { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none }
+.floor-status .st-sold { fill: var(--sold); fill-opacity: .55; stroke: var(--sold); stroke-width: 5; stroke-opacity: .9 }
+.floor-status .st-blocked { fill: var(--blocked); fill-opacity: .35; stroke: var(--blocked); stroke-width: 5; stroke-opacity: .8 }
+.floor.dimmed .floor-status { opacity: .35 } .floor-hover .floor-status, .floor-sel .floor-status { opacity: 1 }
+.tower-tags { position: absolute; inset: 0; pointer-events: none; overflow: visible }
+.ftag { position: absolute; right: -3.2rem; transform: translateY(-50%); font: 400 10px/1 var(--mono); letter-spacing: .06em; color: rgba(244, 236, 234, .45); width: 1.8rem; text-align: right; transition: color .2s }
+.ftag.marked { color: #D07384 } .ftag.none { color: rgba(244, 236, 234, .18) } .ftag.on { color: #F4ECEA; font-size: 11px; font-weight: 700 }
+.band { position: absolute; right: -5.2rem; width: 6px; border: 1px solid rgba(240, 226, 226, .16); border-left: none; transition: border-color .2s }
+.band span { position: absolute; left: 10px; top: 50%; transform: translateY(-50%) rotate(180deg); writing-mode: vertical-rl; font: 400 8px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: rgba(244, 236, 234, .45); white-space: nowrap }
+.band.on { border-color: #D07384 } .band.on span { color: #D07384 }
+.tw-cap { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; padding: 8px 16px; display: flex; flex-direction: column; justify-content: center; gap: 2px; border-top: 1px solid rgba(240, 226, 226, .09); z-index: 3 }
+.tw-cap .small { color: rgba(244, 236, 234, .5) }
+.tw-legend { display: flex; align-items: center; gap: 6px; font: 400 9.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: rgba(244, 236, 234, .7) }
+.tw-legend i { width: 12px; height: 8px; display: inline-block; margin-left: 10px } .tw-legend i:first-child { margin-left: 0 }
+.tw-legend i.sold { background: #C9473C } .tw-legend i.blocked { background: #D2A04A } .tw-legend i.open { border: 1px solid rgba(244, 236, 234, .5) }
+
+/* floor plan */
+.fp-box { position: relative; border: 1px solid var(--line); background: #0C0A0A; padding: 10px 10px 34px; --sold: #C9473C; --blocked: #D2A04A }
+.fp-box .fp-cap { position: absolute; left: 12px; right: 12px; bottom: 8px; display: flex; justify-content: space-between; gap: 12px; font: 400 9.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: rgba(244, 236, 234, .55) }
+.fp-empty { display: grid; place-items: center; min-height: 180px; color: rgba(244, 236, 234, .5); font-size: 13.5px; text-align: center; padding: 20px }
+.floorplan { display: block; width: 100%; height: auto } .floorplan image { opacity: .88 }
+.unit { cursor: pointer; outline: none }
+.unit-area { fill: #B23D52; fill-opacity: 0; stroke: #D07384; stroke-opacity: 0; stroke-width: 3; transition: fill-opacity .2s, stroke-opacity .2s }
+.unit-glow { fill: #B23D52; fill-opacity: 0; transition: fill-opacity .25s }
+.unit-hover .unit-area { fill-opacity: .22; stroke-opacity: 1 } .unit-hover .unit-glow { fill-opacity: .35 }
+.unit-sel .unit-area { fill-opacity: .32; stroke-opacity: 1; stroke-width: 5 } .unit-sel .unit-glow { fill-opacity: .3 }
+.unit-tag circle { fill: #0C0A0A; stroke: rgba(208, 115, 132, .45); stroke-width: 2 }
+.unit-tag text { font: 400 20px var(--mono); fill: rgba(244, 236, 234, .75); letter-spacing: .04em }
+.unit-hover .unit-tag circle, .unit-sel .unit-tag circle { fill: #9A2A3E; stroke: #9A2A3E } .unit-hover .unit-tag text, .unit-sel .unit-tag text { fill: #FBEFF1; font-weight: 700 }
+.unit.st-sold .unit-area { fill: var(--sold); fill-opacity: .38; stroke: var(--sold); stroke-opacity: .9 }
+.unit.st-blocked .unit-area { fill: var(--blocked); fill-opacity: .26; stroke: var(--blocked); stroke-opacity: .85 }
+.unit.st-sold.unit-hover .unit-area { fill-opacity: .55 } .unit.st-sold .unit-glow { fill: var(--sold) } .unit.st-blocked .unit-glow { fill: var(--blocked) }
+.unit.st-sold .unit-tag circle { fill: var(--sold); stroke: var(--sold) } .unit.st-blocked .unit-tag circle { fill: var(--blocked); stroke: var(--blocked) }
+.unit.st-sold .unit-tag text, .unit.st-blocked .unit-tag text { fill: #120E0A; font-weight: 700 }
+.unit-sel.st-sold .unit-area, .unit-sel.st-blocked .unit-area { stroke: #F4ECEA; stroke-width: 6 }
+
+/* inventory layout */
+.inv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(380px, .95fr); gap: 16px; align-items: start }
+.inv-panel { display: flex; flex-direction: column; gap: 16px; min-width: 0 }
+.inv-counts { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13.5px; color: var(--fg2) }
+.inv-counts b { font-family: var(--mono); font-weight: 700; color: var(--fg); margin-right: 4px } .inv-counts b.sold { color: #C9473C } .inv-counts b.blocked { color: #D2A04A }
+.type-cards { display: flex; flex-wrap: wrap; gap: 8px }
+.type-card { border: 1px solid var(--line-3); background: none; padding: 9px 14px; text-align: left; min-height: 48px; color: var(--fg) }
+.type-card:hover { border-color: var(--fg3) } .type-card[aria-pressed="true"] { border-color: var(--accent-line); background: var(--accent-soft) }
+.type-card b { display: block; font-weight: 500; font-size: 14px } .type-card span { font: 400 9.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg3) }
+.floor-pills { display: flex; gap: 6px; flex-wrap: wrap }
+@media (max-width: 1100px) { .inv { grid-template-columns: 1fr } }
+@media (max-width: 860px) { .tower-wrap { padding: 0 5.6rem 0 .5rem } }
+.table tr.clickable { cursor: pointer } .table tr.clickable:hover td { background: var(--bg3) } .table tr.row-on td { background: var(--accent-soft) }
+/* month by month payments */
+.months { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 4px }
+.mo { border: 1px solid var(--line); background: none; color: var(--fg2); padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 48px }
+.mo span { font: 400 9.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--fg3) }
+.mo b { font: 700 11px var(--mono); min-height: 14px }
+.mo.paid { background: var(--good-soft); border-color: transparent; color: var(--good) }
+.mo.due { box-shadow: inset 0 -3px 0 var(--warn) } .mo.missed { box-shadow: inset 0 -3px 0 var(--bad); color: var(--bad) }
+.mo[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 1px }
+/* mini calendar */
+.mcal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center }
+.mcal-h { font: 400 9.5px var(--mono); color: var(--fg3); padding: 4px 0 }
+.mcal-d { background: none; border: 1px solid transparent; color: var(--fg2); padding: 5px 0 3px; font: 400 12.5px var(--mono); display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 36px }
+.mcal-d:hover { border-color: var(--line-3) } .mcal-d.today { color: var(--fg); font-weight: 700; border-color: var(--accent-line) } .mcal-d[aria-pressed="true"] { background: var(--accent-soft); color: var(--fg) }
+.mcal-d.late { color: var(--bad) }
+.mcal .dots { display: flex; gap: 2px; height: 5px } .mcal .dots i, .kdot { width: 5px; height: 5px; border-radius: 50%; display: inline-block }
+.kdot { margin-right: 7px; vertical-align: middle }
+.dots i.followup, .kdot.followup { background: var(--accent) } .dots i.viewing, .kdot.viewing { background: var(--info) } .dots i.task, .kdot.task { background: var(--warn) }
+/* bulk interaction log */
+.bulk { display: flex; flex-direction: column; gap: 8px }
+.bulk-row { display: grid; grid-template-columns: 26px minmax(200px, 1.4fr) 150px 140px minmax(160px, 1.6fr) minmax(120px, 1fr) 130px 34px; gap: 6px; align-items: center }
+.bulk-n { color: var(--fg3); font-size: 11px }
+@media (max-width: 1100px) { .bulk-row { grid-template-columns: 26px 1fr 1fr; padding-bottom: 8px; border-bottom: 1px dashed var(--line-2) } .bulk-who, .bulk-sum { grid-column: span 2 } }
+
+/* ── Inverted drawings (31 Oct): white plate, dark linework, for light mode and for print-like reading.
+   Only the drawings are inverted; sold, blocked and selection colours stay true. */
+.plate-light.tw-stage { background: radial-gradient(ellipse at 45% 60%, #FFFFFF 0%, #F3EEEB 75%); border-color: var(--line-3) }
+.plate-light.tw-stage::before { background: linear-gradient(#F3EEEB, transparent) } .plate-light.tw-stage::after { background: linear-gradient(transparent, #F3EEEB) }
+.plate-light .floor img.line { filter: invert(1) }
+.plate-light .floor img.on { filter: grayscale(1) invert(1) brightness(.15) }
+.plate-light .floor img.mark { filter: hue-rotate(-38deg) saturate(1.6) brightness(.75) }
+.plate-light .floor-idle img.line { opacity: .6 } .plate-light .floor.dimmed.floor-idle img.line { opacity: .3 }
+.plate-light .ftag { color: rgba(26, 20, 20, .5) } .plate-light .ftag.on { color: #1A1414 } .plate-light .ftag.none { color: rgba(26, 20, 20, .22) } .plate-light .ftag.marked { color: #7A1C2E }
+.plate-light .band { border-color: rgba(26, 20, 20, .2) } .plate-light .band span { color: rgba(26, 20, 20, .5) } .plate-light .band.on { border-color: #7A1C2E } .plate-light .band.on span { color: #7A1C2E }
+.plate-light .tw-cap { border-top-color: rgba(26, 20, 20, .1) } .plate-light .tw-cap .small, .plate-light .tw-legend { color: rgba(26, 20, 20, .65) } .plate-light .tw-legend i.open { border-color: rgba(26, 20, 20, .5) }
+.plate-light.fp-box { background: #FFFFFF; border-color: var(--line-3) } .plate-light.fp-box .fp-cap { color: rgba(26, 20, 20, .55) }
+.plate-light .floorplan image { filter: invert(1) hue-rotate(180deg); opacity: .92 }
+.plate-light .unit-tag circle { fill: #FFFFFF; stroke: rgba(122, 28, 46, .5) } .plate-light .unit-tag text { fill: rgba(26, 20, 20, .8) }
+.plate-light .unit-hover .unit-tag circle, .plate-light .unit-sel .unit-tag circle { fill: #7A1C2E; stroke: #7A1C2E } .plate-light .unit-hover .unit-tag text, .plate-light .unit-sel .unit-tag text { fill: #FFFFFF }
+.plate-light .unit-area, .plate-light .unit-glow { fill: #7A1C2E } .plate-light .unit-area { stroke: #7A1C2E }
+.plate-light .unit-sel.st-sold .unit-area, .plate-light .unit-sel.st-blocked .unit-area { stroke: #1A1414 }
+.plate-light .fp-empty { color: rgba(26, 20, 20, .5) }
+/* full screen */
+.inv-full { background: var(--bg); padding: 18px; overflow: auto }
+.inv-full .inv { grid-template-columns: minmax(0, 1.15fr) minmax(420px, .85fr) }
+
+/* ── 31 Oct: the building, recomposed. No boxes: the tower sits on the page, the plate opens full width beneath it. */
+.tw-stage.bare { border: 0; background: transparent; --stage-bg: var(--bg) }
+.tw-stage.bare::before { background: linear-gradient(var(--stage-bg), transparent) } .tw-stage.bare::after { background: linear-gradient(transparent, var(--stage-bg)) }
+:root[data-theme="dark"] .tw-stage.bare.plate-light { background: #F4EFEC; --stage-bg: #F4EFEC }
+:root[data-theme="light"] .tw-stage.bare:not(.plate-light) { background: #0F0C0C; --stage-bg: #0F0C0C }
+:root[data-theme="light"] .tw-stage.bare:not(.plate-light) .tw-cap { color: rgba(244, 236, 234, .6) }
+.tw-stage.bare .tw-cap { border-top: 1px solid var(--line); background: transparent }
+.tw-stage.bare .tower-wrap { padding: 0 7rem 0 1rem }
+.inv-v { display: flex; flex-direction: column; gap: 28px }
+.inv-plan { scroll-margin-top: 80px }
+.inv-plan-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid var(--line) }
+.inv-plan-head h2 { font-size: 40px; font-weight: 600; letter-spacing: -.035em; margin: 8px 0 0; line-height: 1 } .inv-plan-head h2 em { font-style: italic; font-weight: 300; color: var(--accent-2) }
+.fp-bare { padding: 18px 0 8px; --sold: #C9473C; --blocked: #D2A04A }
+.fp-bare .floorplan { max-height: 72vh; margin: 0 auto }
+:root[data-theme="dark"] .fp-bare.plate-light { background: #F4EFEC; padding: 18px 12px 8px }
+:root[data-theme="light"] .fp-bare:not(.plate-light) { background: #0F0C0C; padding: 18px 12px 8px }
+.inv-below { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr); gap: 32px; margin-top: 18px; align-items: start }
+.inv-sec-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--line) }
+.inv-sec-head h3 { font-size: 20px; font-weight: 500; letter-spacing: -.02em; margin: 0 }
+.inv-full .inv-v { gap: 20px }
+@media (max-width: 1000px) { .inv-below { grid-template-columns: 1fr } .inv-plan-head h2 { font-size: 30px } }
+.tw-stage.bare::before, .tw-stage.bare::after { height: 28px }

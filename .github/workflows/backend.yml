@@ -1,0 +1,41 @@
+# Optional: sends backend/Code.gs and appsscript.json to the Apps Script project behind the Accord Database
+# whenever they change, and updates the existing web-app deployment (the /exec URL stays the same).
+# Skipped until these are set in Settings → Secrets and variables → Actions:
+#   Secret   CLASPRC_JSON          contents of ~/.clasprc.json after `npx @google/clasp login` as research@outsd-e.com
+#   Variable APPS_SCRIPT_ID        Apps Script editor → Project settings → Script ID
+#   Variable APPS_SCRIPT_DEPLOYMENT_ID   Deploy → Manage deployments → the web app's Deployment ID
+# Also switch on the Apps Script API once: https://script.google.com/home/usersettings
+name: Update the Google backend
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**']
+  workflow_dispatch:
+
+jobs:
+  push-script:
+    runs-on: ubuntu-latest
+    env:
+      CLASPRC: ${{ secrets.CLASPRC_JSON }}
+      SCRIPT_ID: ${{ vars.APPS_SCRIPT_ID }}
+      DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_DEPLOYMENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when not configured
+        id: cfg
+        run: |
+          if [ -z "$CLASPRC" ] || [ -z "$SCRIPT_ID" ]; then echo "Backend auto-update not configured; skipping."; echo "go=no" >> $GITHUB_OUTPUT; else echo "go=yes" >> $GITHUB_OUTPUT; fi
+      - uses: actions/setup-node@v4
+        if: steps.cfg.outputs.go == 'yes'
+        with: { node-version: 20 }
+      - name: Push Code.gs and deploy
+        if: steps.cfg.outputs.go == 'yes'
+        working-directory: backend
+        run: |
+          npm i -g @google/clasp@2.4.2
+          printf '%s' "$CLASPRC" > ~/.clasprc.json
+          printf '{"scriptId":"%s","rootDir":"."}' "$SCRIPT_ID" > .clasp.json
+          printf '**/**\n!Code.gs\n!appsscript.json\n' > .claspignore
+          clasp push -f
+          if [ -n "$DEPLOYMENT_ID" ]; then clasp deploy -i "$DEPLOYMENT_ID" -d "GitHub ${GITHUB_SHA::7}"; fi

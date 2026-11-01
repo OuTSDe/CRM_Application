@@ -1,0 +1,26 @@
+{
+  "name": "accord",
+  "private": true,
+  "version": "3.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build:site": "vite build && node ../tools/patch-experience.mjs ../experience-src/accord-experience.dist.html ../site/experience/index.html && node ../tools/finish-site.mjs dist ../site"
+  },
+  "dependencies": {
+    "qrcode-generator": "^1.4.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.26.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "4.3.1",
+    "vite": "5.4.8",
+    "vite-plugin-singlefile": "2.0.2"
+  },
+  "description": "Accord by OuTSDe (Outlook for Theoreticals & Speculative Design): sales, design and vendor platform. Proprietary.",
+  "license": "UNLICENSED",
+  "author": "OuTSDe"
+}

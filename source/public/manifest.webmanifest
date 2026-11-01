@@ -1,0 +1,3 @@
+{ "name": "Accord · Yamuna Sky City", "short_name": "Accord", "start_url": "./", "display": "standalone", "background_color": "#0C0A0A", "theme_color": "#0C0A0A",
+  "description": "Accord by OuTSDe: sales, design and vendor platform.",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }] }
