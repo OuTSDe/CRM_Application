@@ -51,6 +51,7 @@ export function StoreProvider({ children }) {
   const [sync, setSync] = useState({ state: 'local', at: null, error: null })
   const [toast, setToast] = useState(null)
   const queue = useRef(readJson(QKEY, []))
+  const holdPull = useRef(false)   // after loading the starting data, until the sheet is seeded
   const saveTimer = useRef(null)
 
   useEffect(() => {
@@ -95,7 +96,7 @@ export function StoreProvider({ children }) {
     } catch (e) { setSync({ state: 'error', at: null, error: e.message }); if (/expired|signed in/i.test(e.message)) logout() }
   }, [online, session, call]) // eslint-disable-line
   const pull = useCallback(async () => {
-    if (!online) return
+    if (!online || holdPull.current) return
     try {
       setSync((s) => ({ ...s, state: 'syncing' }))
       const j = await call({ action: 'pull', token: session.token })
@@ -316,12 +317,16 @@ export function StoreProvider({ children }) {
   const loadStartingData = useCallback((src) => {
     if (!src || !Array.isArray(src.clients)) throw new Error('Not an Accord starting-data file')
     const part = crmPart(src)
-    setRaw((cur) => ({ ...cur, ...part, units: src.units?.length ? src.units.map((u) => ({ ...u, id: String(u.unit) })) : cur.units }))
+    holdPull.current = true
+    // the empty sheet may have emptied the reference collections on this device (templates, vendors, brochure…): put the defaults back
+    const base = buildSeed()
+    setRaw((cur) => { const next = { ...cur }; Object.keys(base).forEach((c) => { if (!(next[c] || []).length && (base[c] || []).length) next[c] = base[c] })
+      return { ...next, ...part, units: src.units?.length ? src.units.map((u) => ({ ...u, id: String(u.unit) })) : next.units } })
     return Object.fromEntries(Object.entries(part).map(([k, v]) => [k, v.length]))
   }, [])
   const replaceAll = useCallback((next) => { setRaw(next); notify('Data replaced') }, [notify])
   const resetToSeed = useCallback(() => { const s = buildSeed(); s.users = raw.users; s.settings = raw.settings; setRaw(s); notify('Cleared this device back to the empty start') }, [raw.users, raw.settings, notify])
-  const seedBackend = useCallback(async (url = backend) => { const r = await call({ action: 'seed', token: online ? session.token : '', db: raw }, url); queue.current = []; safeSet(QKEY, '[]'); return r }, [call, session, raw, online, backend])
+  const seedBackend = useCallback(async (url = backend) => { const r = await call({ action: 'seed', token: online ? session.token : '', db: raw }, url); queue.current = []; safeSet(QKEY, '[]'); holdPull.current = false; setTimeout(() => pull(), 500); return r }, [call, session, raw, online, backend])
 
   const value = { db, raw, settings, user, session, sync, toast, notify, upsert, remove, setSettings, nextId, login, logout, changePassword, setUserPassword, approveDevice, releaseDevice,
     enrolStart, enrolConfirm, punch, myDay, punchedIn, pushNote, markRead, replaceAll, resetToSeed, upload, sendEmail, exportNow, loadStartingData, pull, flush, seedBackend,
