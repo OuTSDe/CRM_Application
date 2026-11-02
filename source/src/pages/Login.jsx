@@ -46,7 +46,7 @@ export default function Login() {
           <Button variant="primary" size="lg" disabled={busy || !ready}>{busy ? 'Checking…' : first ? 'Continue to link the app' : 'Sign in'}</Button>
           <button type="button" className="linkish" onClick={() => { setFirst(!first); setErr('') }}>{first ? 'I have the app linked: sign in with a code' : 'First sign-in, or a new phone? Use the temporary password'}</button>
           <p className="small muted" style={{ margin: 0 }}>
-            {backend ? 'One computer and one phone per person. A new device waits for an admin. Lost your phone? An admin resets your sign-in under Users and access.'
+            {backend ? 'For security you sign in each time you open Accord; refreshing or closing the tab signs you out. One computer and one phone per person. A new device waits for an admin. Lost your phone? An admin resets your sign-in under Users and access.'
               : <>Working on this device only. The first sign-in uses the temporary password <b className="mono">{TEMP_PASSWORD}</b>, then you link your authenticator app.</>}
           </p>
           <div className="credits">{CREDITS.map(([n, r]) => <div key={n}>{n}<span>{r}</span></div>)}</div>

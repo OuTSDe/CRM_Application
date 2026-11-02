@@ -83,7 +83,7 @@ The interaction log works out from the ID whether a record is a lead or a client
 - **Lost or new phone.** Users and access → **Reset sign-in** sets a new temporary password and unlinks the old app.
 - **Fallback.** Settings → Sign-in → *Password* switches back to passwords (salted SHA-256, 1,000 rounds, the same scheme in the browser and on the server).
 - **Lockout.** Five wrong attempts lock the account for 15 minutes.
-- **Sessions.** A session token lasts 6 hours in cache and 7 days in total.
+- **Sessions (2 Nov).** The sign-in lives only in the open tab's memory. Refreshing, closing the tab or the browser, or pressing Sign out ends it: anything not yet saved is sent first, then the server deletes the token (`logout`). The next visit asks for the username and a fresh authenticator code. Being punched in is not affected: after signing in again the day continues. A token that is never closed properly expires after 6 hours in cache and 7 days in total.
 - **Devices.**
   - Every browser has a stable device id, and the server records whether it is a computer or a phone.
   - A non-admin can use **one computer and one phone**. A third device is refused and an admin is notified.

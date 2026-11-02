@@ -47,7 +47,10 @@ export function daySums(events = [], until = new Date().toISOString()) {
 
 export function StoreProvider({ children }) {
   const [raw, setRaw] = useState(load)
-  const [session, setSession] = useState(() => readJson(SKEY, null))
+  // 2 Nov: the sign-in lives only in this tab's memory. Refreshing, closing the tab or the browser signs you out,
+  // and the next visit asks for the username and a fresh authenticator code. localStorage keeps only a marker
+  // (no token) while the tab is open, so the Accord experience page in the next tab knows someone is signed in.
+  const [session, setSession] = useState(() => { try { localStorage.removeItem(SKEY) } catch (e) { /* */ } return null })
   const [sync, setSync] = useState({ state: 'local', at: null, error: null })
   const [toast, setToast] = useState(null)
   const queue = useRef(readJson(QKEY, []))
@@ -166,7 +169,8 @@ export function StoreProvider({ children }) {
   const markRead = useCallback((ids) => { const now = new Date().toISOString(); ids.forEach((id) => { const n = raw.notifications.find((x) => x.id === id); if (n && !n.readAt) upsert('notifications', { ...n, readAt: now }, { system: true, silent: true }) }) }, [raw.notifications, upsert])
 
   // ---------- auth
-  const startSession = (u, token, mustEnrol = false) => { const s = { userId: u.id, token, at: Date.now(), mustEnrol: !!mustEnrol }; setSession(s); safeSet(SKEY, JSON.stringify(s)) }
+  const marker = (s) => safeSet(SKEY, JSON.stringify({ userId: s.userId, at: s.at }))
+  const startSession = (u, token, mustEnrol = false) => { const s = { userId: u.id, token, at: Date.now(), mustEnrol: !!mustEnrol }; setSession(s); marker(s) }
   // 1 Nov: username + authenticator code. The temporary password opens the account once, to link the app.
   const login = useCallback(async (username, { code, password } = {}) => {
     const uname = String(username || '').trim().toLowerCase()
@@ -207,7 +211,7 @@ export function StoreProvider({ children }) {
       setRaw((cur) => ({ ...cur, users: cur.users.map((x) => (x.id === u.id ? { ...x, totpSecret: u.totpPending, totpPending: '', totpLast: st, mfa: 'Set', mustChange: 'No', email: x.email || email || '' } : x)) }))
     }
     setRaw((cur) => ({ ...cur, users: cur.users.map((x) => (x.id === user.id ? { ...x, mfa: 'Set', mustChange: 'No', email: x.email || email || '' } : x)) }))
-    const s = { ...session, mustEnrol: false }; setSession(s); safeSet(SKEY, JSON.stringify(s))
+    const s = { ...session, mustEnrol: false }; setSession(s); marker(s)
   }, [online, session, call, raw.users, user])
   const changePassword = useCallback(async (oldPw, newPw) => {
     if (!strongEnough(newPw)) throw new Error('Use at least 8 characters with a letter and a number')
@@ -235,7 +239,24 @@ export function StoreProvider({ children }) {
     if (online) await call({ action: 'releaseDevice', token: session.token, userId, deviceId: devId })
     setRaw((cur) => ({ ...cur, users: cur.users.map((x) => (x.id === userId ? { ...x, devices: (x.devices || []).filter((d) => d.id !== devId) } : x)) }))
   }, [online, session, call])
-  const logout = useCallback(() => { setSession(null); localStorage.removeItem(SKEY) }, [])
+  // Signing out ends the session on the server too, after sending anything not yet saved.
+  const sessionRef = useRef(null); sessionRef.current = session
+  const endServerSession = useCallback((beacon) => {
+    const s = sessionRef.current
+    if (!backend || !s?.token || s.token === 'local') return
+    const body = JSON.stringify({ action: 'logout', token: s.token, ops: queue.current })
+    let sent = false
+    if (beacon && navigator.sendBeacon) { try { sent = navigator.sendBeacon(backend, new Blob([body], { type: 'text/plain;charset=utf-8' })) } catch (e) { /* */ } }
+    else { fetch(backend, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body, keepalive: true }).catch(() => {}); sent = true }
+    if (sent && queue.current.length) { queue.current = []; safeSet(QKEY, '[]') }
+  }, [backend])
+  const logout = useCallback(() => { endServerSession(false); setSession(null); try { localStorage.removeItem(SKEY) } catch (e) { /* */ } }, [endServerSession])
+  // closing the tab or the browser, or refreshing: sign out
+  useEffect(() => {
+    const bye = () => { endServerSession(true); try { localStorage.removeItem(SKEY) } catch (e) { /* */ } }
+    window.addEventListener('pagehide', bye)
+    return () => window.removeEventListener('pagehide', bye)
+  }, [endServerSession])
 
   // ---------- time (punch in, break, site visit, remote, punch out)
   const myDay = useMemo(() => user ? raw.attendance.find((a) => a.userId === user.id && a.date === today()) || null : null, [raw.attendance, user])

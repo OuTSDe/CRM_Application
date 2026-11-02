@@ -93,6 +93,7 @@ function doPost(e) {
     switch (req.action) {
       case 'ping': return out_({ ok: true, version: VERSION, sheet: SpreadsheetApp.getActive().getName(), users: read_('users').length, folder: DATA_PATH, folderUrl: root_().getUrl(), serverTime: now_() });
       case 'login': return out_(login_(req));
+      case 'logout': return out_(logout_(req));
       case 'enrolStart': return out_(enrolStart_(auth_(req.token, true)));
       case 'enrolConfirm': return out_(enrolConfirm_(auth_(req.token, true), req));
       case 'changePassword': return out_(changePassword_(auth_(req.token), req));
@@ -258,6 +259,14 @@ function login_(req) {
   audit_(u, 'users', u.id, 'signed in on ' + devKind_(req) + ' · ' + (req.deviceLabel || ''));
   var pu = publicUser_(u); pu.mustEnrol = mode === 'authenticator' && !enrolled;
   return { token: token, user: pu, serverTime: now_() };
+}
+/** Sign-out (button, closed tab, refresh): saves anything still waiting, then ends the session. Never fails loudly. */
+function logout_(req) {
+  var token = String(req.token || ''); if (!token) return { ok: true };
+  try { var u = auth_(token, true); if (req.ops && req.ops.length) push_(u, req.ops); audit_(u, 'users', u.id, 'signed out'); } catch (e) { }
+  CacheService.getScriptCache().remove('t:' + token);
+  PropertiesService.getScriptProperties().deleteProperty('t:' + token);
+  return { ok: true };
 }
 function auth_(token, allowUnenrolled) {
   if (!token) throw new Error('Not signed in');

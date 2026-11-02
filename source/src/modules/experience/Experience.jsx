@@ -59,7 +59,7 @@ export default function Experience() {
               <label className="field" style={{ flex: 1 }}><span className="field-label">Edition</span><Seg options={[{ value: 'yamuna-sky-city', label: 'Yamuna Sky City' }, { value: 'showcase', label: 'Showcase' }]} value={edition} onChange={setEdition} /></label>
               <label className="field" style={{ flex: 1 }}><span className="field-label">Screen</span><Seg options={[{ value: 'console', label: 'Laptop' }, { value: 'buyer', label: 'TV, large type' }]} value={view} onChange={setView} /></label>
             </div>
-            <div className="row"><a className="btn btn-primary btn-lg" href={url} target="_blank" rel="noopener">Open the experience</a><a className="btn btn-lg" href={url}>Open here</a></div>
+            <div className="row"><a className="btn btn-primary btn-lg" href={url} target="_blank" rel="noopener">Open the experience</a><span className="small muted">Opens in a new tab; keep this Accord tab open (closing it signs you out).</span></div>
           </div>
         </Card>
         <Card title="How it connects">
