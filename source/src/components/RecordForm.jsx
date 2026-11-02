@@ -1,6 +1,7 @@
 import React from 'react'
 import { Input, Select, Textarea, Chips, cx } from './ui.jsx'
 import { META } from '../lib/seed.js'
+import { NO_SPELL } from '../lib/spell.js'
 
 // Schema-driven form.
 // field: { k, l, t = text|number|date|time|select|textarea|chips|email|tel, o: options or META list name, span, ro, auto, hint, req }
@@ -18,7 +19,7 @@ export default function RecordForm({ fields, value, onChange, cols = 3, readOnly
     else if (f.t === 'select' && !ro) el = <Select options={opts} value={v} onChange={(e) => set(f.k, e.target.value)} />
     else if (f.t === 'textarea') el = <Textarea value={v} disabled={ro} rows={f.rows || 3} onChange={(e) => set(f.k, e.target.value)} />
     else if (f.t === 'chips') el = <Chips options={opts} value={v || []} onChange={(x) => !ro && set(f.k, x)} />
-    else el = <><Input type={ro && f.t === 'select' ? 'text' : f.t || 'text'} value={f.fmt ? f.fmt(v) : v} disabled={ro} step={f.step || 'any'} min={f.min} list={f.suggest ? 'dl-' + f.k : f.list} placeholder={f.ph}
+    else el = <><Input type={ro && f.t === 'select' ? 'text' : f.t || 'text'} spellCheck={!f.t || f.t === 'text' ? !NO_SPELL.test(f.k) : false} autoCapitalize={NO_SPELL.test(f.k) && /email|username|url|website|link/i.test(f.k) ? 'none' : undefined} value={f.fmt ? f.fmt(v) : v} disabled={ro} step={f.step || 'any'} min={f.min} list={f.suggest ? 'dl-' + f.k : f.list} placeholder={f.ph}
       onChange={(e) => { let x = f.t === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value; if (f.t === 'number' && f.min !== undefined && x !== '' && x < f.min) x = f.min; set(f.k, x) }} />
       {f.suggest && <datalist id={'dl-' + f.k}>{f.suggest.map((o) => <option key={o} value={o} />)}</datalist>}</>
     const label = <>{f.l}{f.req ? ' *' : ''}{f.auto && <span className="tag">AUTO</span>}</>

@@ -1,3 +1,4 @@
+import { fixCommon } from '../lib/spell.js'
 import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -56,8 +57,10 @@ export const Button = ({ children, variant = 'default', size, icon, className, .
 export const Field = ({ label, children, hint, span }) => (
   <label className={cx('field', span && 'span-' + span)}><span className="field-label">{label}</span>{children}{hint && <span className="hint">{hint}</span>}</label>
 )
-export const Input = (p) => <input className="input" {...p} value={p.value ?? ''} />
-export const Textarea = (p) => <textarea className="input" rows={p.rows || 3} {...p} value={p.value ?? ''} />
+// Spelling (2 Nov): text boxes are checked by the browser in English (India); notes boxes also fix common slips when you leave them.
+export const Input = (p) => <input className="input" spellCheck={!p.type || p.type === 'text' || p.type === 'search' ? undefined : false} {...p} value={p.value ?? ''} />
+export const Textarea = ({ onBlur, ...p }) => <textarea className="input" rows={p.rows || 3} spellCheck autoCorrect="on" autoCapitalize="sentences" {...p} value={p.value ?? ''}
+  onBlur={(e) => { const v = e.target.value, f = fixCommon(v); if (f !== v && p.onChange && !p.disabled && !p.readOnly) p.onChange({ target: { value: f } }); onBlur?.(e) }} />
 export function Select({ options = [], value, onChange, placeholder = 'Select…', ...p }) {
   const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }))
   return (
