@@ -75,7 +75,7 @@ export function StoreProvider({ children }) {
   const rawRef = useRef(raw); rawRef.current = raw
   const db = useMemo(() => (user ? scopeDb(raw, user, deriveCrm) : raw), [raw, user])
 
-  const notify = useCallback((msg, tone = 'ok') => { setToast({ msg, tone, at: Date.now() }); setTimeout(() => setToast(null), 3400) }, [])
+  const notify = useCallback((msg, tone = 'ok') => { setToast({ msg, tone, at: Date.now() }); setTimeout(() => setToast((t) => (t && Date.now() - t.at >= (tone === 'ok' ? 3300 : 6900) ? null : t)), tone === 'ok' ? 3400 : 7000) }, [])
 
   // ---------- backend calls
   const call = useCallback(async (payload, url = backend) => {

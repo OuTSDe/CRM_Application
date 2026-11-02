@@ -6,7 +6,8 @@ import { META } from '../lib/seed.js'
 // field: { k, l, t = text|number|date|time|select|textarea|chips|email|tel, o: options or META list name, span, ro, auto, hint, req }
 // section: { section: 'Basic information', n: '1', note }   ← a band, like the group headings on the CRM master tabs
 // sheet: render as the master sheet reads: numbered bands, typed cells solid, auto cells dashed and labelled AUTO.
-export default function RecordForm({ fields, value, onChange, cols = 3, readOnly, sheet, legend = true }) {
+// errors: { key: 'message' } marks those cells red with the reason under them (2 Nov: a refused save must say why, where).
+export default function RecordForm({ fields, value, onChange, cols = 3, readOnly, sheet, legend = true, errors = {} }) {
   const set = (k, v) => onChange({ ...value, [k]: v })
   const cell = (f) => {
     const opts = typeof f.o === 'string' ? META.lists[f.o] || [] : f.o
@@ -21,7 +22,8 @@ export default function RecordForm({ fields, value, onChange, cols = 3, readOnly
       onChange={(e) => { let x = f.t === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value; if (f.t === 'number' && f.min !== undefined && x !== '' && x < f.min) x = f.min; set(f.k, x) }} />
       {f.suggest && <datalist id={'dl-' + f.k}>{f.suggest.map((o) => <option key={o} value={o} />)}</datalist>}</>
     const label = <>{f.l}{f.req ? ' *' : ''}{f.auto && <span className="tag">AUTO</span>}</>
-    return <label key={f.k} className={cx('field', f.span && 'span-' + f.span, f.auto && 'auto')}><span className="field-label">{label}</span>{el}{f.hint && <span className="hint">{f.hint}</span>}</label>
+    const err = errors[f.k] && !(v !== undefined && v !== '' && v !== null && errors[f.k] === 'Required')
+    return <label key={f.k} className={cx('field', f.span && 'span-' + f.span, f.auto && 'auto', err && 'invalid')} data-field={f.k}><span className="field-label">{label}</span>{el}{err ? <span className="field-err">{errors[f.k]}</span> : f.hint && <span className="hint">{f.hint}</span>}</label>
   }
   if (!sheet) {
     return (
@@ -46,4 +48,5 @@ export default function RecordForm({ fields, value, onChange, cols = 3, readOnly
     </div>
   )
 }
+export const missingKeys = (fields, v) => fields.filter((f) => f.req && (v?.[f.k] === undefined || v?.[f.k] === '' || v?.[f.k] === null || (Array.isArray(v?.[f.k]) && !v[f.k].length))).map((f) => f.k)
 export const missingRequired = (fields, v) => fields.filter((f) => f.req && (v?.[f.k] === undefined || v?.[f.k] === '' || v?.[f.k] === null)).map((f) => f.l)

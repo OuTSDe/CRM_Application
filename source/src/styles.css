@@ -438,3 +438,10 @@ body { overscroll-behavior-y: none }
   .eb-launch-card { padding: 22px } .eb-visits { grid-template-columns: 1fr }
 }
 @media (max-width: 420px) { .grid:not(.stats).g3, .grid:not(.stats).g4 { grid-template-columns: 1fr } .where { grid-template-columns: 1fr } }
+
+/* 2 Nov: a refused save shows the reason in the form, and the cells that need attention */
+.field.invalid .input, .field.invalid select.input { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad) inset }
+.field.invalid .field-label { color: var(--bad) }
+.field-err { color: var(--bad); font-size: 12px; margin-top: 4px }
+.form-why { flex: 1 1 100%; background: color-mix(in srgb, var(--bad) 12%, var(--bg2)); border-left: 3px solid var(--bad); color: var(--fg); padding: 10px 12px; font-size: 13px }
+.toast.t-bad { background: var(--bad); color: #fff }

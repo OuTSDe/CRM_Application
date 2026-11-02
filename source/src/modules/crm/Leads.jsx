@@ -7,7 +7,7 @@ import { OPS } from '../../lib/seed.js'
 import { Page, Card, Button, Badge, Modal, Grid, Stat, KV, Chips, Seg } from '../../components/ui.jsx'
 import DocHeader from '../../components/DocHeader.jsx'
 import DataTable from '../../components/DataTable.jsx'
-import RecordForm, { missingRequired } from '../../components/RecordForm.jsx'
+import RecordForm, { missingRequired, missingKeys } from '../../components/RecordForm.jsx'
 import LogInteraction, { OutcomeBadge } from '../../components/LogInteraction.jsx'
 import { d, today, waLink, TITLES, CITIES, fullName, salute } from '../../lib/format.js'
 
@@ -40,6 +40,8 @@ export function Leads() {
   const crm = useCrm()
   const nav = useNavigate()
   const [add, setAdd] = useState(null)
+  const [errs, setErrs] = useState({})
+  const [why, setWhy] = useState('')
   const [view, setView] = useState('open')
   const t = today()
   const team = db.users.filter((u) => ['admin', 'senior', 'sales'].includes(u.appRole) && u.active !== 'No').map((u) => u.name)
@@ -48,15 +50,21 @@ export function Leads() {
   const views = [{ value: 'open', label: 'Open leads', test: OPEN }, { value: 'due', label: 'Follow-up due', test: (l) => l.contact.next && l.contact.next.nextDate <= t },
     { value: 'hot', label: 'Hot', test: (l) => l.temperature === 'Hot' && OPEN(l) }, { value: 'untouched', label: 'Never contacted', test: (l) => !l.contact.count || l.contact.list.every((i) => i.mode === 'Note (imported)') },
     ...(assign ? [{ value: 'unassigned', label: 'Not assigned yet', test: (l) => !l.owner }] : []), { value: 'all', label: 'All, including lost' }]
+  // 2 Nov: a refused save says why inside the form and marks the cells, instead of a 3-second message at the bottom.
+  const refuse = (e, msg) => { setErrs(e); setWhy(msg); setTimeout(() => document.querySelector('.modal .field.invalid')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50) }
   const save = () => {
-    const miss = missingRequired(LEAD_FIELDS(team), add); if (miss.length) return notify('Missing: ' + miss.join(', '), 'bad')
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(add.email || '')) return notify('The email address does not look right', 'bad')
-    if (String(add.phone).replace(/\D/g, '').length < 10) return notify('The mobile number needs at least 10 digits', 'bad')
+    const F = LEAD_FIELDS(team), e = {}
+    missingKeys(F, add).forEach((k) => (e[k] = 'Required'))
+    if (add.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(add.email)) e.email = 'This e-mail address does not look right'
+    if (add.phone && String(add.phone).replace(/\D/g, '').length < 10) e.phone = 'At least 10 digits'
+    if (Object.keys(e).length) return refuse(e, 'Not saved yet. Fill in: ' + F.filter((f) => e[f.k]).map((f) => f.l).join(', ') + '.')
     const dup = db.leads.find((l) => l.phone && add.phone && l.phone.replace(/\D/g, '').slice(-10) === add.phone.replace(/\D/g, '').slice(-10))
-    if (dup && !add.confirmDup) return notify(`Same phone as ${dup.name} (${dup.id}). Press save again to add anyway.`, 'bad') || setAdd({ ...add, confirmDup: true })
+    if (dup && !add.confirmDup) { setAdd({ ...add, confirmDup: true }); return refuse({ phone: `Same mobile as ${dup.name} (${dup.id})` }, `${dup.name} (${dup.id}) already has this mobile number. Press Save lead again to add it anyway.`) }
     const r = upsert('leads', { ...add, confirmDup: undefined, id: nextId('leads', 'YSC-L-', 4) }, { action: 'created' })
-    if (r) { setAdd(null); nav('/crm/leads/' + r.id) }
+    if (r) { setAdd(null); setErrs({}); setWhy(''); notify(`Lead ${r.id} saved`); nav('/crm/leads/' + r.id) }
+    else setWhy('Not saved: your access does not allow adding leads.')
   }
+  const close = () => { setAdd(null); setErrs({}); setWhy('') }
   return (
     <Page title="Leads and prospects" back="/" backLabel="Dashboard" subtitle={seesAll(user) ? 'Every enquiry, walk-in, cold call and referral, across the team.' : 'Leads assigned to you. Open one to log a call, plan a private viewing or convert it to a booking.'}
       actions={canWrite(user, 'leads') && <Button variant="primary" onClick={() => setAdd({ date: t, stage: 'New', temperature: 'Warm', owner: user.name, interests: [] })}>New lead</Button>}>
@@ -78,8 +86,8 @@ export function Leads() {
           { key: 'next', label: 'Next follow-up', sortValue: (l) => l.contact.next?.nextDate || (OPEN(l) ? '9999' : 'zzzz'), render: (l) => l.contact.next ? <div><Badge tone={l.contact.next.nextDate < t ? 'bad' : l.contact.next.nextDate === t ? 'warn' : 'info'}>{d(l.contact.next.nextDate)}</Badge><div className="small muted">{l.contact.next.nextAction}</div></div> : OPEN(l) ? <Badge tone="warn">Not set</Badge> : <span className="muted">–</span> },
           { key: 'owner', label: 'Advisor' },
         ]} />
-      <Modal open={!!add} onClose={() => setAdd(null)} title="New lead" wide footer={<><Button onClick={() => setAdd(null)}>Cancel</Button><Button variant="primary" onClick={save}>Save lead</Button></>}>
-        {add && <RecordForm sheet fields={LEAD_FIELDS(team, assign)} value={add} onChange={setAdd} />}
+      <Modal open={!!add} onClose={close} title="New lead" wide footer={<>{why && <div className="form-why" role="alert">{why}</div>}<Button onClick={close}>Cancel</Button><Button variant="primary" onClick={save}>Save lead</Button></>}>
+        {add && <RecordForm sheet fields={LEAD_FIELDS(team, assign)} value={add} onChange={(v) => { setAdd(v); if (why && !v.confirmDup) setWhy('') }} errors={errs} />}
       </Modal>
     </Page>
   )
