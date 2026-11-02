@@ -132,6 +132,8 @@ function sheet_(name) {
 }
 function keys_(sh) { var w = sh.getLastColumn(); return w ? sh.getRange(2, 1, 1, w).getValues()[0].map(String) : []; }
 function cell_(v) { if (v === null || v === undefined) return ''; if (typeof v === 'object') return JSON.stringify(v); return v; }
+// Columns that hold text even when they look like numbers (Sheets turns 9845012345 into a number; Accord needs it back as text).
+var TEXT_KEYS = { phone: 1, phone2: 1, whatsapp: 1, coPhone: 1, pan: 1, coPan: 1, aadhaar4: 1, receiptNo: 1, instrument: 1, account: 1, ifsc: 1, pincode: 1, username: 1, name: 1, title: 1, email: 1, designation: 1, shiftStart: 1, shiftEnd: 1, time: 1, in: 1, out: 1, gstin: 1 };
 function parse_(v) {
   if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
   if (typeof v === 'string' && (v.charAt(0) === '[' || v.charAt(0) === '{')) { try { return JSON.parse(v); } catch (e) {} }
@@ -150,7 +152,7 @@ function read_(name) {
   vals.forEach(function (r) {
     if (r.join('') === '') return;
     var o = {};
-    keys.forEach(function (k, i) { if (k === '_extra') { if (r[i]) { try { var x = JSON.parse(r[i]); Object.keys(x).forEach(function (kk) { o[kk] = x[kk]; }); } catch (e) {} } } else if (r[i] !== '') o[k] = parse_(r[i]); });
+    keys.forEach(function (k, i) { if (k === '_extra') { if (r[i]) { try { var x = JSON.parse(r[i]); Object.keys(x).forEach(function (kk) { o[kk] = x[kk]; }); } catch (e) {} } } else if (r[i] !== '') o[k] = TEXT_KEYS[k] ? (r[i] instanceof Date ? Utilities.formatDate(r[i], TZ, /^(time|in|out|shiftStart|shiftEnd)$/.test(k) ? 'HH:mm' : 'yyyy-MM-dd') : String(r[i])) : parse_(r[i]); });
     if (name === 'clients' && !o.id) o.id = o.bookingId;
     if (o.id !== undefined) o.id = String(o.id);
     out.push(o);
