@@ -58,7 +58,8 @@ export function Leads() {
     if (add.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(add.email)) e.email = 'This e-mail address does not look right'
     if (add.phone && String(add.phone).replace(/\D/g, '').length < 10) e.phone = 'At least 10 digits'
     if (Object.keys(e).length) return refuse(e, 'Not saved yet. Fill in: ' + F.filter((f) => e[f.k]).map((f) => f.l).join(', ') + '.')
-    const dup = db.leads.find((l) => l.phone && add.phone && l.phone.replace(/\D/g, '').slice(-10) === add.phone.replace(/\D/g, '').slice(-10))
+    const last10 = (x) => String(x ?? '').replace(/\D/g, '').slice(-10)
+    const dup = db.leads.find((l) => l.phone && add.phone && last10(l.phone) === last10(add.phone))
     if (dup && !add.confirmDup) { setAdd({ ...add, confirmDup: true }); return refuse({ phone: `Same mobile as ${dup.name} (${dup.id})` }, `${dup.name} (${dup.id}) already has this mobile number. Press Save lead again to add it anyway.`) }
     const r = upsert('leads', { ...add, confirmDup: undefined, id: nextId('leads', 'YSC-L-', 4) }, { action: 'created' })
     if (r) { setAdd(null); setErrs({}); setWhy(''); notify(`Lead ${r.id} saved`); nav('/crm/leads/' + r.id) }
