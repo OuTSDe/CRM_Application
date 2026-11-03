@@ -16,8 +16,8 @@ export default function Inventory() {
   const [tab, setTab] = useState(qs.get('tab') || 'building')
   return (
     <Page back={true} title="Building and parking" subtitle="Live availability for every residence, and car parks assigned by entitlement."
-      actions={<Seg options={[{ value: 'building', label: 'Building' }, { value: 'list', label: 'Unit list' }, { value: 'parking', label: 'Car parking' }]} value={tab} onChange={setTab} />}>
-      {tab === 'building' && <Building />}{tab === 'list' && <UnitList />}{tab === 'parking' && <Parking />}
+      actions={<Seg options={[{ value: 'building', label: 'Building' }, { value: 'list', label: 'Unit list' }, { value: 'parking', label: 'Car parking' }, { value: 'construction', label: 'Construction' }]} value={tab} onChange={setTab} />}>
+      {tab === 'building' && <Building />}{tab === 'list' && <UnitList />}{tab === 'parking' && <Parking />}{tab === 'construction' && <Construction />}
     </Page>
   )
 }
@@ -30,11 +30,72 @@ function Building() {
     <>
       <div className="row between" style={{ marginBottom: 12 }}>
         <span className="small muted">{view === 'tower' ? 'The tower and plates from the Accord experience, coloured live from the Client Master.' : 'Every residence as a grid, floor by floor.'}</span>
-        <Seg options={[{ value: 'grid', label: 'Grid' }, { value: 'tower', label: 'Tower and plans' }]} value={view} onChange={setView} />
+        <Seg options={[{ value: 'grid', label: 'Grid' }, { value: 'elevation', label: 'Elevation' }, { value: 'tower', label: 'Tower and plans' }]} value={view} onChange={setView} />
       </div>
-      {view === 'tower' ? <TowerView /> : <GridView />}
+      {view === 'tower' ? <TowerView /> : view === 'elevation' ? <Elevation /> : <GridView />}
     </>
   )
+}
+
+// 2 Nov: a plain white-model elevation that is easy to read and click. Each floor shows how much of it is booked;
+// click a floor to see its residences. A rendered white model can replace the drawing later without changing this.
+function Elevation() {
+  const crm = useCrm()
+  const { db } = useStore()
+  const [sel, setSel] = useState(null)
+  const floors = useMemo(() => { const m = {}; crm.units.forEach((u) => (m[u.floor] = m[u.floor] || []).push(u)); return Object.keys(m).map(Number).sort((a, b) => b - a).map((f) => ({ f, units: m[f].sort((a, b) => String(a.pos).localeCompare(String(b.pos))) })) }, [crm.units])
+  const done = (db.clpStages || []).filter((s) => s.status === 'Completed').map((s) => (String(s.stage).match(/(\d+)(?:st|nd|rd|th)\s+floor/i) || [])[1]).filter(Boolean).map(Number)
+  const builtTo = done.length ? Math.max(...done) : 0
+  const H = 9, W = 220, top = 40, pod = 2
+  const h = top + floors.length * H + pod * 18 + 20
+  const st = (u) => { const c = crm.byUnit[u.unit]; return !c ? 'free' : BOOKED.includes(c.status) ? 'sold' : 'hold' }
+  const cur = floors.find((x) => x.f === sel)
+  return <div className="split">
+    <Card title="Elevation" actions={<span className="small muted">{builtTo ? `Structure done to floor ${builtTo}` : 'Construction stages under the Construction tab'}</span>}>
+      <svg className="elev" viewBox={`0 0 ${W + 160} ${h}`} role="img" aria-label="Tower elevation, click a floor">
+        <rect x={60} y={8} width={W} height={top - 8} fill="#f4f4f2" stroke="#999" />
+        <text x={60 + W / 2} y={28} textAnchor="middle" fontSize="11" fill="#666">Crown</text>
+        {floors.map(({ f, units }, i) => { const y = top + i * H, sold = units.filter((u) => st(u) === 'sold').length, hold = units.filter((u) => st(u) === 'hold').length, w = W / units.length
+          return <g key={f} onClick={() => setSel(f)}>
+            <rect className="fl" x={60} y={y} width={W} height={H - 1} fill={f <= builtTo ? '#ffffff' : '#f3f3f3'} stroke={sel === f ? 'var(--accent, #b8860b)' : '#bbb'} strokeWidth={sel === f ? 2 : 0.6} />
+            {units.map((u, k) => st(u) !== 'free' && <rect key={u.unit} x={60 + k * w + 1} y={y + 1.5} width={w - 2} height={H - 4} fill={st(u) === 'sold' ? 'var(--accent, #b8860b)' : '#f6b26b'} opacity={0.75} pointerEvents="none" />)}
+            {(f % 5 === 0 || sel === f) && <text x={52} y={y + H - 1.5} textAnchor="end" fontSize="8" fill="#555">{f}</text>}
+            {sel === f && <text x={66 + W} y={y + H - 1.5} fontSize="8" fill="#333">{sold} booked · {units.length - sold - hold} free</text>}
+          </g> })}
+        {Array.from({ length: pod }).map((_, k) => <rect key={k} x={40} y={top + floors.length * H + k * 18} width={W + 40} height={17} fill="#e9e9e6" stroke="#aaa" />)}
+        <text x={60 + W / 2} y={top + floors.length * H + 22} textAnchor="middle" fontSize="10" fill="#666">Podium and parking</text>
+      </svg>
+      <div className="legend" style={{ marginTop: 8 }}><span><i style={{ background: 'var(--accent)' }} />Booked</span><span><i style={{ background: '#f6b26b' }} />On hold / to verify</span><span><i style={{ background: '#fff', border: '1px solid #bbb' }} />Available</span></div>
+    </Card>
+    <Card title={cur ? `Floor ${cur.f}` : 'Pick a floor'}>
+      {!cur ? <p className="muted" style={{ margin: 0 }}>Click a floor on the elevation to see its residences.</p> :
+        <table className="table dense"><thead><tr><th>Residence</th><th>Type</th><th className="right">Area</th><th>Status</th></tr></thead>
+          <tbody>{cur.units.map((u) => { const c = crm.byUnit[u.unit]; return <tr key={u.unit}><td className="mono">{u.unit}</td><td>{u.type}</td><td className="right">{u.area}</td><td>{!c ? <Badge tone="good">Available</Badge> : <Badge tone={BOOKED.includes(c.status) ? 'accent' : 'warn'}>{c.status}</Badge>}</td></tr> })}</tbody></table>}
+    </Card>
+  </div>
+}
+
+// 2 Nov: construction stages. Finance and admin keep the status and dates; demand calls follow the completed stages.
+function Construction() {
+  const { db, user, upsert, notify } = useStore()
+  const edit = canWrite(user, 'clpStages')
+  const rows = [...(db.clpStages || [])].sort((a, b) => Number(a.no) - Number(b.no))
+  const set = (s, k, v) => { upsert('clpStages', { ...s, [k]: v, ...(k === 'status' && v === 'Completed' && !s.actual ? { actual: new Date().toISOString().slice(0, 10) } : {}) }); notify('Stage ' + s.no + ' updated') }
+  const doneN = rows.filter((s) => s.status === 'Completed').length, pctDone = rows.filter((s) => s.status === 'Completed').reduce((a, s) => a + Number(s.pct || 0), 0)
+  return <>
+    <Grid cols={3}>
+      <Stat label="Stages completed" value={`${doneN} / ${rows.length}`} tone="good" />
+      <Stat label="In progress" value={rows.filter((s) => s.status === 'In progress').length} tone="info" />
+      <Stat label="Payment share reached" value={pct(pctDone)} sub="of the construction-linked plan" tone="accent" />
+    </Grid>
+    <Card title="Construction stages" pad={false} actions={!edit && <span className="locked">Updated by finance and admin</span>}>
+      <table className="table"><thead><tr><th>#</th><th>Stage</th><th className="right">Plan %</th><th>Status</th><th>Planned</th><th>Actual</th></tr></thead>
+        <tbody>{rows.map((s) => <tr key={s.id}><td className="mono">{s.no}</td><td>{s.stage}</td><td className="right">{(Number(s.pct || 0) * 100).toFixed(1)}%</td>
+          <td>{edit ? <Select options={['Not started', 'In progress', 'Completed']} value={s.status || 'Not started'} onChange={(e) => set(s, 'status', e.target.value)} /> : <Badge tone={s.status === 'Completed' ? 'good' : s.status === 'In progress' ? 'info' : 'muted'}>{s.status || 'Not started'}</Badge>}</td>
+          <td>{edit ? <Input type="date" value={s.planned || ''} onChange={(e) => set(s, 'planned', e.target.value)} /> : d(s.planned) || '–'}</td>
+          <td>{edit ? <Input type="date" value={s.actual || ''} onChange={(e) => set(s, 'actual', e.target.value)} /> : d(s.actual) || '–'}</td></tr>)}</tbody></table>
+    </Card>
+  </>
 }
 
 // Accord Design reads the same tower: which residences are sold, to whom, and which have a project or a session.

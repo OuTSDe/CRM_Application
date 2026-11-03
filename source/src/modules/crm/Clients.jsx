@@ -36,6 +36,7 @@ export const CLIENT_FIELDS = (team, { money = true, assign = true } = {}) => [
   { section: 'Team', n: '6' },
   { k: 'source', l: 'Lead source', t: 'select', o: 'Lead source' }, { k: 'leadId', l: 'Original lead ID', auto: true },
   assign ? { k: 'owner', l: 'Relationship owner', t: 'select', o: team } : { k: 'owner', l: 'Relationship owner', auto: true },
+  assign ? { k: 'coOwners', l: 'Also responsible', t: 'chips', o: team, span: 'all', hint: 'They see this client in full and get its reminders' } : { k: 'coOwners', l: 'Also responsible', auto: true, fmt: (v) => (v || []).join(', ') },
   ...(money ? [{ section: 'Unit and deal', n: '₹', note: 'Visible to finance, senior sales and admins only' },
     { k: 'tc', l: 'Total consideration (₹)', t: 'number' }, { k: 'adjustment', l: 'Adjustment (₹)', t: 'number' }, { k: 'adjType', l: 'Adjustment type', t: 'select', o: 'Adjustment type' },
     { k: 'plan', l: 'Payment plan', t: 'select', o: 'Payment plan' }, { k: 'agreement', l: 'Agreement for sale', t: 'select', o: 'Agreement status' }, { k: 'parkingEntitlement', l: 'Car parks entitled', t: 'number' }] : []),

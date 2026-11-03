@@ -51,9 +51,9 @@ var ROUNDS = 1000;
 
 /* ───────────────────────── schema: tab columns (key, heading) ───────────────────────── */
 var SCHEMA = {
-  users: [['id','Member ID'],['name','Name'],['username','Username'],['team','Team'],['designation','Designation'],['role','Responsibilities'],['appRole','Access role'],['reportsTo','Reports to'],['workspaces','Workspaces'],['phone','Phone'],['email','Email'],['shiftStart','Shift start'],['shiftEnd','Shift end'],['workDays','Work days'],['remoteAllowed','Remote allowed'],['active','Active'],['deviceLock','Device lock'],['devices','Approved devices'],['mustChange','Must change password'],['mfa','Authenticator'],['pwSalt','_salt'],['pwHash','_hash'],['totpSecret','_totp'],['totpPending','_totp pending'],['totpLast','_totp last'],['failed','_failed'],['lockedUntil','_locked until']],
+  users: [['id','Member ID'],['name','Name'],['username','Username'],['team','Team'],['department','Department'],['employment','On roll / off roll'],['company','Company'],['designation','Designation'],['role','Responsibilities'],['appRole','Access role'],['reportsTo','Reports to'],['workspaces','Workspaces'],['phone','Phone'],['email','Email'],['shiftStart','Shift start'],['shiftEnd','Shift end'],['workDays','Work days'],['remoteAllowed','Remote allowed'],['active','Active'],['deviceLock','Device lock'],['devices','Approved devices'],['mustChange','Must change password'],['mfa','Authenticator'],['pwSalt','_salt'],['pwHash','_hash'],['totpSecret','_totp'],['totpPending','_totp pending'],['totpLast','_totp last'],['failed','_failed'],['lockedUntil','_locked until']],
   clients: [['bookingId','Booking ID'],['clientId','Client ID'],['unit','Unit No.'],['status','Booking status'],['category','Customer category'],['title','Title'],['name','Primary applicant'],['coapp','Co-applicant(s)'],['buyerType','Buyer type'],['phone','Mobile (primary)'],['phone2','Mobile (alternate)'],['whatsapp','WhatsApp'],['email','Email'],['address','Correspondence address'],['city','City'],['country','Country'],['residency','Residential status'],['pan','PAN'],['aadhaar4','Aadhaar (last 4)'],['dob','Date of birth'],['language','Preferred language'],['contactPref','Preferred contact'],['purpose','Buying purpose'],['occupant','Who will live there'],['funding','Funding mode'],['loanBank','Lender'],['loanAmount','Loan amount (₹)'],['loanStatus','Loan status'],['occupation','Occupation'],['employer','Employer / business'],['income','Income band'],['marital','Marital status'],['familyProfile','Family profile'],['decisionMaker','Key decision-maker'],['source','Lead source'],['leadId','Lead ID'],['owner','Relationship owner'],['sourcedBy','Sourced by'],['closedBy','Closed by'],['bookingDate','Booking date'],['tc','Total consideration (₹)'],['adjustment','Adjustment (₹)'],['adjType','Adjustment type'],['plan','Payment plan'],['agreement','Agreement for sale'],['parkingEntitlement','Car parks entitled'],['remarks','Remarks'],['updatedAt','Updated at'],['updatedBy','Updated by']],
-  leads: [['id','Lead ID'],['date','Date captured'],['title','Title'],['name','Name'],['phone','Mobile'],['phone2','Other numbers'],['email','Email'],['city','City'],['country','Country'],['residency','Residential status'],['source','Lead source'],['partner','Channel partner'],['referredBy','Referred by'],['config','Configuration interest'],['budget','Budget band'],['purpose','Purpose'],['timeline','Buying timeline'],['owner','Assigned to'],['stage','Stage'],['temperature','Temperature'],['svDone','Site visit done?'],['svDate','Site visit date'],['lostReason','Lost / dormant reason'],['clientId','Converted to Client ID'],['notes','Notes'],['updatedAt','Updated at'],['updatedBy','Updated by']],
+  leads: [['id','Lead ID'],['date','Date captured'],['title','Title'],['name','Name'],['phone','Mobile'],['phone2','Other numbers'],['email','Email'],['city','City'],['country','Country'],['residency','Residential status'],['source','Lead source'],['partner','Channel partner'],['referredBy','Referred by'],['config','Configuration interest'],['budget','Budget band'],['purpose','Purpose'],['timeline','Buying timeline'],['owner','Assigned to'],['coOwners','Also responsible'],['stage','Stage'],['temperature','Temperature'],['svDone','Site visit done?'],['svDate','Site visit date'],['lostReason','Lost / dormant reason'],['clientId','Converted to Client ID'],['notes','Notes'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   interactions: [['id','Log ID'],['date','Date'],['time','Time'],['type','Record type'],['recordId','Client or Lead ID'],['mode','Mode'],['purpose','Purpose'],['by','Team member'],['summary','Summary of discussion'],['outcome','Outcome'],['nextAction','Next action'],['nextDate','Next action date'],['nextOwners','Follow-up owners'],['status','Status'],['updatedAt','Updated at']],
   payments: [['id','Entry No.'],['receiptNo','Receipt No.'],['date','Receipt date'],['unit','Unit No.'],['payer','Received from'],['thirdParty','Third-party payer'],['amount','Amount received (₹)'],['counted','Counted in totals?'],['towards','Towards'],['mode','Mode'],['instrument','Instrument / UTR no.'],['instrumentDate','Instrument date'],['bank','Bank'],['tds','TDS (₹)'],['realisation','Realisation'],['proofUrl','Proof (Drive)'],['note','Note'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   attendance: [['id','Entry'],['userId','Member ID'],['name','Name'],['date','Date'],['in','Punch in'],['out','Punch out'],['mode','Started as'],['state','Current state'],['workMin','Worked (min)'],['breakMin','Breaks (min)'],['siteMin','Site visits (min)'],['status','Status'],['where','Location check'],['events','Events'],['note','Note'],['updatedAt','Updated at']],
@@ -63,12 +63,13 @@ var SCHEMA = {
   issues: [['id','Issue ID'],['date','Date raised'],['category','Category'],['severity','Severity'],['unit','Unit'],['description','Description'],['source','Source'],['action','Suggested action'],['owner','Owner'],['status','Status'],['resolution','Resolution notes'],['resolvedOn','Resolved on'],['updatedAt','Updated at']],
   accordSessions: [['id','Session ID'],['startedAt','Started'],['buyer','Buyer'],['unitRef','Unit reference'],['recordId','Client or Lead ID'],['residence','Residence'],['persona','Persona'],['palette','Chosen palette'],['register','Register'],['configId','Configuration ID'],['total','Indicative total'],['by','Hosted by'],['fileUrl','Workbook (Drive)'],['updatedAt','Updated at']],
   clientForms: [['id','Response ID'],['bookingId','Booking ID'],['clientId','Client ID'],['unit','Unit No.'],['name','Client'],['submittedAt','Submitted at'],['status','Status'],['data','Answers'],['appliedBy','Applied by'],['appliedAt','Applied at']],
-  files: [['id','File ID'],['at','Uploaded'],['by','By'],['kind','For'],['recordId','Record'],['label','Record name'],['category','Category'],['doc','Document'],['name','File name'],['url','Open (Drive)'],['folder','Folder'],['driveId','Drive ID'],['_test','Test entry']],
+  files: [['id','File ID'],['at','Uploaded'],['by','By'],['kind','For'],['recordId','Record'],['label','Record name'],['category','Category'],['doc','Document'],['name','File name'],['url','Open (Drive)'],['folder','Folder'],['driveId','Drive ID'],['kyc','Card check'],['kycNumber','PAN / Aadhaar (last 4)'],['kycName','Name on card'],['kycDob','Date of birth on card'],['_test','Test entry']],
+  leadInbox: [['id','Inbox ID'],['at','Received'],['source','Source'],['name','Name'],['phone','Mobile'],['email','Email'],['city','City'],['config','Interest'],['message','Message'],['status','Status'],['leadId','Lead ID'],['by','Handled by'],['handledAt','Handled at']],
   audit: [['id','ID'],['at','When'],['by','By'],['coll','Collection'],['recId','Record'],['action','Action']]
 };
 var COLLECTIONS = ['settings','users','units','clients','payments','leads','interactions','documents','issues','clpStages','demandCalls','costSheets','parking',
   'messages','templates','attendance','timeEvents','tasks','notifications','viewings','brochure','vendors','trips','stops','quotes','samples','projects','rooms',
-  'packages','boq','accordSessions','clientForms','files','audit'];
+  'packages','boq','accordSessions','clientForms','files','leadInbox','audit'];
 
 /* ───────────────────────── roles ───────────────────────── */
 var ALL = ['admin','senior','sales','finance','design','sourcing','viewer'];
@@ -79,7 +80,7 @@ var WRITE = {
   messages:['admin','senior','sales','finance'], viewings:['admin','senior','sales','design'], brochure:['admin','senior','design'],
   vendors:['admin','design','sourcing'], trips:['admin','design','sourcing'], stops:['admin','design','sourcing'], quotes:['admin','design','sourcing'],
   samples:['admin','design','sourcing'], projects:['admin','design'], rooms:['admin','design'], packages:['admin','design','sourcing'], boq:['admin','design','sourcing'],
-  clientForms:['admin','senior','sales'], files:['admin','senior','sales','finance','design','sourcing'], tasks:['*'], notifications:['*'], accordSessions:['*'], attendance:['admin'], timeEvents:[], audit:[]
+  clientForms:['admin','senior','sales'], files:['admin','senior','sales','finance','design','sourcing'], leadInbox:['admin','senior','sales'], tasks:['*'], notifications:['*'], accordSessions:['*'], attendance:['admin'], timeEvents:[], audit:[]
 };
 var MONEY_FIELDS = ['tc','adjustment','adjType','adjReason','receivedPerCollections','outstandingPerCollections','loanAmount','rate','total'];
 var seesMoney_ = function (u) { return ['admin','senior','finance'].indexOf(u.appRole) >= 0; };
@@ -109,6 +110,7 @@ function doPost(e) {
       case 'seed': return out_(seed_(req));
       case 'apply': return out_(apply_(req.rec || {}));
       case 'clientForm': return out_(clientForm_(req));
+      case 'inboundLead': return out_(inboundLead_(req));
       default: return out_({ error: 'Unknown action' });
     }
   } catch (err) { return out_({ error: String(err.message || err) }); }
@@ -134,7 +136,7 @@ function sheet_(name) {
 function keys_(sh) { var w = sh.getLastColumn(); return w ? sh.getRange(2, 1, 1, w).getValues()[0].map(String) : []; }
 function cell_(v) { if (v === null || v === undefined) return ''; if (typeof v === 'object') return JSON.stringify(v); return v; }
 // Columns that hold text even when they look like numbers (Sheets turns 9845012345 into a number; Accord needs it back as text).
-var TEXT_KEYS = { phone: 1, phone2: 1, whatsapp: 1, coPhone: 1, pan: 1, coPan: 1, aadhaar4: 1, receiptNo: 1, instrument: 1, account: 1, ifsc: 1, pincode: 1, username: 1, name: 1, title: 1, email: 1, designation: 1, shiftStart: 1, shiftEnd: 1, time: 1, in: 1, out: 1, gstin: 1 };
+var TEXT_KEYS = { kycNumber: 1, kycDob: 1, phone: 1, phone2: 1, whatsapp: 1, coPhone: 1, pan: 1, coPan: 1, aadhaar4: 1, receiptNo: 1, instrument: 1, account: 1, ifsc: 1, pincode: 1, username: 1, name: 1, title: 1, email: 1, designation: 1, shiftStart: 1, shiftEnd: 1, time: 1, in: 1, out: 1, gstin: 1 };
 function parse_(v) {
   if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
   if (typeof v === 'string' && (v.charAt(0) === '[' || v.charAt(0) === '{')) { try { return JSON.parse(v); } catch (e) {} }
@@ -353,18 +355,19 @@ function pull_(u) {
   if (seesAll_(u) && u.appRole !== 'viewer') return { db: db, serverTime: now_(), user: publicUser_(u) };
 
   var me = u.name, s = db.settings[0] || {};
-  var mineC = {}; db.clients.forEach(function (c) { if (c.owner === me) mineC[c.clientId] = c; });
+  var mine_ = function (r) { return r.owner === me || (r.coOwners || []).indexOf(me) >= 0; };
+  var mineC = {}; db.clients.forEach(function (c) { if (mine_(c)) mineC[c.clientId] = c; });
   var mineUnits = {}, mineB = {}; Object.keys(mineC).forEach(function (k) { mineUnits[String(mineC[k].unit)] = 1; mineB[mineC[k].bookingId] = 1; });
   var recv = {}, last = {};
   db.payments.forEach(function (p) { if (p.counted === 'Yes') recv[p.unit] = (recv[p.unit] || 0) + Number(p.amount || 0); if (!last[p.unit] || p.date > last[p.unit]) last[p.unit] = p.date; });
   var DIR = ['id','bookingId','clientId','unit','title','name','status','owner','category'];
   db.clients = db.clients.map(function (c) {
     var st = payState_(c, recv[c.unit] || 0, s, db.demandCalls), lp = last[c.unit] || '';
-    if (c.owner === me) { var o = strip_(c, MONEY_FIELDS); o.payState = st; o.lastPaymentDate = lp; o.mine = true; return o; }
+    if (mine_(c)) { var o = strip_(c, MONEY_FIELDS); o.payState = st; o.lastPaymentDate = lp; o.mine = true; return o; }
     var d = {}; DIR.forEach(function (k) { if (c[k] !== undefined) d[k] = c[k]; }); d.directoryOnly = true; return d;
   });
   db.payments = db.payments.filter(function (p) { return mineUnits[String(p.unit)]; }).map(function (p) { return { id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, towards: p.towards, counted: p.counted }; });
-  var mineL = {}; db.leads = db.leads.filter(function (l) { if (l.owner === me) { mineL[l.id] = 1; return true; } return false; });
+  var mineL = {}; db.leads = db.leads.filter(function (l) { if (mine_(l)) { mineL[l.id] = 1; return true; } return false; });
   db.interactions = db.interactions.filter(function (i) { return i.by === me || (i.nextOwners || []).indexOf(me) >= 0 || i.nextOwner === me; });
   db.documents = db.documents.filter(function (d) { return mineB[d.bookingId] || mineB[d.id]; });
   db.issues = db.issues.filter(function (i) { return i.owner === me || mineUnits[String(i.unit)]; });
@@ -397,14 +400,20 @@ function push_(u, ops) {
       var rec = op.rec || {};
       rec.updatedAt = now_(); rec.updatedBy = u.name;
       if (u.appRole === 'sales') {
-        if (c === 'clients') { var cur = find_('clients', rec.bookingId || rec.id); if (!cur || cur.owner !== u.name) { refused.push('clients (not yours)'); return; } var safe = strip_(rec, MONEY_FIELDS.concat(['owner','status','payState','lastPaymentDate','mine','directoryOnly'])); Object.keys(safe).forEach(function (k) { cur[k] = safe[k]; }); rec = cur; }
-        if (c === 'leads') { var cl = find_('leads', rec.id); if (cl && cl.owner && cl.owner !== u.name) { refused.push('leads (not yours)'); return; } if (!cl) rec.owner = rec.owner || u.name; }
+        if (c === 'clients') { var cur = find_('clients', rec.bookingId || rec.id); if (!cur || (cur.owner !== u.name && (cur.coOwners || []).indexOf(u.name) < 0)) { refused.push('clients (not yours)'); return; } var safe = strip_(rec, MONEY_FIELDS.concat(['owner','coOwners','status','payState','lastPaymentDate','mine','directoryOnly'])); Object.keys(safe).forEach(function (k) { cur[k] = safe[k]; }); rec = cur; }
+        if (c === 'leads') { var cl = find_('leads', rec.id); if (cl && cl.owner && cl.owner !== u.name && (cl.coOwners || []).indexOf(u.name) < 0) { refused.push('leads (not yours)'); return; } if (!cl) rec.owner = rec.owner || u.name; }
         if (c === 'interactions') rec.by = rec.by || u.name;
         if (c === 'tasks' && rec.owner !== u.name) { refused.push('tasks (sales can only add their own)'); return; }
       }
       if (c === 'users') { var cu = find_('users', rec.id); ['pwSalt','pwHash','failed','lockedUntil','totpSecret','totpPending','totpLast','devices'].forEach(function (k) { rec[k] = cu ? cu[k] : (k === 'devices' ? [] : ''); }); rec.mfa = cu && cu.totpSecret ? 'Set' : 'Not set'; delete rec.hasPassword; }
       if (c === 'notifications' && rec.to !== u.name && !op.create) { var cn = find_('notifications', rec.id); if (cn && cn.to !== u.name && u.appRole !== 'admin') { refused.push('notifications'); return; } }
+      var before = (c === 'leads' || c === 'clients' || c === 'settings') ? find_(c, rec.bookingId || rec.id) : null;
+      if (c === 'clients' && !before && rec.unit) {   // 2 Nov: no double booking, checked on the server too
+        var clash = read_('clients').filter(function (x) { return String(x.unit) === String(rec.unit) && ['Cancelled', 'Transferred'].indexOf(x.status) < 0; })[0];
+        if (clash) { refused.push('booking (residence ' + rec.unit + ' is already booked by ' + clash.name + ')'); return; }
+      }
       upsert_(c, rec);
+      if (rec._test !== 'Yes') afterSave_(u, c, rec, before);
       var isTest = rec._test === 'Yes';
       if (c === 'interactions' && !isTest) notifyFollowUp_(u, rec);
       if (c === 'tasks' && !isTest && rec.owner && rec.owner !== u.name && op.isNew) notify_(rec.owner, 'task', 'New task from ' + u.name, rec.title, '#/people/tasks', rec.due ? rec.due + 'T10:00' : '', u.name);
@@ -413,6 +422,62 @@ function push_(u, ops) {
     });
     return { ok: true, done: done, refused: refused, serverTime: now_() };
   } finally { lock.releaseLock(); }
+}
+/* 2 Nov: who needs to know about a change. New people responsible for a lead or client, everyone when the rate card or
+   settings change (with what changed), and the advisor's manager plus admins for a client complaint. */
+function afterSave_(u, c, rec, before) {
+  if (c === 'leads' || c === 'clients') {
+    var was = before ? [before.owner].concat(before.coOwners || []) : [], now = [rec.owner].concat(rec.coOwners || []);
+    now.filter(function (x) { return x && x !== u.name && was.indexOf(x) < 0; }).forEach(function (x) {
+      notify_(x, 'assigned', (c === 'leads' ? 'Lead' : 'Client') + ' assigned to you: ' + (rec.name || rec.id), 'By ' + u.name + (c === 'clients' ? ' · residence ' + rec.unit : ''), c === 'leads' ? '#/crm/leads/' + rec.id : '#/crm/clients/' + (rec.bookingId || rec.id), now_(), u.name);
+    });
+  }
+  if (c === 'settings' && before) {
+    var diff = changes_(before, rec);
+    if (diff.length) read_('users').filter(function (x) { return x.active !== 'No' && x.appRole !== 'none' && x.name !== u.name; }).forEach(function (x) {
+      notify_(x.name, 'settings', 'Settings changed by ' + u.name, diff.slice(0, 6).join(' · ') + (diff.length > 6 ? ' · and ' + (diff.length - 6) + ' more' : ''), '#/', now_(), u.name);
+    });
+  }
+  if (c === 'issues' && rec.category === 'Client complaint' && !rec.notifiedAt) {
+    var users = read_('users'), boss = {}; users.forEach(function (x) { boss[x.name] = x.reportsTo; });
+    var cl = rec.unit ? read_('clients').filter(function (x) { return String(x.unit) === String(rec.unit); })[0] : null, adv = cl ? cl.owner : '';
+    var to = {}; if (adv && boss[adv]) to[boss[adv]] = 1; users.filter(function (x) { return x.appRole === 'admin'; }).forEach(function (x) { to[x.name] = 1; });
+    Object.keys(to).forEach(function (n) { notify_(n, 'complaint', 'Client complaint' + (rec.unit ? ' · residence ' + rec.unit : ''), (rec.description || '').slice(0, 160) + (adv ? ' · advisor ' + adv : ''), '#/crm/issues', now_(), u.name); });
+    rec.notifiedAt = now_(); upsert_('issues', rec);
+  }
+}
+var LABEL_ = { baseRate: 'base rate', floorRisePerFloor: 'floor rise', floorRiseStart: 'floor rise start', parkingRate: 'car park', parkingExtraRate: 'additional car park', mwssb: 'MWSSB/MESCOM', clubhouse: 'clubhouse', maintenance: 'maintenance', sinking: 'sinking fund', gst: 'GST', approvalAbove: 'approval limit', discountSteps: 'founding privilege steps', minBooking: 'minimum booking', validityDays: 'cost sheet validity', terraceRate: 'terrace rate' };
+function changes_(a, b) {
+  var out = [], ra = a.rateCard || {}, rb = b.rateCard || {};
+  Object.keys(rb).forEach(function (k) { if (JSON.stringify(ra[k]) !== JSON.stringify(rb[k])) out.push((LABEL_[k] || k) + ': ' + (typeof ra[k] === 'object' ? JSON.stringify(ra[k]) : ra[k]) + ' → ' + (typeof rb[k] === 'object' ? JSON.stringify(rb[k]) : rb[k])); });
+  ['plans', 'terms', 'receiptNotes', 'company'].forEach(function (k) { if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) out.push({ plans: 'payment plans', terms: 'cost sheet terms', receiptNotes: 'receipt notes', company: 'company details' }[k] + ' updated'); });
+  return out;
+}
+
+/* 2 Nov: the lead inbox. A bot, a WhatsApp tool, 99acres or a website form posts enquiries here with the inbound key
+   (Admin > Settings > Lead inbox). They wait in Leads > Inbox until a person checks and accepts them. */
+function kycSafe_(x) {
+  var s = String(x || '').toUpperCase().replace(/\s/g, '');
+  if (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(s)) return s;            // PAN
+  var dg = s.replace(/\D/g, ''); if (dg.length >= 4) return 'XXXX XXXX ' + dg.slice(-4);   // Aadhaar or anything numeric: last 4 only
+  return '';
+}
+function inboundLead_(req) {
+  var s = read_('settings')[0] || {};
+  if (!s.inboundKey || String(req.key || '') !== String(s.inboundKey)) throw new Error('Not allowed');
+  var list = req.leads || [req.lead || req], done = [];
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    list.slice(0, 50).forEach(function (x) {
+      var clean = function (v, n) { return String(v || '').slice(0, n || 200); };
+      var rec = { id: 'IN-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase(), at: now_(), source: clean(x.source || req.source || 'Inbound', 60),
+        name: clean(x.name), phone: clean(x.phone || x.mobile, 30), email: clean(x.email, 120), city: clean(x.city, 60), config: clean(x.config || x.interest, 60), message: clean(x.message || x.text, 1500), status: 'New' };
+      if (!rec.phone && !rec.email && !rec.message) return;
+      upsert_('leadInbox', rec); done.push(rec.id);
+    });
+  } finally { lock.releaseLock(); }
+  if (done.length) read_('users').filter(function (x) { return ['admin', 'senior'].indexOf(x.appRole) >= 0 && x.active !== 'No'; }).forEach(function (x) { notify_(x.name, 'inbox', done.length + ' new enquir' + (done.length > 1 ? 'ies' : 'y') + ' in the lead inbox', 'Check and accept them in Leads › Inbox', '#/crm/leads?view=inbox', now_(), 'Lead inbox'); });
+  return { ok: true, received: done.length, ids: done };
 }
 function notify_(to, kind, title, body, link, dueAt, by) {
   upsert_('notifications', { id: 'N-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to: to, kind: kind, title: title, body: body, link: link, dueAt: dueAt || now_(), createdBy: by, createdAt: now_(), readAt: '', emailedAt: '' });
@@ -543,7 +608,9 @@ function upload_(u, req) {
   var file = f.createFile(Utilities.newBlob(Utilities.base64Decode(req.data), req.mime || 'application/octet-stream', name));
   file.setDescription('Uploaded by ' + u.name + ' from Accord on ' + now_() + (m.doc ? ' · ' + m.doc : ''));
   var rec = { id: 'F-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 4), at: now_(), by: u.name, kind: m.kind || '', recordId: m.recordId || '', label: m.label || '',
-    category: m.category || '', doc: m.doc || '', name: name, url: file.getUrl(), folder: req.folder || '', driveId: file.getId(), _test: m.test ? 'Yes' : '' };
+    category: m.category || '', doc: m.doc || '', name: name, url: file.getUrl(), folder: req.folder || '', driveId: file.getId(), _test: m.test ? 'Yes' : '',
+    // 2 Nov: what the card check read. Aadhaar is never kept in full, only the last 4 digits.
+    kyc: String(m.kyc || '').slice(0, 80), kycNumber: kycSafe_(m.kycNumber), kycName: String(m.kycName || '').slice(0, 80), kycDob: String(m.kycDob || '').slice(0, 12) };
   upsert_('files', rec); audit_(u, 'files', rec.id, 'uploaded ' + name);
   if (m.kind === 'brand') { var s = read_('settings')[0] || { id: 'main' }; s.logoFileId = file.getId(); upsert_('settings', s); }
   return { ok: true, url: rec.url, id: rec.driveId, name: name, file: rec, folderUrl: f.getUrl() };

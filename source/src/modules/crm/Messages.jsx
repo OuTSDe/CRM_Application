@@ -3,13 +3,15 @@ import { useSearchParams } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
 import { useCrm } from '../../lib/calc.js'
 import { canEditTemplates, seesMoney } from '../../lib/perms.js'
-import { META } from '../../lib/seed.js'
+import { META, DEFAULT_TEMPLATES } from '../../lib/seed.js'
 import { Page, Card, Button, Field, Select, Textarea, Input, Badge, Seg, Modal } from '../../components/ui.jsx'
 import RecordPicker from '../../components/RecordPicker.jsx'
 import { inr, waLink, d, today, nowTime, addDays, salute, fullName } from '../../lib/format.js'
 
 export default function Messages() {
-  const { db, user, upsert, nextId, notify, online, sendEmail } = useStore()
+  const { db: db0, user, upsert, nextId, notify, online, sendEmail } = useStore()
+  // 2 Nov: the standard templates always show, even if the sheet has none or only some of them
+  const db = useMemo(() => ({ ...db0, templates: [...(db0.templates || []), ...DEFAULT_TEMPLATES.filter((t) => !(db0.templates || []).some((x) => x.id === t.id))] }), [db0])
   const [sending, setSending] = useState(false)
   const crm = useCrm()
   const [qs] = useSearchParams()

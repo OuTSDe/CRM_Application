@@ -50,7 +50,7 @@ function FinancePayments() {
   const live = crm.clients.filter((c) => !['Cancelled', 'Transferred'].includes(c.status))
   return (
     <Page title="Payments and receipts" back="/" backLabel="Dashboard" subtitle="The payment ledger, outstanding by client, and A4 receipts ready to print or save as PDF."
-      actions={canRecordPayment(user) ? <Button variant="primary" onClick={() => setOpen(true)}>Record payment</Button> : <span className="locked">Recording is with finance</span>}>
+      actions={<><Link className="btn" to="/crm/payments/receipts">Print receipts in bulk</Link>{canRecordPayment(user) ? <Button variant="primary" onClick={() => setOpen(true)}>Record payment</Button> : <span className="locked">Recording is with finance</span>}</>}>
       <Grid cols={4}>
         <Stat label="Counted receipts" value={lakh(counted.reduce((s, p) => s + Number(p.amount || 0), 0))} sub={`${counted.length} entries`} tone="good" />
         <Stat label="This month" value={lakh(counted.filter((p) => String(p.date).startsWith(m)).reduce((s, p) => s + Number(p.amount || 0), 0))} sub={m} tone="teal" />
@@ -82,17 +82,51 @@ function FinancePayments() {
 
 export function Receipt() {
   const { id } = useParams()
-  const { db, settings, user } = useStore()
+  const { db, user } = useStore()
   const crm = useCrm()
   const p = db.payments.find((x) => x.id === id)
   if (!seesMoney(user)) return <Page title="Receipt" back={true}><span className="locked">Receipts are issued and shared by finance</span></Page>
   if (!p) return <Page title="Receipt not found" back={true} />
   const c = crm.byUnit[p.unit]
-  const co = settings.company || {}
-  const u = crm.units.find((x) => String(x.unit) === String(p.unit))
   return (
     <div>
       <div className="doc-tools no-print"><Link className="btn" to={c ? '/crm/clients/' + c.id : '/crm/payments'}>← Back</Link><Button variant="primary" onClick={() => window.print()}>Print or save as PDF</Button></div>
+      <ReceiptDoc p={p} crm={crm} />
+    </div>
+  )
+}
+
+// 2 Nov: print many receipts at once. Pick a date range (and optionally a residence), one receipt per A4 page.
+export function BulkReceipts() {
+  const { db, user } = useStore()
+  const crm = useCrm()
+  const [qs, setQs] = useSearchParams()
+  const from = qs.get('from') || today().slice(0, 8) + '01', to = qs.get('to') || today(), unit = qs.get('unit') || '', all = qs.get('all') === '1'
+  if (!seesMoney(user)) return <Page title="Receipts" back={true}><span className="locked">Receipts are issued and shared by finance</span></Page>
+  const list = db.payments.filter((p) => (all || p.counted === 'Yes') && String(p.date) >= from && String(p.date) <= to && (!unit || String(p.unit) === unit)).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.receiptNo).localeCompare(String(b.receiptNo)))
+  const set = (k, v) => { const n = new URLSearchParams(qs); if (v) n.set(k, v); else n.delete(k); setQs(n, { replace: true }) }
+  return (
+    <div>
+      <div className="doc-tools no-print" style={{ flexWrap: 'wrap', gap: 8 }}>
+        <Link className="btn" to="/crm/payments">← Payments</Link>
+        <label className="small">From <input type="date" className="input" value={from} onChange={(e) => set('from', e.target.value)} /></label>
+        <label className="small">To <input type="date" className="input" value={to} onChange={(e) => set('to', e.target.value)} /></label>
+        <label className="small">Residence <input className="input" style={{ width: 90 }} value={unit} placeholder="All" onChange={(e) => set('unit', e.target.value.trim())} /></label>
+        <label className="small"><input type="checkbox" checked={all} onChange={(e) => set('all', e.target.checked ? '1' : '')} /> Include entries not counted</label>
+        <span className="small muted">{list.length} receipt{list.length === 1 ? '' : 's'}</span>
+        <Button variant="primary" disabled={!list.length} onClick={() => window.print()}>Print all or save as one PDF</Button>
+      </div>
+      {list.length ? list.map((p) => <div className="page-break" key={p.id}><ReceiptDoc p={p} crm={crm} /></div>) : <div className="empty no-print"><h3>No receipts in this range</h3><p>Change the dates or the residence.</p></div>}
+    </div>
+  )
+}
+
+function ReceiptDoc({ p, crm }) {
+  const { settings } = useStore()
+  const c = crm.byUnit[p.unit]
+  const co = settings.company || {}
+  const u = crm.units.find((x) => String(x.unit) === String(p.unit))
+  return (
       <div className="doc">
         <DocHeader title="PAYMENT RECEIPT" sub={`${p.receiptNo || p.id} · ${d(p.date)}`} />
         <table><tbody>
@@ -116,6 +150,5 @@ export function Receipt() {
         <div className="sign"><div>Allottee</div><div style={{ textAlign: 'right' }}>For {co.name}<br />Authorised signatory</div></div>
         <div className="foot">{co.address} · {co.contact} · This is a computer-generated receipt from Accord.</div>
       </div>
-    </div>
   )
 }

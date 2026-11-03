@@ -45,6 +45,7 @@ const MODULES = {
   sourcing: ['admin', 'design', 'sourcing'],
   accord: ['admin', 'design', 'sourcing'],
   admin: ['admin'],
+  help: ['admin', 'senior', 'sales', 'finance', 'design', 'sourcing', 'viewer'],
 }
 const WRITE = {
   leads: ['admin', 'senior', 'sales'],
@@ -67,6 +68,7 @@ const WRITE = {
   projects: ['admin', 'design'], rooms: ['admin', 'design'], packages: ['admin', 'design', 'sourcing'], boq: ['admin', 'design', 'sourcing'],
   attendance: ['admin'],
   files: ['admin', 'senior', 'sales', 'finance', 'design', 'sourcing'],
+  leadInbox: ['admin', 'senior', 'sales'],
 }
 export const canOpen = (u, mod) => !!u && (u.appRole === 'admin' || (MODULES[mod] || []).includes(u.appRole))
 export const canWrite = (u, coll) => {
@@ -89,18 +91,20 @@ export function scopeDb(db, u, derive) {
   if (!u || seesAll(u) && u.appRole !== 'viewer') return db
   const me = u.name
   const crm = derive ? derive(db) : null
-  const mineC = new Set(db.clients.filter((c) => c.owner === me).map((c) => c.clientId))
-  const mineB = new Set(db.clients.filter((c) => c.owner === me).map((c) => c.bookingId))
-  const mineUnits = new Set(db.clients.filter((c) => c.owner === me).map((c) => String(c.unit)))
+  // 2 Nov: a lead or client can have several people responsible (owner + coOwners)
+  const isMine = (r) => r.owner === me || (Array.isArray(r.coOwners) && r.coOwners.includes(me))
+  const mineC = new Set(db.clients.filter(isMine).map((c) => c.clientId))
+  const mineB = new Set(db.clients.filter(isMine).map((c) => c.bookingId))
+  const mineUnits = new Set(db.clients.filter(isMine).map((c) => String(c.unit)))
   const DIR = ['id', 'bookingId', 'clientId', 'unit', 'title', 'name', 'status', 'owner', 'category']
   const pay = (c) => { const x = crm?.byUnit[c.unit]; if (!x) return {}; const lp = x.payments.filter((p) => p.counted === 'Yes').slice(-1)[0]
     return { payState: x.outstanding <= 0 ? 'Paid up' : x.age === '60+ days' ? 'Overdue 60+ days' : ['0-30 days', '31-60 days'].includes(x.age) ? 'Overdue' : x.age === 'Due, date not set' ? 'Due, date not set' : 'Not yet due', lastPaymentDate: lp?.date || '' } }
   const strip = (o, f) => { const r = { ...o }; f.forEach((k) => delete r[k]); return r }
-  const leads = db.leads.filter((l) => l.owner === me)
+  const leads = db.leads.filter(isMine)
   const mineL = new Set(leads.map((l) => l.id))
   return {
     ...db,
-    clients: db.clients.map((c) => (c.owner === me ? { ...strip(c, MONEY_FIELDS), ...pay(c), mine: true } : { ...Object.fromEntries(DIR.filter((k) => c[k] !== undefined).map((k) => [k, c[k]])), directoryOnly: true })),
+    clients: db.clients.map((c) => (isMine(c) ? { ...strip(c, MONEY_FIELDS), ...pay(c), mine: true } : { ...Object.fromEntries(DIR.filter((k) => c[k] !== undefined).map((k) => [k, c[k]])), directoryOnly: true })),
     payments: db.payments.filter((p) => mineUnits.has(String(p.unit))).map((p) => ({ id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, towards: p.towards, counted: p.counted })),
     leads,
     interactions: db.interactions.filter((i) => i.by === me || (i.nextOwners || []).includes(me) || i.nextOwner === me),

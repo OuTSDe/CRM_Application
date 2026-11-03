@@ -207,6 +207,44 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
 - **Building grid first.** Building and parking opens on the grid (the CRM master layout), with **Names** to show the owner in each cell. The 3D tower is one click away.
 - **Team hierarchy.** Team shows the reporting chain as a diagram, drawn from *Reports to*.
 
+## 7a. Changes from the 2 and 3 November meetings
+
+- **Cost sheet.**
+  - Seniors and admins can round the total to a clean figure. The sheet shows the exact amount and the rounding adjustment.
+  - Car parks are split. The covered car parks that come with the type are included; additional ones are priced separately (rate card: *Additional car park*).
+  - **Send** the sheet by WhatsApp or e-mail from the sheet itself.
+  - Upload the agreed cost sheet against the client (`06 Cost sheets`).
+  - Residences that are booked, under cancellation or to verify cannot be offered. The server also refuses a second booking on the same residence.
+- **Training mode** replaces demo mode. Nothing entered while it is on is saved. Turning it off wipes the practice entries.
+- **Time.**
+  - Breaks have a reason (lunch, tea, personal) and the Time page counts them.
+  - While someone is punched in at the office, their location is checked every 15 minutes; leaving marks them Remote.
+  - On a site visit, a reminder comes every hour.
+  - Accord signs a person out after a spell with no activity. The time is set in Settings (30 minutes by default).
+- **Leads.**
+  - **Also responsible** (co-owners) on leads and clients. Co-owners see the record and its follow-ups. People get a notification when a lead or client is assigned to them.
+  - A lost lead needs a reason. Accord offers the closing WhatsApp message and closes the open follow-ups.
+  - New views: **Missing details** and **No follow-up set**. The dashboard shows how many open leads have no follow-up.
+  - **Paste an enquiry**: paste a WhatsApp or 99acres message and Accord fills in the new lead.
+  - **Lead inbox**: other tools (website form, WhatsApp tool, 99acres reader, a chatbot) can post enquiries to Accord. They wait in Leads › Inbox to be accepted or rejected. The address and key are in Settings › Lead inbox.
+- **Lead analytics** (Team › Lead analytics, admin and senior). It shows:
+  - leads by week or month, source and advisor;
+  - stages and how far leads get;
+  - why leads were lost, and conversion.
+- **Messages.** New templates *Closing enquiry* and *Festival wishes*, and new contact purposes. In **Log several at once**, *Same for every row* fills one message into every row.
+- **Client complaints.** The issue category *Client complaint* notifies the advisor's manager and the admins.
+- **Settings changes are announced.** When the rate card, plans or terms change, everyone gets a notification saying what changed.
+- **KYC check on upload.**
+  - PAN and Aadhaar photos are read in the browser before filing.
+  - A wrong card, or a name that does not match the client, is flagged and can still be uploaded on purpose.
+  - The number, name and date of birth read are saved with the file. Aadhaar is kept as the last 4 digits only.
+- **Payments.** **Print receipts in bulk**: pick a date range, and every receipt prints on its own A4 page.
+- **Building.**
+  - **Elevation** view: a white-model drawing with clickable floors.
+  - **Construction** tab: each stage has a status and planned and actual dates. Finance and admin edit it.
+- **Team.** Department, employment (on roll, off roll, consultant) and company for each person, with counts on the Team page.
+- **User guide** in the menu (Team › User guide). It is written for each role.
+
 ## 8. What is missing (to fill in before go-live)
 
 1. **Your Excel formats and the logo.** The cost sheet, payment slip, payment and financial summary, booking form and lead entries use the Yamuna Sky City header now. When you share the Excel formats and the header or logo, upload the logo in Settings → Brand, and the layouts can be matched line by line.
@@ -233,3 +271,12 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
 14. **Leave and weekly off.** The time log has shifts and working days. Leave and weekly-off requests wait for the HR structure.
 15. **Designations.** Cyril's "Senior Sales Manager" and the other designations were assumed. Correct them in Users and access, because they print under the name in every message.
 16. **Dashboard figures.** Accord counts 39 live bookings from the CRM statuses; the master sheet's Dashboard tab shows 42. The difference is bookings marked *To verify*, which Accord leaves out until they are confirmed.
+17. **From the 2 and 3 November meetings, still waiting.**
+   - The AI chatbot and AI analytics (Grok or another model) need a hosted model. The lead inbox is ready for a bot to post into.
+   - Automatic capture from WhatsApp and 99acres needs the WhatsApp Business API or a mail reader. Both can post to the lead inbox.
+   - A local vision model needs hardware. The KYC check runs in the browser for now.
+   - KRA and KPI scoring is waiting for HR.
+   - The 4:25 pm recording was not transcribed.
+   - The rendered white model will replace the drawn elevation when it is shared.
+   - The e-brochure content is still to come.
+18. **Settings values to enter in Admin › Settings → Rate card:** base rate ₹10,500 per sft, car park ₹6 lakh, MWSSB / MESCOM ₹200.

@@ -52,6 +52,8 @@ function SalesHome() {
   const health = { Red: 0, Amber: 0, Green: 0 }; myLive.forEach((c) => health[c.health]++)
   const openLeads = db.leads.filter((l) => !['Lost', 'Booked', 'Dormant'].includes(l.stage))
   const warm = openLeads.filter((l) => ['Hot', 'Warm'].includes(l.temperature)).length
+  // 2 Nov: open leads that nobody has a next follow-up date for
+  const noFup = openLeads.filter((l) => !db.interactions.some((i) => i.recordId === l.id && i.status === 'Open' && i.nextDate)).length
   const due = myLive.filter((c) => (c.payState || c.age) && !['Paid up', 'Not yet due'].includes(c.payState || c.age)).slice(0, 8)
   const stages = useMemo(() => { const m = {}; openLeads.forEach((l) => (m[l.stage] = (m[l.stage] || 0) + 1)); return Object.entries(m).sort((a, b) => b[1] - a[1]) }, [openLeads])
   const maxStage = Math.max(1, ...stages.map((x) => x[1]))
@@ -87,16 +89,18 @@ function SalesHome() {
           <Stat label="Collected" value={<>₹{(proj.recv / 1e7).toFixed(2)}<small> Cr</small></>} sub={pct(proj.value ? proj.recv / proj.value : 0) + ' of booking value'} tone="good" onClick={() => nav('/crm/payments')} />
           <Stat label="To collect, due now" value={<>₹{(proj.out / 1e7).toFixed(2)}<small> Cr</small></>} sub="against demands raised" tone="bad" onClick={() => nav('/crm/payments?tab=due')} />
           <Stat label="Open leads" value={openLeads.length} sub={`${warm} warm or hot · ${raw.leads.length} in all`} tone="info" onClick={() => nav('/crm/leads')} />
+          <Stat label="Leads, no follow-up" value={noFup} sub="open, without a next date" tone={noFup ? 'warn' : 'good'} onClick={() => nav('/crm/leads?view=nofup')} />
           <Stat label="Follow-ups due" value={fups.length} sub="today or overdue, yours" tone={fups.length ? 'warn' : 'good'} onClick={() => nav('/crm/interactions?view=due')} />
         </Grid>
         <Card title="Collections against booking value" actions={<span className="small muted">{pct(proj.value ? proj.recv / proj.value : 0)} collected</span>}>
           <div className="hbar"><span style={{ flex: proj.recv, background: 'var(--good)' }} /><span style={{ flex: proj.out, background: 'var(--accent)' }} /><span style={{ flex: Math.max(0, proj.value - proj.recv - proj.out), background: 'var(--bg4)' }} /></div>
           <div className="legend" style={{ marginTop: 12 }}><span><i style={{ background: 'var(--good)' }} />Collected {lakh(proj.recv)}</span><span><i style={{ background: 'var(--accent)' }} />Demanded, not received {lakh(proj.out)}</span><span><i style={{ background: 'var(--bg4)' }} />Not yet demanded</span></div>
         </Card>
-      </> : <Grid cols={4}>
+      </> : <Grid cols={5}>
         <Stat label="Live bookings" value={bookedCount} sub={`of ${crm.units.length} residences`} tone="accent" onClick={() => nav('/crm/inventory')} />
         <Stat label="Sales value" value={<>₹{(salesValue / 1e7).toFixed(1)}<small> Cr</small></>} sub="project, booked to date" />
         <Stat label="My open leads" value={openLeads.length} sub={`${warm} warm or hot`} tone="info" onClick={() => nav('/crm/leads')} />
+        <Stat label="No follow-up set" value={noFup} sub="open leads without a next date" tone={noFup ? 'warn' : 'good'} onClick={() => nav('/crm/leads?view=nofup')} />
         <Stat label="My clients" value={myLive.length} sub={myLive.length ? `${health.Red + health.Amber} need care` : 'none assigned yet'} tone={health.Red ? 'bad' : 'teal'} onClick={() => nav('/crm/clients')} />
       </Grid>}
 

@@ -7,16 +7,18 @@ import * as ops from '../seed/ops.js'
 // Each collection is an array of records with a string `id`.
 export const COLLECTIONS = ['settings', 'users', 'units', 'clients', 'payments', 'leads', 'interactions', 'documents', 'issues', 'clpStages', 'demandCalls',
   'costSheets', 'parking', 'messages', 'templates', 'attendance', 'tasks', 'viewings', 'brochure', 'vendors', 'trips', 'stops', 'quotes', 'samples',
-  'projects', 'rooms', 'packages', 'boq', 'audit', 'timeEvents', 'notifications', 'accordSessions', 'clientForms', 'files']
+  'projects', 'rooms', 'packages', 'boq', 'audit', 'timeEvents', 'notifications', 'accordSessions', 'clientForms', 'files', 'leadInbox']
 
 export const META = { lists: crm.lists, docTypes: crm.docTypes }
 
-const TEMPLATES = [
+export const DEFAULT_TEMPLATES = [
   { id: 'TP-01', name: 'Thank you for visiting', channel: 'WhatsApp', body: 'Dear {name}, thank you for visiting Yamuna Sky City today. It was a pleasure hosting your private viewing. I will share the residence details and payment schedule shortly. \n\nWarm regards,\n{signature}' },
   { id: 'TP-02', name: 'Payment reminder (gentle)', channel: 'WhatsApp', body: 'Dear {name}, a gentle reminder that the instalment for residence {unit} at Yamuna Sky City is now due. Please reach out if you need the account details or a copy of the demand letter.\n\nWarm regards,\n{signature}' },
   { id: 'TP-03', name: 'Site progress update', channel: 'WhatsApp', body: 'Dear {name}, here is the latest progress at Yamuna Sky City. We would be glad to host you for a private viewing of your residence {unit}.\n\nWarm regards,\n{signature}' },
   { id: 'TP-04', name: 'Document request', channel: 'WhatsApp', body: 'Dear {name}, to complete your file for residence {unit}, could you share: {pending}. You can reply here with photos or PDFs.\n\nWarm regards,\n{signature}' },
   { id: 'TP-05', name: 'Private viewing invitation', channel: 'WhatsApp', body: 'Dear {name}, we would be delighted to host you for a private viewing at Yamuna Sky City. Would {date} suit you?\n\nWarm regards,\n{signature}' },
+  { id: 'TP-07', name: 'Closing enquiry', channel: 'WhatsApp', body: 'Dear {name}, as we have not been able to reach you about your enquiry for Yamuna Sky City, we are closing it for now. Whenever you would like to take it forward, just reply here and I will be happy to help.\n\nWarm regards,\n{signature}' },
+  { id: 'TP-08', name: 'Festival wishes', channel: 'WhatsApp', body: 'Dear {name}, warm wishes to you and your family from all of us at Yamuna Sky City. May the season bring you joy and good health.\n\nWarm regards,\n{signature}' },
   { id: 'TP-06', name: 'Receipt shared', channel: 'Email', body: 'Dear {name},\n\nPlease find attached the receipt for your payment towards residence {unit}.\n\nWarm regards,\n{signature}' },
 ]
 
@@ -43,7 +45,7 @@ export function buildSeed() {
   Object.assign(db, crmPart(crm))
   db.clpStages = crm.clpStages.map((s) => ({ ...s, id: 'S' + String(s.no).padStart(2, '0') }))
   db.demandCalls = crm.demandCalls
-  db.templates = TEMPLATES
+  db.templates = DEFAULT_TEMPLATES
   db.brochure = [ops.BROCHURE]
   db.vendors = ops.VENDORS
   db.trips = ops.TRIPS

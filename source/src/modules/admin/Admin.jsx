@@ -45,6 +45,7 @@ function SignInCard({ s, setS }) {
       <Field label="Sign-in" hint="Authenticator: a 6-digit code from an app on the phone. Password: the old way."><Select options={[{ value: 'authenticator', label: 'Authenticator app (recommended)' }, { value: 'password', label: 'Password' }]} value={s.authMode || 'authenticator'} onChange={(e) => setS({ ...s, authMode: e.target.value })} /></Field>
       <Field label="Devices per person" hint="Admins have no limit"><Input value="One computer and one phone" disabled /></Field>
       <Field label="Location check at punch-in" hint="Office and Site count only at Sky City; elsewhere it is logged as remote"><Select options={['On', 'Off']} value={s.geofence || 'On'} onChange={(e) => setS({ ...s, geofence: e.target.value })} /></Field>
+      <Field label="Sign out after no activity (minutes)" hint="0 turns it off. The e-brochure never signs out by itself."><Input type="number" min={0} value={s.idleMinutes ?? 30} onChange={(e) => setS({ ...s, idleMinutes: Number(e.target.value) })} /></Field>
       <Field label="Radius (metres)"><Input type="number" min={50} value={s.officeRadius ?? 300} onChange={(e) => setS({ ...s, officeRadius: Number(e.target.value) })} /></Field>
       <Field label="Sky City latitude"><Input value={s.officeLat} onChange={(e) => setS({ ...s, officeLat: e.target.value })} placeholder="Set it on site" /></Field>
       <Field label="Sky City longitude"><Input value={s.officeLng} onChange={(e) => setS({ ...s, officeLng: e.target.value })} /></Field>
@@ -52,6 +53,23 @@ function SignInCard({ s, setS }) {
     <div className="row" style={{ marginTop: 10 }}><Button onClick={here} disabled={busy}>{busy ? 'Reading location…' : 'Use this device\'s location as Sky City'}</Button>
       {s.officeLat && s.officeLng && <a className="btn btn-ghost" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${s.officeLat},${s.officeLng}`}>Check on the map</a>}</div>
     {!(s.officeLat && s.officeLng) && <p className="note warn small">The Sky City point is not set yet. Until it is, punches record the location but are not judged. Stand at the site office, press the button above, then Save settings.</p>}
+  </Card>
+}
+
+// 2 Nov: the address other tools (a website form, a WhatsApp tool, 99acres e-mail parser, a chatbot) post enquiries to.
+function InboxCard({ s, setS }) {
+  const { backend, notify } = useStore()
+  const key = s.inboundKey || ''
+  const make = () => setS({ ...s, inboundKey: Array.from(crypto.getRandomValues(new Uint8Array(18))).map((b) => b.toString(16).padStart(2, '0')).join('') })
+  const example = JSON.stringify({ action: 'inboundLead', key: key || '<key>', source: 'Website', lead: { name: 'Ravi Kumar', phone: '+91 98450 12345', email: 'ravi@example.com', city: 'Bengaluru', config: '3 BHK', message: 'Please call after 6 pm' } }, null, 2)
+  const copy = (x) => { try { navigator.clipboard.writeText(x); notify('Copied') } catch (e) { notify('Copy did not work; select and copy by hand', 'bad') } }
+  return <Card title="Lead inbox (enquiries from other tools)">
+    <p className="small muted" style={{ marginTop: 0 }}>A website form, a WhatsApp tool, a 99acres e-mail reader or a chatbot can send enquiries to Accord. They wait in Leads › Inbox until someone accepts them. Anyone with the key can post to the inbox, so share it only with the tool that needs it; make a new key to cut off an old one.</p>
+    <div className="form fc2">
+      <Field label="Address (POST, JSON)"><Input value={backend || 'Connect the Google Sheet backend first'} readOnly onFocus={(e) => e.target.select()} /></Field>
+      <Field label="Inbound key" hint={key ? 'Save settings after changing it' : 'Off until a key is made'}><div className="row gap-s"><Input value={key} readOnly onFocus={(e) => e.target.select()} placeholder="No key yet" /><Button size="sm" onClick={make}>{key ? 'New key' : 'Make a key'}</Button>{key && <Button size="sm" variant="ghost" onClick={() => setS({ ...s, inboundKey: '' })}>Turn off</Button>}</div></Field>
+    </div>
+    <details style={{ marginTop: 8 }}><summary className="small">Example the tool sends</summary><pre className="small mono" style={{ whiteSpace: 'pre-wrap' }}>{example}</pre><Button size="sm" onClick={() => copy(example)}>Copy example</Button></details>
   </Card>
 }
 
@@ -75,7 +93,7 @@ export function AdminSettings() {
         <Card title="Company (receipts and cost sheets)"><div className="form fc2">{[['name', 'Company'], ['project', 'Project'], ['location', 'Location'], ['address', 'Address'], ['gstin', 'GSTIN'], ['rera', 'RERA number'], ['bank', 'Bank'], ['account', 'Account no.'], ['ifsc', 'IFSC'], ['branch', 'Branch'], ['contact', 'Contact number']].map(([k, l]) =>
           <Field key={k} label={l} span={k === 'address' || k === 'rera' ? 'all' : undefined}><Input value={s.company[k]} onChange={(e) => co(k, e.target.value)} /></Field>)}</div></Card>
         <Card title="Rate card"><div className="form fc2">
-          {[['baseRate', 'Base rate (₹/sft)'], ['floorRiseStart', 'Floor rise starts above floor'], ['floorRisePerFloor', 'Floor rise per floor (₹/sft)'], ['approvalAbove', 'Approval needed above (% off)'], ['terraceRate', 'Terrace rate (₹/sft)'], ['parkingRate', 'Car park (₹ each)'], ['gst', 'GST (0.05 = 5%)'], ['mwssb', 'MWSSB / MESCOM (₹/sft)'], ['clubhouse', 'Clubhouse (₹)'], ['maintenance', 'Advance maintenance (₹/sft)'], ['sinking', 'Sinking fund (₹/sft)'], ['minBooking', 'Minimum booking (₹)'], ['validityDays', 'Cost sheet validity (days)']].map(([k, l]) =>
+          {[['baseRate', 'Base rate (₹/sft)'], ['floorRiseStart', 'Floor rise starts above floor'], ['floorRisePerFloor', 'Floor rise per floor (₹/sft)'], ['approvalAbove', 'Approval needed above (% off)'], ['terraceRate', 'Terrace rate (₹/sft)'], ['parkingRate', 'Car park included with the type (₹ each)'], ['parkingExtraRate', 'Additional car park (₹ each)'], ['parkingExtraMax', 'Additional car parks allowed'], ['gst', 'GST (0.05 = 5%)'], ['mwssb', 'MWSSB / MESCOM (₹/sft)'], ['clubhouse', 'Clubhouse (₹)'], ['maintenance', 'Advance maintenance (₹/sft)'], ['sinking', 'Sinking fund (₹/sft)'], ['minBooking', 'Minimum booking (₹)'], ['validityDays', 'Cost sheet validity (days)']].map(([k, l]) =>
             <Field key={k} label={l}><Input type="number" value={s.rateCard[k]} onChange={(e) => rc(k, Number(e.target.value))} /></Field>)}
           <Field label="Founding privilege steps (% off, comma separated)" span="all"><Input value={(s.rateCard.discountSteps || []).join(', ')} onChange={(e) => rc('discountSteps', e.target.value.split(',').map((x) => Number(x.trim())).filter((x) => !isNaN(x)))} /></Field>
           {Object.keys(s.rateCard.parkingSlots || {}).map((t) => <Field key={t} label={`Car parks for ${t}`}><Input type="number" value={s.rateCard.parkingSlots[t]} onChange={(e) => rc('parkingSlots', { ...s.rateCard.parkingSlots, [t]: Number(e.target.value) })} /></Field>)}
@@ -83,6 +101,7 @@ export function AdminSettings() {
       </div>
       <div className="grid g2"><SignInCard s={s} setS={setS} /><BrandCard s={s} setS={setS} /></div>
       <DriveCard s={s} setS={setS} />
+      <InboxCard s={s} setS={setS} />
       <div className="grid g2">{Object.keys(s.plans).map((p) => <Card key={p} title={`Payment plan · ${p}`} actions={<Badge tone={Math.abs(planSum(p) - 1) < 0.001 ? 'good' : 'bad'}>{(planSum(p) * 100).toFixed(1)}%</Badge>}>
         {s.plans[p].map((x, k) => <div key={k} className="row gap-s" style={{ marginBottom: 6 }}><input className="input" style={{ flex: 1 }} value={x.stage} onChange={(e) => setS({ ...s, plans: { ...s.plans, [p]: s.plans[p].map((y, j) => (j === k ? { ...y, stage: e.target.value } : y)) } })} />
           <input className="input" type="number" style={{ width: 90 }} value={Math.round(x.pct * 1000) / 10} onChange={(e) => setS({ ...s, plans: { ...s.plans, [p]: s.plans[p].map((y, j) => (j === k ? { ...y, pct: Number(e.target.value) / 100 } : y)) } })} /><span className="small">%</span>
@@ -112,7 +131,9 @@ export function AdminUsers() {
   const F = [
     { section: 'Member', n: '1' },
     { k: 'id', l: 'Member ID', auto: true, ph: 'Given on save' }, { k: 'name', l: 'Name (used in dropdowns)', req: true }, { k: 'username', l: 'Username', req: true, hint: 'Lower case, no spaces. Used to sign in.' },
-    { k: 'designation', l: 'Designation', hint: 'Printed under the name in message templates' }, { k: 'team', l: 'Team', t: 'select', o: ['Sales', 'Management', 'Finance', 'Design', 'Sourcing', 'External'] }, { k: 'active', l: 'Active?', t: 'select', o: ['Yes', 'No'] },
+    { k: 'designation', l: 'Designation', hint: 'Printed under the name in message templates' }, { k: 'team', l: 'Team', t: 'select', o: ['Sales', 'Management', 'Finance', 'Design', 'Sourcing', 'External'] },
+    { k: 'department', l: 'Department', suggest: ['Sales', 'CRM', 'Accounts', 'Legal', 'Design', 'Sourcing', 'Marketing', 'HR', 'Admin', 'Management'] }, { k: 'employment', l: 'Employment', t: 'select', o: ['On roll', 'Off roll', 'Consultant', 'Intern'] },
+    { k: 'company', l: 'Company', suggest: ['Yamuna Sky City', 'OuTSDe', 'Consultant'], hint: 'Which company this person is on the rolls of' }, { k: 'active', l: 'Active?', t: 'select', o: ['Yes', 'No'] },
     { k: 'role', l: 'Responsibilities', span: 'all' },
     { section: 'Contact', n: '2', note: 'E-mail is where follow-up reminders and the morning digest go' },
     { k: 'phone', l: 'Phone', t: 'tel' }, { k: 'email', l: 'Email', t: 'email' }, { k: 'reportsTo', l: 'Reports to', t: 'select', o: raw.users.map((u) => u.name), hint: 'Follow-ups this person leaves open are escalated here' },
@@ -198,7 +219,7 @@ export function AdminData() {
           <table className="table dense" style={{ marginTop: 12 }}><tbody>{['clients', 'leads', 'interactions', 'payments', 'units', 'files', 'vendors', 'quotes', 'boq', 'attendance', 'viewings'].map((c) => <tr key={c}><td>{c}</td><td className="right">{db[c]?.length || 0}</td></tr>)}</tbody></table>
         </Card>
         <Card title="Entries made by mistake">
-          <p className="small" style={{ marginTop: 0 }}>Entries made while showing Accord around, or that look like tests (names like "test", phone 1234567890, ₹1 payments), are listed in <Link to="/admin/cleanup">Data clean-up</Link>. Turn on <b>Demo mode</b> in your user menu before a demonstration and everything you enter is marked as a test.</p>
+          <p className="small" style={{ marginTop: 0 }}>Entries made while showing Accord around, or that look like tests (names like "test", phone 1234567890, ₹1 payments), are listed in <Link to="/admin/cleanup">Data clean-up</Link>. For practice and demonstrations use <b>Training mode</b> in your user menu: nothing entered there reaches the database.</p>
         </Card>
       </div>
       <Card title="Audit log" pad={false}><div style={{ padding: 12 }}>

@@ -4,6 +4,7 @@ import { useStore, daySums } from '../lib/store.jsx'
 import { canOpen, ROLES, WORKSPACES, workspacesOf } from '../lib/perms.js'
 import { setTheme } from '../lib/theme.js'
 import { initials, d } from '../lib/format.js'
+import { getLocation, geoCheck } from '../lib/geo.js'
 import { cx, Button, Modal } from './ui.jsx'
 
 // Navigation per platform. [path, label, module, exact]
@@ -12,17 +13,17 @@ export const NAV = {
     { label: 'Today', items: [['/', 'Dashboard', 'crm', true], ['/crm/interactions', 'Interaction log', 'crm'], ['/people/tasks', 'Tasks', 'people']] },
     { label: 'Clients', items: [['/crm/leads', 'Leads', 'crm'], ['/crm/clients', 'Client 360', 'crm'], ['/crm/payments', 'Payments', 'crm'], ['/crm/documents', 'Documents', 'crm'], ['/crm/messages', 'Messages', 'crm'], ['/crm/issues', 'Issues', 'crm']] },
     { label: 'Selling', items: [['/crm/cost-sheet', 'Cost sheet', 'crm'], ['/crm/inventory', 'Building and parking', 'crm'], ['/presales', 'Private viewings', 'presales'], ['/brochure', 'e-Brochure', 'brochure'], ['/experience', 'Accord experience', 'experience']] },
-    { label: 'Team', items: [['/people', 'Time', 'people', true], ['/people/team', 'Team', 'people'], ['/people/performance', 'Performance', 'performance']] },
+    { label: 'Team', items: [['/people', 'Time', 'people', true], ['/people/team', 'Team', 'people'], ['/people/performance', 'Performance', 'performance'], ['/crm/analytics', 'Lead analytics', 'performance'], ['/help', 'User guide', 'help']] },
   ],
   design: [
     { label: 'Design', items: [['/', 'Overview', 'accord', true], ['/experience', 'Accord experience', 'experience'], ['/accord', 'Projects and BOQ', 'accord', true], ['/accord/residences', 'Residences', 'accord'], ['/presales/showcase', 'Design showcase', 'presales']] },
     { label: 'Sourcing', items: [['/sourcing', 'Trips', 'sourcing', true], ['/sourcing/quotes', 'Quotes', 'sourcing'], ['/sourcing/compare', 'Compare', 'sourcing'], ['/sourcing/samples', 'Samples', 'sourcing']] },
-    { label: 'Team', items: [['/people', 'Time', 'people', true], ['/people/tasks', 'Tasks', 'people']] },
+    { label: 'Team', items: [['/people', 'Time', 'people', true], ['/people/tasks', 'Tasks', 'people'], ['/help', 'User guide', 'help']] },
   ],
   vendors: [
     { label: 'Vendors', items: [['/', 'Overview', 'vendors', true], ['/vendors', 'Vendor directory', 'vendors', true], ['/apply/vendor', 'Onboarding form', 'vendors']] },
     { label: 'Sourcing', items: [['/sourcing/quotes', 'Quotes', 'sourcing'], ['/sourcing/samples', 'Samples', 'sourcing']] },
-    { label: 'Team', items: [['/people', 'Time', 'people', true], ['/people/tasks', 'Tasks', 'people']] },
+    { label: 'Team', items: [['/people', 'Time', 'people', true], ['/people/tasks', 'Tasks', 'people'], ['/help', 'User guide', 'help']] },
   ],
 }
 const ADMIN = { label: 'Admin', items: [['/admin', 'Settings', 'admin', true], ['/admin/users', 'Users and access', 'admin'], ['/admin/data', 'Data and sync', 'admin'], ['/admin/cleanup', 'Data clean-up', 'admin']] }
@@ -50,6 +51,7 @@ export default function Layout() {
   // the menu is a drawer now (31 Oct): hidden until the menu button is pressed; Escape or a click outside closes it
   useEffect(() => { if (!menu) return; const k = (e) => e.key === 'Escape' && setMenu(false); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [menu])
   const gated = !punchedIn
+  useWatchers({ user, myDay, punch, notify, settings, logout: () => { logout(); nav('/') }, path: loc.pathname })
   let k = 0
   return (
     <div className={cx('shell', 'drawer', menu && 'menu-open', gated && 'gated', demo && 'demo')}>
@@ -94,7 +96,7 @@ export default function Layout() {
             <UserMenu user={user} logout={() => { logout(); nav('/') }} demo={demo} toggleDemo={toggleDemo} passwords={settings.authMode === 'password'} />
           </div>
         </header>
-        {demo && <div className="demo-band" role="status">Demo mode · what you enter now is marked as a test, sends no reminders and is listed for clean-up. <button type="button" onClick={() => toggleDemo(false)}>Turn off</button></div>}
+        {demo && <div className="demo-band" role="status"><b>Training mode</b> · practise freely: nothing you enter is saved to the database, no reminders or e-mails go out. Leaving training mode discards it all. <button type="button" onClick={() => toggleDemo(false)}>End training</button></div>}
         <main className="content"><Outlet context={{ ws }} /></main>
       </div>
       {gated && <PunchGate />}
@@ -117,19 +119,49 @@ function PunchStatus({ day, punch, notify }) {
         <i /><span className="pt">{STATE_LABEL[st]}{since && !day.out ? ' · since ' + new Date(since).toTimeString().slice(0, 5) : ''}</span>
       </button>
       {open && <div className="menu" role="menu">
-        <div className="menu-head">Today · {hm(sums.work)} worked · {hm(sums.brk)} breaks{day.where ? <div className="small muted" style={{ fontWeight: 400 }}>{day.where}</div> : null}</div>
-        {[['office', 'In office'], ['site', 'Going on a site visit'], ['remote', 'Working remotely'], ['break', 'Taking a break']].map(([t, l]) =>
-          <button key={t} role="menuitem" className={cx(st === t && 'on')} onClick={() => go(t === 'office' && st === 'break' ? 'resume' : t)} disabled={st === t}><span className="ws-dot" style={{ color: `var(--${t === 'office' ? 'good' : t === 'break' ? 'warn' : t === 'site' ? 'info' : 'purple'})` }} />{l}</button>)}
+        <div className="menu-head">Today · {hm(sums.work)} worked · {hm(sums.brk)} on {sums.breaks || 0} break{sums.breaks === 1 ? '' : 's'}{day.where ? <div className="small muted" style={{ fontWeight: 400 }}>{day.where}</div> : null}</div>
+        {[['office', 'In office'], ['site', 'Going on a site visit'], ['remote', 'Working remotely']].map(([t, l]) =>
+          <button key={t} role="menuitem" className={cx(st === t && 'on')} onClick={() => go(t === 'office' && st === 'break' ? 'resume' : t)} disabled={st === t}><span className="ws-dot" style={{ color: `var(--${t === 'office' ? 'good' : t === 'site' ? 'info' : 'purple'})` }} />{l}</button>)}
+        <div className="menu-sub">Take a break · {sums.breaks || 0} so far today</div>
+        <div className="break-row">{['Lunch', 'Tea', 'Personal'].map((r) => <button key={r} role="menuitem" disabled={st === 'break'} onClick={() => go('break', { note: r })}><span className="ws-dot" style={{ color: 'var(--warn)' }} />{r}</button>)}</div>
         <hr /><button role="menuitem" className="danger" onClick={() => { setOpen(false); setConfirm(true) }}>Punch out…</button>
       </div>}
       <Modal open={confirm} onClose={() => setConfirm(false)} title="End your day?" footer={<>
-        <Button onClick={() => go('break')}>Take a break instead</Button><Button onClick={() => setConfirm(false)}>Keep working</Button>
+        <Button onClick={() => go('break', { note: 'Break' })}>Take a break instead</Button><Button onClick={() => setConfirm(false)}>Keep working</Button>
         <Button variant="danger" onClick={() => go('out', { confirm: true })}>Yes, punch out</Button></>}>
         <p style={{ marginTop: 0 }}>You have worked <b>{hm(sums.work)}</b> today{sums.site ? `, ${hm(sums.site)} of it on site` : ''}. Breaks and site visits keep you punched in; punching out closes the day and cannot be undone from here.</p>
         <p className="small muted" style={{ marginBottom: 0 }}>Made a mistake earlier? An admin can correct the time log under Team · Time.</p>
       </Modal>
     </div>
   )
+}
+
+// 2 Nov (HR): while someone is "In office", their location is checked every 15 minutes; leaving Sky City switches them
+// to Remote in the time log. A site visit gets a reminder after an hour. 30 minutes without touching Accord signs out.
+function useWatchers({ user, myDay, punch, notify, settings, logout, path }) {
+  const state = myDay && !myDay.out ? myDay.state || myDay.mode : null
+  const since = (myDay?.events || []).slice(-1)[0]?.t
+  const fence = settings.officeLat && settings.officeLng && settings.geofence !== 'Off'
+  useEffect(() => {
+    if (state !== 'office' || !fence) return
+    const check = async () => { const loc = await getLocation(20000); const g = geoCheck(settings, loc, 'office')
+      if (g.mode === 'remote') { try { await punch('remote', { note: 'Location check: ' + g.where }); notify('You seem to have left Sky City, so the time log now shows Remote. Switch back to In office when you return, or to Site visit.', 'warn') } catch (e) { /* */ } } }
+    const t = setInterval(check, 15 * 60000); return () => clearInterval(t)
+  }, [state, fence, settings.officeLat, settings.officeLng, settings.officeRadius]) // eslint-disable-line
+  useEffect(() => {
+    if (state !== 'site' || !since) return
+    const due = new Date(since).getTime() + 60 * 60000, wait = Math.max(5000, due - Date.now())
+    const t = setTimeout(() => { notify('You have been on a site visit for an hour. Still there? Switch back to In office from the status button when you are back.', 'warn')
+      try { if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Accord · site visit', { body: 'One hour on the site visit. Switch back to In office when you return.' }) } catch (e) { /* */ } }, wait)
+    return () => clearTimeout(t)
+  }, [state, since]) // eslint-disable-line
+  useEffect(() => {
+    const mins = Number(settings.idleMinutes ?? 30); if (!user || !mins || path.startsWith('/brochure')) return
+    let last = Date.now(); const touch = () => { last = Date.now() }
+    const ev = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll', 'wheel']; ev.forEach((e) => window.addEventListener(e, touch, { passive: true }))
+    const t = setInterval(() => { if (Date.now() - last > mins * 60000) logout() }, 30000)
+    return () => { clearInterval(t); ev.forEach((e) => window.removeEventListener(e, touch)) }
+  }, [user, settings.idleMinutes, path]) // eslint-disable-line
 }
 
 export function PunchGate() {
@@ -198,7 +230,7 @@ function UserMenu({ user, logout, demo, toggleDemo, passwords }) {
       </button>
       {open && <div className="menu">
         <div className="menu-head">{ROLES[user?.appRole]} · @{user?.username}</div>
-        <button onClick={() => { toggleDemo(!demo); setOpen(false) }}>{demo ? 'Turn off demo mode' : 'Demo mode (for showing Accord)'}</button>
+        <button onClick={() => { toggleDemo(!demo); setOpen(false) }}>{demo ? 'End training mode' : 'Training mode (practice, not saved)'}</button>
         {passwords && <button onClick={() => { setOpen(false); setPw(true) }}>Change password</button>}
         <hr /><button className="danger" onClick={logout}>Sign out</button>
       </div>}

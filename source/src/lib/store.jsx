@@ -4,7 +4,6 @@ import { canWrite, scopeDb } from './perms.js'
 import { hashPassword, newSalt, strongEnough, TEMP_PASSWORD, deviceId, deviceLabel, deviceKind } from './crypto.js'
 import { totpCheck, newSecret, otpUri } from './totp.js'
 import { getLocation, geoCheck } from './geo.js'
-import { demoOn, setDemo } from './testflag.js'
 import { crmPart } from './seed.js'
 import { today, nowTime } from './format.js'
 import { deriveCrm, BOOKED } from './calc.js'
@@ -38,11 +37,11 @@ const readJson = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 
 
 // Minutes worked / on break / on site from a day's events (same rules as the server's sums_).
 export function daySums(events = [], until = new Date().toISOString()) {
-  let work = 0, brk = 0, site = 0, state = null, since = null
+  let work = 0, brk = 0, site = 0, state = null, since = null, breaks = 0
   const close = (to) => { if (!state || !since) return; const m = Math.max(0, Math.round((new Date(to) - new Date(since)) / 60000)); if (state === 'break') brk += m; else { work += m; if (state === 'site') site += m } }
-  events.forEach((e) => { close(e.t); since = e.t; state = e.type === 'in' || e.type === 'resume' ? 'office' : e.type === 'out' ? null : e.type })
+  events.forEach((e) => { close(e.t); since = e.t; if (e.type === 'break') breaks++; state = e.type === 'in' || e.type === 'resume' ? 'office' : e.type === 'out' ? null : e.type })
   close(until)
-  return { work, brk, site }
+  return { work, brk, site, breaks }
 }
 
 export function StoreProvider({ children }) {
@@ -73,8 +72,10 @@ export function StoreProvider({ children }) {
   const settings = raw.settings[0] || {}
   const user = useMemo(() => (session ? raw.users.find((u) => u.id === session.userId) || null : null), [session, raw.users])
   const backend = settings.backendUrl || SITE_BACKEND
-  const [demo, setDemoState] = useState(demoOn)
-  const toggleDemo = useCallback((on) => { setDemo(on); setDemoState(on) }, [])
+  // 2 Nov: training mode. Everything entered is kept in this tab only and thrown away when training ends:
+  // nothing reaches the Google Sheet, no reminders, no e-mails, no uploads. (Replaces demo mode.)
+  const [demo, setDemoState] = useState(false)
+  const trainingSnap = useRef(null)
   const rawRef = useRef(raw); rawRef.current = raw
   const db = useMemo(() => (user ? scopeDb(raw, user, deriveCrm) : raw), [raw, user])
 
@@ -99,7 +100,7 @@ export function StoreProvider({ children }) {
     } catch (e) { setSync({ state: 'error', at: null, error: e.message }); if (/expired|signed in/i.test(e.message)) logout() }
   }, [online, session, call]) // eslint-disable-line
   const pull = useCallback(async () => {
-    if (!online || holdPull.current) return
+    if (!online || holdPull.current || trainingSnap.current) return
     try {
       setSync((s) => ({ ...s, state: 'syncing' }))
       const j = await call({ action: 'pull', token: session.token })
@@ -120,7 +121,7 @@ export function StoreProvider({ children }) {
     return () => { clearInterval(a); clearInterval(b) }
   }, [online]) // eslint-disable-line
 
-  const enqueue = (op) => { if (!backend) return; queue.current.push(op); safeSet(QKEY, JSON.stringify(queue.current)); setTimeout(flush, 400) }
+  const enqueue = (op) => { if (!backend || trainingSnap.current) return; queue.current.push(op); safeSet(QKEY, JSON.stringify(queue.current)); setTimeout(flush, 400) }
 
   // ---------- data API
   const logAudit = (coll, id, action) => {
@@ -133,7 +134,6 @@ export function StoreProvider({ children }) {
     const r = { ...rec, updatedAt: new Date().toISOString(), updatedBy: user?.name || 'system' }
     ;['mine', 'directoryOnly', 'payState', 'lastPaymentDate', '_mineClients'].forEach((k) => delete r[k])
     const exists = (rawRef.current[coll] || []).some((x) => x.id === r.id)
-    if (demo && !exists && !['settings', 'users', 'notifications', 'audit', 'attendance', 'timeEvents', 'accordSessions'].includes(coll)) r._test = 'Yes'
     let isNew = false
     setRaw((cur) => {
       const list = cur[coll] || []
@@ -143,7 +143,7 @@ export function StoreProvider({ children }) {
       return { ...cur, [coll]: next }
     })
     enqueue({ coll, op: 'upsert', rec: r, action: opts.action, isNew: opts.isNew })
-    if (!opts.silent && coll !== 'audit') logAudit(coll, r.id, (opts.action || 'saved') + (r._test === 'Yes' ? ' (demo mode)' : ''))
+    if (!opts.silent && coll !== 'audit' && !demo) logAudit(coll, r.id, opts.action || 'saved')
     return r
   }, [user, backend, demo]) // eslint-disable-line
   const remove = useCallback((coll, id) => {
@@ -320,6 +320,7 @@ export function StoreProvider({ children }) {
 
   // Uploads go to the OuTSDe Drive (Accord_Data / …), named by Accord, and are listed in the Files tab.
   const upload = useCallback(async (file, folder, name, meta = {}) => {
+    if (demo) throw new Error('Uploads are switched off in training mode')
     if (!online) return null
     if (file.size > 35 * 1024 * 1024) throw new Error('Files up to 35 MB. Compress the PDF or upload it in parts.')
     const data = await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = bad; r.readAsDataURL(file) })
@@ -328,11 +329,16 @@ export function StoreProvider({ children }) {
     return j.url
   }, [online, session, call, demo])
   const sendEmail = useCallback(async (msg) => {
+    if (demo) throw new Error('E-mails are not sent in training mode')
     if (!online) throw new Error('E-mail is sent by the shared database. Connect it under Admin, Data and sync.')
     const j = await call({ action: 'sendEmail', token: session.token, test: demo, ...msg })
     if (j.message) setRaw((cur) => ({ ...cur, messages: [j.message, ...(cur.messages || [])] }))
     return j
   }, [online, session, call, demo])
+  const toggleDemo = useCallback((on) => {
+    if (on && !trainingSnap.current) { trainingSnap.current = rawRef.current; setDemoState(true); notify('Training mode on. Nothing you enter now is saved.', 'warn') }
+    else if (!on && trainingSnap.current) { const snap = trainingSnap.current; trainingSnap.current = null; setRaw(snap); setDemoState(false); notify('Training mode off. Practice entries discarded.'); setTimeout(() => pull(), 300) }
+  }, [notify, pull])
   const exportNow = useCallback(async () => call({ action: 'exportNow', token: session.token }), [session, call])
   // The CRM master extract (Accord_Data / Starting data / accord-starting-data.json) loaded into this device, ready to seed the sheet.
   const loadStartingData = useCallback((src) => {

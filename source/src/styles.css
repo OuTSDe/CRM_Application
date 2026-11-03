@@ -445,3 +445,22 @@ body { overscroll-behavior-y: none }
 .field-err { color: var(--bad); font-size: 12px; margin-top: 4px }
 .form-why { flex: 1 1 100%; background: color-mix(in srgb, var(--bad) 12%, var(--bg2)); border-left: 3px solid var(--bad); color: var(--fg); padding: 10px 12px; font-size: 13px }
 .toast.t-bad { background: var(--bad); color: #fff }
+
+.menu-sub { padding: 8px 12px 2px; font: 400 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg3) }
+.break-row { display: flex; gap: 0 } .break-row button { flex: 1 }
+
+/* 2 Nov additions */
+.bulk-all { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px; margin-bottom: 12px; border: 1px dashed var(--line, #ccc); border-radius: 8px; background: var(--soft, rgba(0,0,0,.02)); }
+.bulk-all .bulk-sum { flex: 1 1 240px; }
+@media print { .page-break { break-after: page; page-break-after: always; } .page-break:last-child { break-after: auto; page-break-after: auto; } }
+.bar-row { display: grid; grid-template-columns: 160px 1fr 92px; gap: 8px; align-items: center; margin: 4px 0; font-size: 13px; }
+.bar-row .bar { height: 14px; border-radius: 4px; background: var(--teal, #2a7f7f); min-width: 2px; }
+.bar-row .bar-bg { background: var(--soft, rgba(0,0,0,.05)); border-radius: 4px; }
+.funnel-step { display: flex; justify-content: space-between; padding: 8px 12px; margin: 3px auto; border-radius: 6px; color: #fff; background: var(--teal, #2a7f7f); font-size: 13px; }
+.elev { width: 100%; max-width: 420px; display: block; margin: 0 auto; }
+.elev rect.fl { cursor: pointer; }
+.elev rect.fl:hover { stroke: var(--accent, #b8860b); stroke-width: 2; }
+.help h3 { margin-top: 22px; }
+.help li { margin: 4px 0; }
+.kyc-box { padding: 10px; border-radius: 8px; margin: 8px 0; font-size: 13px; }
+.kyc-ok { background: rgba(40,140,80,.1); } .kyc-warn { background: rgba(200,130,0,.12); }

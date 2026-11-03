@@ -58,7 +58,7 @@ export function TimeTracker() {
       </div>
       <DataTable rows={rows} initialSort={{ key: 'date', dir: 'desc' }} searchKeys={['name']} onRowClick={(r) => setDay(r)}
         columns={[{ key: 'date', label: 'Date', render: (r) => d(r.date) }, { key: 'name', label: 'Person' }, { key: 'in', label: 'In' }, { key: 'out', label: 'Out' }, { key: 'mode', label: 'Started as', render: (r) => STATE[r.mode] || r.mode },
-          { key: 'minutes', label: 'Worked', render: (r) => hm(r.minutes) }, { key: 'breakMin', label: 'Breaks', render: (r) => hm(r.breakMin) }, { key: 'siteMin', label: 'On site', render: (r) => hm(r.siteMin) }, { key: 'status', label: 'Status', render: (r) => <Badge>{r.status}</Badge> },
+          { key: 'minutes', label: 'Worked', render: (r) => hm(r.minutes) }, { key: 'breakMin', label: 'Breaks', render: (r) => { const b = (r.events || []).filter((e) => e.type === 'break'); return <span>{hm(r.breakMin)}{b.length ? <span className="small muted"> · {b.length}× {[...new Set(b.map((e) => e.note).filter(Boolean))].join(', ')}</span> : null}</span> } }, { key: 'siteMin', label: 'On site', render: (r) => hm(r.siteMin) }, { key: 'status', label: 'Status', render: (r) => <Badge>{r.status}</Badge> },
           { key: 'where', label: 'Location check', render: (r) => r.where ? <span className={'small' + (/remote/i.test(r.where) && r.mode === 'remote' && !/chosen/.test(r.where) ? ' warn-t' : '')}>{r.where}</span> : <span className="small muted">–</span> }, { key: 'note', label: 'Note' }]} />
       <Modal open={!!day} onClose={() => setDay(null)} title={day ? `${day.name} · ${d(day.date)}` : ''} footer={<>{user.appRole === 'admin' && <Button onClick={() => { setEdit({ ...day }); setDay(null) }}>Correct</Button>}<Button onClick={() => setDay(null)}>Close</Button></>}>
         {day && <><DayBar a={day} /><div className="timeline" style={{ marginTop: 18 }}>{(day.events || []).map((e, i) => <div key={i} className="tl-item"><div className="tl-meta">{new Date(e.t).toTimeString().slice(0, 5)}</div><p>{EV[e.type] || e.type}{e.note ? ' · ' + e.note : ''}</p></div>)}
@@ -91,13 +91,23 @@ export function Team() {
   return (
     <Page title="Team" back="/" backLabel="Dashboard" subtitle="Who reports to whom, who does what, their shift and working days, and whether they can work remotely. Admins change these under Users and access.">
       <Card title="Team hierarchy" actions={<span className="small muted">From "Reports to" · missed follow-ups escalate up this chain</span>}><OrgChart people={people} /></Card>
-      <div className="dt-wrap"><table className="table"><thead><tr><th>Name</th><th>Designation</th><th>Team</th><th>Responsibilities</th><th>Shift</th><th>Days</th><th>Remote</th><th>Today</th>{user.appRole === 'admin' && <th>Contact</th>}</tr></thead>
+      <DeptSummary people={people} />
+      <div className="dt-wrap"><table className="table"><thead><tr><th>Name</th><th>Designation</th><th>Team</th><th>Department</th><th>Employment</th><th>Responsibilities</th><th>Shift</th><th>Days</th><th>Remote</th><th>Today</th>{user.appRole === 'admin' && <th>Contact</th>}</tr></thead>
         <tbody>{people.map((u) => { const a = raw.attendance.find((x) => x.userId === u.id && x.date === t)
-          return <tr key={u.id}><td><b>{u.name}</b></td><td>{u.designation || '–'}</td><td>{u.team}</td><td className="small" style={{ maxWidth: 320 }}>{u.role}</td><td className="mono small">{u.shiftStart || '09:30'}–{u.shiftEnd || '18:30'}</td>
+          return <tr key={u.id}><td><b>{u.name}</b></td><td>{u.designation || '–'}</td><td>{u.team}</td><td>{u.department || '–'}</td><td className="small">{u.employment ? <Badge tone={u.employment === 'On roll' ? 'good' : 'muted'}>{u.employment}</Badge> : '–'}{u.company ? <div className="small muted">{u.company}</div> : null}</td><td className="small" style={{ maxWidth: 320 }}>{u.role}</td><td className="mono small">{u.shiftStart || '09:30'}–{u.shiftEnd || '18:30'}</td>
             <td className="small">{u.workDays || 'Mon-Sat'}</td><td><Badge tone={u.remoteAllowed === 'Yes' ? 'purple' : 'muted'}>{u.remoteAllowed === 'Yes' ? 'Allowed' : 'No'}</Badge></td>
             <td>{a ? <Badge>{STATE[a.out ? 'out' : a.state] || 'In office'}</Badge> : <span className="small muted">Not in</span>}</td>{user.appRole === 'admin' && <td className="small">{[u.phone, u.email].filter(Boolean).join(' · ') || <span className="missing">Missing</span>}</td>}</tr> })}</tbody></table></div>
     </Page>
   )
+}
+
+// 2 Nov: head count by department and by on roll / off roll / consultant
+function DeptSummary({ people }) {
+  const by = (k) => { const m = {}; people.forEach((u) => { const x = u[k] || 'Not set'; m[x] = (m[x] || 0) + 1 }); return Object.entries(m).sort((a, b) => b[1] - a[1]) }
+  return <div className="grid g2">
+    <Card title="By department">{by('department').map(([k, v]) => <div key={k} className="row" style={{ justifyContent: 'space-between', padding: '3px 0' }}><span>{k}</span><b>{v}</b></div>)}</Card>
+    <Card title="On roll, off roll and consultants">{by('employment').map(([k, v]) => <div key={k} className="row" style={{ justifyContent: 'space-between', padding: '3px 0' }}><span>{k}</span><b>{v}</b></div>)}</Card>
+  </div>
 }
 
 export function Performance() {

@@ -88,7 +88,7 @@ export function useCrm() {
 }
 
 // Cost sheet maths (rate card from Settings; floor rise from the configured start floor)
-export function costSheet({ unit, rateCard, rate, discountPct = 0, plc = 0, terrace = 0, parking = 1, funding = 'Self', plans }) {
+export function costSheet({ unit, rateCard, rate, discountPct = 0, plc = 0, terrace = 0, parking = 1, funding = 'Self', plans, roundTo = 0 }) {
   const area = n(unit?.area)
   const base = n(rate ?? rateCard.baseRate) * (1 - n(discountPct) / 100)
   const riseFloors = Math.max(0, n(unit?.floor) - n(rateCard.floorRiseStart))
@@ -98,7 +98,9 @@ export function costSheet({ unit, rateCard, rate, discountPct = 0, plc = 0, terr
     { label: `Floor rise (${riseFloors} floors above ${rateCard.floorRiseStart} × ₹${rateCard.floorRisePerFloor})`, qty: area, rate: riseRate, amount: area * riseRate },
     { label: 'Preferential location charges (PLC)', qty: plc ? area : 0, rate: n(plc), amount: plc ? area * n(plc) : 0 },
     { label: 'Private terrace area charge', qty: n(terrace || unit?.terrace), rate: n(rateCard.terraceRate), amount: n(terrace || unit?.terrace) * n(rateCard.terraceRate) },
-    { label: 'Covered car parking', qty: n(parking), rate: n(rateCard.parkingRate), amount: n(parking) * n(rateCard.parkingRate) },
+    // 2 Nov: the car parks that come with the type, and additional ones at their own rate (Admin → rate card)
+    ...(() => { const ent = Math.min(n(parking), n(rateCard.parkingSlots?.[unit?.type] ?? 1)), extra = Math.max(0, n(parking) - ent), xr = n(rateCard.parkingExtraRate || rateCard.parkingRate)
+      return [{ label: 'Covered car parking', qty: ent, rate: n(rateCard.parkingRate), amount: ent * n(rateCard.parkingRate) }, { label: 'Additional car parking', qty: extra, rate: xr, amount: extra * xr }] })(),
   ]
   const av = lines.reduce((s, l) => s + l.amount, 0)
   const gstA = av * n(rateCard.gst)
@@ -112,9 +114,12 @@ export function costSheet({ unit, rateCard, rate, discountPct = 0, plc = 0, terr
   const ob = other.reduce((s, l) => s + l.amount, 0)
   const gstB = ob * n(rateCard.gst)
   const partB = ob + gstB
-  const total = partA + partB
+  const exact = partA + partB
+  // optional round figure (admins and senior sales only, 2 Nov): to the nearest 1,000 / 10,000 / 1,00,000, or a typed figure
+  const total = n(roundTo) > 1000000 ? n(roundTo) : n(roundTo) > 0 ? Math.round(exact / n(roundTo)) * n(roundTo) : exact
+  const roundAdj = total - exact
   const plan = (plans?.[funding] || plans?.Self || []).map((p) => ({ ...p, amount: Math.round(total * n(p.pct)) }))
-  return { area, base, riseFloors, riseRate, lines, av, gstA, partA, other, ob, gstB, partB, total, plan }
+  return { area, base, riseFloors, riseRate, lines, av, gstA, partA, other, ob, gstB, partB, total, exact, roundAdj, plan }
 }
 
 export function attendanceSummary(rows) {

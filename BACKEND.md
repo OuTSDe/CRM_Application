@@ -195,6 +195,22 @@ My Drive / Accord_CRM_Application / Accord_Data /
 - **Audit.** Every write is recorded in the audit tab: who, when, what and which record.
 - **Backups.** `nightlyBackup` copies the whole sheet to `Accord_Data / Backups` at 23:00 and keeps the last 30 copies. It then writes `Accord_Data / Exports / Accord Database.xlsx`, so the data can always be opened in Excel.
 
+## Lead inbox (2 Nov)
+
+Other tools post enquiries with `{"action":"inboundLead","key":"<inbound key>","source":"Website","lead":{"name","phone","email","city","config","message"}}` (or `"leads":[…]`, up to 50).
+
+- The key is made in Settings › Lead inbox. With no key, the inbox is off.
+- Entries go to the `leadInbox` tab with status *New*, and admins and seniors are notified.
+- Nothing becomes a lead until a person accepts it in Leads › Inbox.
+
+## Notifications from the server (2 Nov)
+
+- **Assignment.** When a lead or client is assigned to someone, as owner or as *Also responsible*, that person is notified.
+- **Settings changes.** When settings change, every active user gets a notification listing what changed.
+- **Client complaints.** An issue in the category *Client complaint* notifies the advisor's manager and the admins.
+- **Double booking.** A new booking on a residence that already has a live booking is refused.
+- **KYC readings.** The card readings are stored in the `files` tab (`kyc`, `kycNumber`, `kycName`, `kycDob`). Aadhaar numbers are reduced to the last 4 digits on the server as well.
+
 ## Limits to know
 
 - **Apps Script response time.** Each call takes about 0.5 to 2 seconds. Accord stays usable because it saves on the device first and syncs:

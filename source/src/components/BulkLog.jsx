@@ -17,6 +17,9 @@ export default function BulkLog({ open, onClose }) {
   const [rows, setRows] = useState(() => [row(), row(), row()])
   const set = (i, k, x) => setRows((r) => r.map((y, j) => (j === i ? { ...y, [k]: x } : y)))
   const filled = rows.filter((r) => r.recordId)
+  // 2 Nov: when the same message went to many people (festival wishes, a site update), fill it once for every row.
+  const [all, setAll] = useState({ mode: '', purpose: '', outcome: '', summary: '', next: '' })
+  const applyAll = () => { const p = Object.fromEntries(Object.entries(all).filter(([, v]) => v !== '')); if (!Object.keys(p).length) return notify('Fill at least one of the boxes above first', 'bad'); setRows((r) => r.map((y) => ({ ...y, ...p }))); notify('Copied to all ' + rows.length + ' rows') }
   const submit = () => {
     if (!filled.length) return notify('Pick at least one person', 'bad')
     const bad = filled.find((r) => !r.summary.trim()); if (bad) return notify('Every row needs a short summary', 'bad')
@@ -27,6 +30,15 @@ export default function BulkLog({ open, onClose }) {
   }
   return (
     <Modal open={open} onClose={onClose} title="Log several at once" wide footer={<><span className="small muted" style={{ marginRight: 'auto' }}>{filled.length} to save · follow-ups come to you; add colleagues from the single form</span><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={submit}>Save all</Button></>}>
+      <div className="bulk-all">
+        <b className="small">Same for every row</b>
+        <Select options={META.lists['Contact mode']} value={all.mode} onChange={(e) => setAll({ ...all, mode: e.target.value })} placeholder="Mode" />
+        <Select options={META.lists['Contact purpose']} value={all.purpose} onChange={(e) => setAll({ ...all, purpose: e.target.value })} placeholder="Purpose" />
+        <Select options={META.lists.Outcome} value={all.outcome} onChange={(e) => setAll({ ...all, outcome: e.target.value })} placeholder="Outcome" />
+        <div className="bulk-sum"><Input value={all.summary} onChange={(e) => setAll({ ...all, summary: e.target.value })} placeholder="Summary for everyone, e.g. Sent Diwali wishes" /></div>
+        <Select options={NEXT} value={all.next} onChange={(e) => setAll({ ...all, next: e.target.value })} placeholder="Follow-up" />
+        <Button size="sm" onClick={applyAll}>Copy to all rows</Button>
+      </div>
       <div className="bulk">
         {rows.map((r, i) => <div key={r.key} className="bulk-row">
           <span className="bulk-n mono">{String(i + 1).padStart(2, '0')}</span>

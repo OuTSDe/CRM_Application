@@ -6,10 +6,11 @@ import { canWrite, isAdmin } from '../../lib/perms.js'
 import { Page, Card, Button, Badge, Field, Select, Input, Textarea, Seg, Modal } from '../../components/ui.jsx'
 import DocHeader from '../../components/DocHeader.jsx'
 import RecordPicker from '../../components/RecordPicker.jsx'
-import { d, inr, words, today, addDays, n } from '../../lib/format.js'
+import { d, inr, words, today, addDays, n, waLink } from '../../lib/format.js'
 
 export default function CostSheet() {
-  const { db, settings, user, upsert, nextId, notify } = useStore()
+  const { db, settings, user, upsert, nextId, notify, upload, online, sendEmail } = useStore()
+  const [sending, setSending] = useState(false)
   const crm = useCrm()
   const nav = useNavigate()
   const [qs] = useSearchParams()
@@ -20,7 +21,8 @@ export default function CostSheet() {
   useEffect(() => { const id = qs.get('id'); const s = id && db.costSheets.find((x) => x.id === id); if (s) { setV({ ...s }); setView('print') } }, []) // eslint-disable-line
   const set = (k, x) => setV((s) => ({ ...s, [k]: x }))
   const unit = crm.units.find((u) => String(u.unit) === String(v.unit))
-  const taken = (u) => crm.byUnit[u] && (BOOKED.includes(crm.byUnit[u].status) || crm.byUnit[u].status === 'Under cancellation')
+  // 2 Nov: no double booking. To verify and under cancellation also block the residence until resolved.
+  const taken = (u) => crm.byUnit[u] && (BOOKED.includes(crm.byUnit[u].status) || ['Under cancellation', 'To verify'].includes(crm.byUnit[u].status))
   const lead = db.leads.find((l) => l.id === v.leadId) || db.clients.find((c) => c.clientId === v.leadId)
   const listRate = n(rc.baseRate) * (1 - n(v.discountPct) / 100)
   const rate = v.finalRate !== '' && v.finalRate !== undefined ? n(v.finalRate) : listRate
@@ -30,7 +32,8 @@ export default function CostSheet() {
   // entitlement plus a capped number of extra car parks (Admin → rate card: parkingExtraMax, 2 by default)
   const parkMax = parkDefault + (rc.parkingExtraMax ?? 2)
   useEffect(() => { if (unit) set('parking', parkDefault) }, [v.unit]) // eslint-disable-line
-  const cs = useMemo(() => unit && costSheet({ unit, rateCard: rc, rate, plc: v.plc, parking: v.parking, funding: v.funding === 'Bank loan' ? 'Bank loan' : 'Self', plans: settings.plans }), [unit, rc, rate, v.plc, v.parking, v.funding, settings.plans])
+  const canRound = ['admin', 'senior'].includes(user.appRole)
+  const cs = useMemo(() => unit && costSheet({ unit, rateCard: rc, rate, plc: v.plc, parking: v.parking, funding: v.funding === 'Bank loan' ? 'Bank loan' : 'Self', plans: settings.plans, roundTo: v.roundTo }), [unit, rc, rate, v.plc, v.parking, v.funding, settings.plans, v.roundTo])
   const status = v.status || 'Draft'
   const save = (patch = {}) => {
     if (!unit) return notify('Pick a residence first', 'bad')
@@ -70,6 +73,11 @@ export default function CostSheet() {
             </div>
             <p className="small" style={{ margin: '10px 0 0' }}>Effective founding privilege: <b>{effDisc.toFixed(2)}%</b> {needsApproval ? <Badge tone="warn">Needs approval (above {rc.approvalAbove}%)</Badge> : <Badge tone="good">Within limit</Badge>}</p>
           </Card>
+          {(canRound || n(v.roundTo)) > 0 && <Card title="Round figure" actions={!canRound && <span className="locked">Set by Cyril or an admin</span>}>
+            <div className="chips">{[[0, 'Exact'], [1000, 'Nearest ₹1,000'], [10000, 'Nearest ₹10,000'], [100000, 'Nearest ₹1 lakh']].map(([x, l]) => <button key={x} type="button" className={'chip' + (n(v.roundTo) === x ? ' on' : '')} disabled={!canRound || locked} onClick={() => set('roundTo', x)}>{l}</button>)}</div>
+            {canRound && <Field label="Or a round total (₹)" hint="Typed figure for the total; the difference shows as a rounding adjustment"><Input type="number" value={n(v.roundTo) > 1000000 ? v.roundTo : ''} disabled={locked} placeholder="e.g. 25000000" onChange={(e) => set('roundTo', e.target.value === '' ? 0 : Number(e.target.value))} /></Field>}
+            {cs && cs.roundAdj !== 0 && <p className="small" style={{ margin: '8px 0 0' }}>Rounding adjustment {cs.roundAdj > 0 ? '+' : '−'}{inr(Math.abs(cs.roundAdj))} on {inr(cs.exact)}</p>}
+          </Card>}
           <Card title="3 · Terms">
             <Textarea rows={3} value={v.notes} disabled={locked} placeholder="Special terms for this buyer (added under the standard terms)" onChange={(e) => set('notes', e.target.value)} />
           </Card>
@@ -78,6 +86,14 @@ export default function CostSheet() {
             {canWrite(user, 'costSheets') && !locked && <Button variant="dark" onClick={() => save()}>Save</Button>}
             {isAdmin(user) && status === 'Pending approval' && <Button variant="primary" onClick={() => save({ status: 'Approved', approvedBy: user.name, approvedOn: today() })}>Approve</Button>}
             {v.id && <Button onClick={() => setView('print')}>A4 preview</Button>}
+            {v.id && <SendSheet v={v} cs={cs} unit={unit} lead={lead} />}
+            {v.id && online && <label className="btn" title="The signed or agreement cost sheet, filed with the client in Drive">{v.agreementUrl ? 'Replace agreement cost sheet' : 'Upload agreement cost sheet'}<input type="file" hidden accept="application/pdf,image/*" onChange={async (e) => {
+              const f = e.target.files[0]; if (!f) return
+              const c = crm.byUnit[unit?.unit]
+              const folder = c ? `Clients/${c.unit} ${c.name}/06 Cost sheets` : `Leads/${v.leadId || 'walk-in'} ${lead?.name || ''}/Cost sheets`
+              try { const url = await upload(f, folder, `${unit.unit}_${c?.clientId || v.leadId || ''}_agreement-cost-sheet_${today()}`, { kind: c ? 'client' : 'lead', recordId: c?.bookingId || v.leadId || '', label: lead?.name || '', category: 'Booking', doc: 'signed_cost_sheet' }); if (url) { save({ agreementUrl: url }); notify('Agreement cost sheet saved to Drive') } } catch (x) { notify('Upload failed: ' + x.message, 'bad') }
+            }} /></label>}
+            {v.agreementUrl && <a className="btn btn-ghost" href={v.agreementUrl} target="_blank" rel="noreferrer">Open agreement cost sheet</a>}
             {v.id && status !== 'Pending approval' && status !== 'Converted' && unit && !taken(unit.unit) && canWrite(user, 'costSheets') &&
               <Button variant="primary" onClick={() => setConvert({ name: lead?.name || '', phone: lead?.phone || '', owner: lead?.owner || user.name, bookingDate: today(), coapp: '', email: lead?.email || '' })}>Convert to booking →</Button>}
           </div>
@@ -88,6 +104,7 @@ export default function CostSheet() {
         <div className="doc"><SheetView cs={cs} v={{ ...v, rate, name: lead?.name || v.name }} unit={unit} settings={settings} doc /></div></div>}
       <Modal open={!!convert} onClose={() => setConvert(null)} title={`Convert to booking · residence ${unit?.unit}`} footer={<><Button onClick={() => setConvert(null)}>Cancel</Button><Button variant="primary" onClick={() => {
         if (!convert.name) return notify('Name is required', 'bad')
+        if (taken(unit.unit)) return notify(`Residence ${unit.unit} was just booked by ${crm.byUnit[unit.unit].name}. Pick another residence.`, 'bad')
         const bookingId = nextId('clients', 'YSC-B-', 3)
         const cIds = db.clients.map((c) => Number(String(c.clientId).replace(/\D/g, ''))).filter(Boolean)
         const clientId = 'YSC-C-' + String(Math.max(0, ...cIds) + 1).padStart(3, '0')
@@ -134,7 +151,8 @@ function SheetView({ cs, v, unit, settings, doc }) {
     <table><tbody>{cs.other.map((l) => <tr key={l.label}><td>{l.label}</td><td className="right">{l.qty > 1 ? n(l.qty).toLocaleString('en-IN') + ' × ' + inr(l.rate) : ''}</td><td className="right">{inr(l.amount)}</td></tr>)}
       <tr><td colSpan={2}>GST @ {(n(rc.gst) * 100).toFixed(0)}%</td><td className="right">{inr(cs.gstB)}</td></tr>
       <tr className="total"><td colSpan={2}>Total Part B</td><td className="right">{inr(cs.partB)}</td></tr></tbody></table>
-    <div className="words">Total (A + B): {inr(cs.total)} · Rupees {words(cs.total)} only</div>
+    {cs.roundAdj ? <table><tbody><tr><td>Total (A + B), exact</td><td className="right">{inr(cs.exact)}</td></tr><tr><td>Rounding adjustment</td><td className="right">{cs.roundAdj > 0 ? '' : '− '}{inr(Math.abs(cs.roundAdj))}</td></tr></tbody></table> : null}
+    <div className="words">Total (A + B): {inr(cs.total)} · Rupees {words(Math.round(cs.total))} only</div>
     <div className="sec">Payment schedule · {v.funding}</div>
     <table><thead><tr><th>Stage</th><th className="right">%</th><th className="right">Amount</th></tr></thead><tbody>{cs.plan.map((p) => <tr key={p.stage}><td>{p.stage}</td><td className="right">{(p.pct * 100).toFixed(0)}%</td><td className="right">{inr(p.amount)}</td></tr>)}</tbody></table>
     <div className="sec">Terms</div>
@@ -143,4 +161,26 @@ function SheetView({ cs, v, unit, settings, doc }) {
     {doc && <div className="sign"><div>Prepared by {v.preparedBy || ''}</div><div style={{ textAlign: 'right' }}>Accepted by buyer</div></div>}
   </>
   return doc ? body : <Card title={`Total ${inr(cs.total)}`} actions={<span className="small muted">Rate {inr(v.rate)}/sft · floor rise {inr(cs.riseRate)}/sft</span>}><div className="doc" style={{ width: '100%', minHeight: 0, boxShadow: 'none', padding: 0 }}>{body}</div></Card>
+}
+
+// 2 Nov: send the cost sheet in one go. E-mail goes out with the Yamuna Sky City header; WhatsApp opens with the summary.
+function SendSheet({ v, cs, unit, lead }) {
+  const { user, online, sendEmail, notify, settings } = useStore()
+  const [busy, setBusy] = useState(false)
+  if (!cs || !unit) return null
+  const who = lead ? (lead.title ? lead.title + ' ' + lead.name : (lead.name || '').split(' ')[0]) : 'Sir/Madam'
+  const lines = [`Dear ${who},`, '', `As discussed, here is the cost sheet for residence ${unit.unit} (${unit.type}, ${unit.area} sq ft, floor ${unit.floor}) at Yamuna Sky City.`, '',
+    `Rate: ${inr(v.rate)} per sq ft`, `Agreement value: ${inr(cs.av)}`, `Total including GST and other charges: ${inr(cs.total)}`, '', 'Payment schedule:',
+    ...cs.plan.map((p) => `· ${p.stage}: ${(p.pct * 100).toFixed(0)}% · ${inr(p.amount)}`), '', `Valid till ${d(v.validTill)}. Reference ${v.id}.`, '', 'Warm regards,', user.name, user.designation || 'Client Relations', 'Yamuna Sky City']
+  const text = lines.join('\n')
+  const phone = lead?.whatsapp || lead?.phone
+  const mail = async () => {
+    if (!lead?.email) return notify('No e-mail on file for this buyer', 'bad')
+    setBusy(true)
+    try { await sendEmail({ to: lead.email, subject: `Yamuna Sky City · cost sheet for residence ${unit.unit}`, title: `Cost sheet · residence ${unit.unit}`, body: text, recordId: lead.clientId || lead.id }); notify('Cost sheet e-mailed to ' + lead.email) } catch (e) { notify(e.message, 'bad') } finally { setBusy(false) }
+  }
+  return <>
+    {phone && <a className="btn" href={waLink(phone, text)} target="_blank" rel="noreferrer">Send on WhatsApp</a>}
+    {online && <Button onClick={mail} disabled={busy}>{busy ? 'Sending…' : 'E-mail it'}</Button>}
+  </>
 }
