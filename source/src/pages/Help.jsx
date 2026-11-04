@@ -48,7 +48,7 @@ const ALL = [
     'Pick 30 days, 90 days, 1 year or all time at the top.'] },
   { id: 'admin', title: 'Admin', roles: ['admin'], items: [
     'Users and access: add a person, give them a role and platforms, and send the authenticator set-up. Add department, employment and company for the team view.',
-    'Extra access: open a person in Users and access and go to Pages and permissions. Greyed ticks come with their role; tick any other page or power (for example Analytics: finance, or Record payments) to give it to that person only.',
+    'Extra access: open a person in Users and access and go to Pages and permissions. Greyed ticks come with their role; tick any other page or power (for example Analytics: finance, or Record payments) to give it to that person only. To match a colleague, use Same access as, pick them, choose Client 360 only or Everything, then Give and Save.',
     'Settings: the rate card (base rate, floor rise, car parks, MESCOM and others), payment plans and terms. Everyone is told when these change, with what changed.',
     'Settings › Lead inbox: make a key and give the address to the website or WhatsApp tool that should send enquiries in.',
     'Settings › Sign out after no activity: how many minutes before Accord signs a person out.',

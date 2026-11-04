@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { useStore } from '../../lib/store.jsx'
-import { ROLES, ROLE_NOTES, WORKSPACES, workspacesOf, ACCESS, byRole, extrasOf } from '../../lib/perms.js'
+import { ROLES, ROLE_NOTES, WORKSPACES, workspacesOf, ACCESS, ACCESS_ITEMS, byRole, extrasOf, hasAccess } from '../../lib/perms.js'
 import RecordForm from '../../components/RecordForm.jsx'
-import { Page, Card, Button, Badge, Field, Input, Textarea, Select, Modal, Confirm, Chips } from '../../components/ui.jsx'
+import { Page, Card, Button, Badge, Field, Input, Textarea, Select, Modal, Confirm, Chips, Seg } from '../../components/ui.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import { d, inr } from '../../lib/format.js'
 import { getLocation } from '../../lib/geo.js'
@@ -125,6 +125,32 @@ export function AdminSettings() {
 
 // 4 Nov: what a person can open. Ticks greyed out come with their role; the others are extra access an admin
 // gives this one person. Saved on the user (extraAccess) and applied on the server too.
+// 4 Nov: "give Medha Client 360 the way Cyril has it". Pick a colleague; Accord lists what they can do that this
+// person cannot, ticked, and adds the ones you keep. Client 360 only narrows it to the client pages and powers.
+const CLIENT_KEYS = ['clients', 'seeAll', 'money', 'assign', 'documents', 'payments', 'interactions', 'messages', 'issues']
+function CopyAccess({ u, onAdd }) {
+  const { raw } = useStore()
+  const [from, setFrom] = useState('')
+  const [scope, setScope] = useState('clients')
+  const [skip, setSkip] = useState([])
+  const other = raw.users.find((x) => x.name === from)
+  const diff = other ? ACCESS_ITEMS.filter((x) => hasAccess(other, x.key) && !hasAccess(u, x.key) && (scope === 'all' || CLIENT_KEYS.includes(x.key))) : []
+  const keep = diff.filter((x) => !skip.includes(x.key))
+  const people = raw.users.filter((x) => x.id !== u.id && x.appRole !== 'none' && x.active !== 'No').map((x) => ({ value: x.name, label: `${x.name} · ${ROLES[x.appRole] || x.appRole}` }))
+  return <div className="copy-access">
+    <div className="row gap-s" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+      <b className="small">Same access as</b>
+      <Select options={people} value={from} onChange={(e) => { setFrom(e.target.value); setSkip([]) }} placeholder="Pick a colleague" style={{ maxWidth: 260 }} />
+      <Seg value={scope} onChange={(v) => { setScope(v); setSkip([]) }} options={[{ value: 'clients', label: 'Client 360 only' }, { value: 'all', label: 'Everything' }]} />
+    </div>
+    {other && (!diff.length ? <p className="small muted" style={{ margin: '8px 0 0' }}>{u.name || 'This person'} already has everything {other.name} has{scope === 'clients' ? ' in Client 360' : ''}.</p> : <>
+      <p className="small" style={{ margin: '8px 0 4px' }}>{other.name} has these that {u.name || 'this person'} does not. Untick any you do not want to give.</p>
+      {diff.map((x) => <label key={x.key} className="access-item"><input type="checkbox" checked={!skip.includes(x.key)} onChange={() => setSkip(skip.includes(x.key) ? skip.filter((k) => k !== x.key) : [...skip, x.key])} /><span>{x.label}</span></label>)}
+      <Button size="sm" variant="primary" disabled={!keep.length} style={{ marginTop: 6 }} onClick={() => { onAdd(keep.map((x) => x.key)); setFrom(''); setSkip([]) }}>Give {keep.length} to {u.name || 'this person'}</Button>
+      <span className="small muted"> · then press Save</span></>)}
+  </div>
+}
+
 function AccessPicker({ u, onChange }) {
   const extra = extrasOf(u)
   const isAdminRole = u.appRole === 'admin'
@@ -133,6 +159,7 @@ function AccessPicker({ u, onChange }) {
   return <div className="sheet" style={{ marginTop: 16 }}>
     <div className="sheet-band"><span className="n">5</span><h4>Pages and permissions</h4><span className="note2">{isAdminRole ? 'Admins have everything' : added.length ? `${added.length} extra on top of the ${ROLES[u.appRole] || 'role'} defaults` : `${ROLES[u.appRole] || 'Role'} defaults only`}</span></div>
     <div style={{ padding: '12px 18px' }}>
+      {!isAdminRole && <CopyAccess u={u} onAdd={(keys) => onChange([...new Set([...extra, ...keys])])} />}
       {!isAdminRole && <p className="small muted" style={{ marginTop: 0 }}>Greyed ticks come with the role and change when the role changes. Tick anything else to give this person extra access; untick to take it away. Only admins can change this.</p>}
       <div className="access-grid">{ACCESS.map((g) => <fieldset key={g.group} className="access-group"><legend>{g.group}</legend>
         {g.items.map((x) => { const def = byRole(u, x.key), on = def || extra.includes(x.key)

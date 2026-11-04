@@ -121,6 +121,7 @@ const ITEM = Object.fromEntries(ACCESS_ITEMS.map((x) => [x.key, x]))
 export const extrasOf = (u) => (Array.isArray(u?.extraAccess) ? u.extraAccess : String(u?.extraAccess || '').split(/[,\s]+/).filter(Boolean)).filter((k) => ITEM[k])
 export const byRole = (u, key) => !!u && (u.appRole === 'admin' || (ITEM[key]?.roles || []).includes(u.appRole))
 const has = (u, key) => byRole(u, key) || extrasOf(u).includes(key)
+export const hasAccess = has
 export const canPage = (u, key) => !!u && (ITEM[key] ? has(u, key) : canOpen(u, key))
 export const canOpen = (u, mod) => !!u && (u.appRole === 'admin' || (MODULES[mod] || []).includes(u.appRole) || extrasOf(u).some((k) => ITEM[k].mod === mod))
 export const canWrite = (u, coll) => {

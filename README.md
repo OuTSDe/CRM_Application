@@ -234,6 +234,7 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
   - The server applies the same ticks, so a page that is not ticked stays closed even if someone types its address.
   - Pages such as Client 360 show only the person's own clients and leads unless *See and edit every client and lead* is ticked too.
   - The users table shows **+N** for anyone with extra access.
+  - **Same access as**: at the top of Pages and permissions, pick a colleague (for example Cyril). Choose **Client 360 only** or **Everything**. Accord lists what that colleague can do and this person cannot, all ticked. Untick any you don't want, press **Give**, then **Save**.
 - **Follow-up time** (4 Nov). Log interaction has a follow-up time next to the follow-up date, with quick times (10 am, 12 pm, 3 pm, 5 pm, 7 pm). Log several at once has a time on each row too.
   - The reminder comes at that time: in Accord, as a phone or desktop notification, and by e-mail.
   - The time shows wherever the next follow-up is listed, and follow-ups due on the same day are sorted by time.
