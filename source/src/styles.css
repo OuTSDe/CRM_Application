@@ -464,3 +464,12 @@ body { overscroll-behavior-y: none }
 .help li { margin: 4px 0; }
 .kyc-box { padding: 10px; border-radius: 8px; margin: 8px 0; font-size: 13px; }
 .kyc-ok { background: rgba(40,140,80,.1); } .kyc-warn { background: rgba(200,130,0,.12); }
+
+/* 4 Nov: access picker */
+.access-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.access-group { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px 10px; margin: 0; }
+.access-group legend { font: 400 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--fg3); padding: 0 6px; }
+.access-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13.5px; cursor: pointer; }
+.access-item.def { color: var(--fg3); cursor: default; }
+.access-item.extra span:first-of-type { font-weight: 600; }
+.access-item input { width: 16px; height: 16px; accent-color: var(--accent); }

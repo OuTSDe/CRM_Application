@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useStore, daySums } from '../lib/store.jsx'
-import { canOpen, ROLES, WORKSPACES, workspacesOf } from '../lib/perms.js'
+import { canOpen, canPage, ROLES, WORKSPACES, workspacesOf } from '../lib/perms.js'
 import { setTheme } from '../lib/theme.js'
 import { initials, d } from '../lib/format.js'
 import { getLocation, geoCheck } from '../lib/geo.js'
@@ -10,20 +10,20 @@ import { cx, Button, Modal } from './ui.jsx'
 // Navigation per platform. [path, label, module, exact]
 export const NAV = {
   sales: [
-    { label: 'Today', items: [['/', 'Dashboard', 'crm', true], ['/crm/interactions', 'Interaction log', 'crm'], ['/people/tasks', 'Tasks', 'people']] },
-    { label: 'Clients', items: [['/crm/leads', 'Leads', 'crm'], ['/crm/clients', 'Client 360', 'crm'], ['/crm/payments', 'Payments', 'crm'], ['/crm/documents', 'Documents', 'crm'], ['/crm/messages', 'Messages', 'crm'], ['/crm/issues', 'Issues', 'crm']] },
-    { label: 'Selling', items: [['/crm/cost-sheet', 'Cost sheet', 'crm'], ['/crm/inventory', 'Building and parking', 'crm'], ['/presales', 'Private viewings', 'presales'], ['/brochure', 'e-Brochure', 'brochure'], ['/experience', 'Accord experience', 'experience']] },
-    { label: 'Team', items: [['/people', 'Time', 'people', true], ['/people/team', 'Team', 'people'], ['/people/performance', 'Performance', 'performance'], ['/crm/analytics', 'Analytics', 'analytics'], ['/help', 'User guide', 'help']] },
+    { label: 'Today', items: [['/', 'Dashboard', 'crm', true], ['/crm/interactions', 'Interaction log', 'interactions'], ['/people/tasks', 'Tasks', 'tasks']] },
+    { label: 'Clients', items: [['/crm/leads', 'Leads', 'leads'], ['/crm/clients', 'Client 360', 'clients'], ['/crm/payments', 'Payments', 'payments'], ['/crm/documents', 'Documents', 'documents'], ['/crm/messages', 'Messages', 'messages'], ['/crm/issues', 'Issues', 'issues']] },
+    { label: 'Selling', items: [['/crm/cost-sheet', 'Cost sheet', 'costSheet'], ['/crm/inventory', 'Building and parking', 'inventory'], ['/presales', 'Private viewings', 'viewings'], ['/brochure', 'e-Brochure', 'brochure'], ['/experience', 'Accord experience', 'experience']] },
+    { label: 'Team', items: [['/people', 'Time', 'time', true], ['/people/team', 'Team', 'team'], ['/people/performance', 'Performance', 'performance'], ['/crm/analytics', 'Analytics', 'analytics'], ['/help', 'User guide', 'help']] },
   ],
   design: [
-    { label: 'Design', items: [['/', 'Overview', 'accord', true], ['/experience', 'Accord experience', 'experience'], ['/accord', 'Projects and BOQ', 'accord', true], ['/accord/residences', 'Residences', 'accord'], ['/presales/showcase', 'Design showcase', 'presales']] },
+    { label: 'Design', items: [['/', 'Overview', 'accord', true], ['/experience', 'Accord experience', 'experience'], ['/accord', 'Projects and BOQ', 'projects', true], ['/accord/residences', 'Residences', 'residences'], ['/presales/showcase', 'Design showcase', 'showcase']] },
     { label: 'Sourcing', items: [['/sourcing', 'Trips', 'sourcing', true], ['/sourcing/quotes', 'Quotes', 'sourcing'], ['/sourcing/compare', 'Compare', 'sourcing'], ['/sourcing/samples', 'Samples', 'sourcing']] },
-    { label: 'Team', items: [['/people', 'Time', 'people', true], ['/people/tasks', 'Tasks', 'people'], ['/help', 'User guide', 'help']] },
+    { label: 'Team', items: [['/people', 'Time', 'time', true], ['/people/tasks', 'Tasks', 'tasks'], ['/help', 'User guide', 'help']] },
   ],
   vendors: [
     { label: 'Vendors', items: [['/', 'Overview', 'vendors', true], ['/vendors', 'Vendor directory', 'vendors', true], ['/apply/vendor', 'Onboarding form', 'vendors']] },
     { label: 'Sourcing', items: [['/sourcing/quotes', 'Quotes', 'sourcing'], ['/sourcing/samples', 'Samples', 'sourcing']] },
-    { label: 'Team', items: [['/people', 'Time', 'people', true], ['/people/tasks', 'Tasks', 'people'], ['/help', 'User guide', 'help']] },
+    { label: 'Team', items: [['/people', 'Time', 'time', true], ['/people/tasks', 'Tasks', 'tasks'], ['/help', 'User guide', 'help']] },
   ],
 }
 const ADMIN = { label: 'Admin', items: [['/admin', 'Settings', 'admin', true], ['/admin/users', 'Users and access', 'admin'], ['/admin/data', 'Data and sync', 'admin'], ['/admin/cleanup', 'Data clean-up', 'admin']] }
@@ -45,7 +45,7 @@ export default function Layout() {
   const [ws, setWs, wsAll] = useWorkspace()
   const [menu, setMenu] = useState(false)
   const [theme, setT] = useState(document.documentElement.dataset.theme)
-  const groups = useMemo(() => [...(NAV[ws] || []), ...(user?.appRole === 'admin' ? [ADMIN] : [])].map((g) => ({ ...g, items: g.items.filter((i) => canOpen(user, i[2])) })).filter((g) => g.items.length), [ws, user])
+  const groups = useMemo(() => [...(NAV[ws] || []), ...(user?.appRole === 'admin' ? [ADMIN] : [])].map((g) => ({ ...g, items: g.items.filter((i) => canPage(user, i[2])) })).filter((g) => g.items.length), [ws, user])
   const toggleTheme = () => setT(setTheme(theme === 'light' ? 'dark' : 'light'))
   useEffect(() => { setMenu(false) }, [loc.pathname])
   // the menu is a drawer now (31 Oct): hidden until the menu button is pressed; Escape or a click outside closes it

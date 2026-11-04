@@ -1,7 +1,7 @@
 import React from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useStore } from './lib/store.jsx'
-import { canOpen } from './lib/perms.js'
+import { canPage } from './lib/perms.js'
 import Layout from './components/Layout.jsx'
 import Login from './pages/Login.jsx'
 import Home from './pages/Home.jsx'
@@ -36,7 +36,7 @@ import { AdminSettings, AdminUsers, AdminData } from './modules/admin/Admin.jsx'
 
 function Gate({ mod, children }) {
   const { user } = useStore()
-  if (!canOpen(user, mod)) return <div className="empty"><h3>Not part of your access</h3><p>Your role does not include this. Ask an admin if you need it.</p></div>
+  if (!canPage(user, mod)) return <div className="empty"><h3>Not part of your access</h3><p>Your role does not include this. Ask an admin if you need it.</p></div>
   return children
 }
 const G = (mod, el) => <Gate mod={mod}>{el}</Gate>
@@ -61,31 +61,31 @@ function Main() {
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="crm" element={G('crm', <CrmDashboard />)} />
-        <Route path="crm/leads" element={G('crm', <Leads />)} />
-        <Route path="crm/leads/:id" element={G('crm', <LeadDetail />)} />
-        <Route path="crm/clients" element={G('crm', <Clients />)} />
-        <Route path="crm/clients/:id" element={G('crm', <Client360 />)} />
-        <Route path="crm/interactions" element={G('crm', <Interactions />)} />
-        <Route path="crm/payments" element={G('crm', <Payments />)} />
-        <Route path="crm/payments/receipts" element={G('crm', <BulkReceipts />)} />
+        <Route path="crm/leads" element={G('leads', <Leads />)} />
+        <Route path="crm/leads/:id" element={G('leads', <LeadDetail />)} />
+        <Route path="crm/clients" element={G('clients', <Clients />)} />
+        <Route path="crm/clients/:id" element={G('clients', <Client360 />)} />
+        <Route path="crm/interactions" element={G('interactions', <Interactions />)} />
+        <Route path="crm/payments" element={G('payments', <Payments />)} />
+        <Route path="crm/payments/receipts" element={G('payments', <BulkReceipts />)} />
         <Route path="crm/analytics" element={G('analytics', <Analytics />)} />
         <Route path="help" element={G('help', <Help />)} />
-        <Route path="crm/payments/receipt/:id" element={G('crm', <Receipt />)} />
-        <Route path="crm/clients/:id/statement" element={G('crm', <PaymentSummary />)} />
-        <Route path="crm/cost-sheet" element={G('crm', <CostSheet />)} />
-        <Route path="crm/booking/:id" element={G('crm', <BookingForm />)} />
-        <Route path="crm/inventory" element={G('crm', <Inventory />)} />
-        <Route path="crm/documents" element={G('crm', <Documents />)} />
-        <Route path="crm/messages" element={G('crm', <Messages />)} />
-        <Route path="crm/issues" element={G('crm', <Issues />)} />
-        <Route path="people" element={G('people', <TimeTracker />)} />
+        <Route path="crm/payments/receipt/:id" element={G('payments', <Receipt />)} />
+        <Route path="crm/clients/:id/statement" element={G('clients', <PaymentSummary />)} />
+        <Route path="crm/cost-sheet" element={G('costSheet', <CostSheet />)} />
+        <Route path="crm/booking/:id" element={G('clients', <BookingForm />)} />
+        <Route path="crm/inventory" element={G('inventory', <Inventory />)} />
+        <Route path="crm/documents" element={G('documents', <Documents />)} />
+        <Route path="crm/messages" element={G('messages', <Messages />)} />
+        <Route path="crm/issues" element={G('issues', <Issues />)} />
+        <Route path="people" element={G('time', <TimeTracker />)} />
         <Route path="people/performance" element={G('performance', <Performance />)} />
-        <Route path="people/team" element={G('people', <Team />)} />
+        <Route path="people/team" element={G('team', <Team />)} />
         <Route path="experience" element={G('experience', <Experience />)} />
-        <Route path="people/tasks" element={G('people', <Tasks />)} />
-        <Route path="presales" element={G('presales', <Viewings />)} />
-        <Route path="presales/viewings/:id" element={G('presales', <ViewingDetail />)} />
-        <Route path="presales/showcase" element={G('presales', <Showcase />)} />
+        <Route path="people/tasks" element={G('tasks', <Tasks />)} />
+        <Route path="presales" element={G('viewings', <Viewings />)} />
+        <Route path="presales/viewings/:id" element={G('viewings', <ViewingDetail />)} />
+        <Route path="presales/showcase" element={G('showcase', <Showcase />)} />
         <Route path="vendors" element={G('vendors', <Vendors />)} />
         <Route path="vendors/:id" element={G('vendors', <VendorDetail />)} />
         <Route path="apply/vendor" element={<VendorApply />} />
@@ -94,9 +94,9 @@ function Main() {
         <Route path="sourcing/quotes" element={G('sourcing', <Quotes />)} />
         <Route path="sourcing/compare" element={G('sourcing', <Compare />)} />
         <Route path="sourcing/samples" element={G('sourcing', <Samples />)} />
-        <Route path="accord" element={G('accord', <Projects />)} />
-        <Route path="accord/residences" element={G('accord', <Residences />)} />
-        <Route path="accord/:id" element={G('accord', <ProjectDetail />)} />
+        <Route path="accord" element={G('projects', <Projects />)} />
+        <Route path="accord/residences" element={G('residences', <Residences />)} />
+        <Route path="accord/:id" element={G('projects', <ProjectDetail />)} />
         <Route path="admin" element={G('admin', <AdminSettings />)} />
         <Route path="admin/users" element={G('admin', <AdminUsers />)} />
         <Route path="admin/data" element={G('admin', <AdminData />)} />

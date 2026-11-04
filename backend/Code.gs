@@ -51,7 +51,7 @@ var ROUNDS = 1000;
 
 /* ───────────────────────── schema: tab columns (key, heading) ───────────────────────── */
 var SCHEMA = {
-  users: [['id','Member ID'],['name','Name'],['username','Username'],['team','Team'],['department','Department'],['employment','On roll / off roll'],['company','Company'],['designation','Designation'],['role','Responsibilities'],['appRole','Access role'],['reportsTo','Reports to'],['workspaces','Workspaces'],['phone','Phone'],['email','Email'],['shiftStart','Shift start'],['shiftEnd','Shift end'],['workDays','Work days'],['remoteAllowed','Remote allowed'],['active','Active'],['deviceLock','Device lock'],['devices','Approved devices'],['mustChange','Must change password'],['mfa','Authenticator'],['pwSalt','_salt'],['pwHash','_hash'],['totpSecret','_totp'],['totpPending','_totp pending'],['totpLast','_totp last'],['failed','_failed'],['lockedUntil','_locked until']],
+  users: [['id','Member ID'],['name','Name'],['username','Username'],['team','Team'],['department','Department'],['employment','On roll / off roll'],['company','Company'],['designation','Designation'],['extraAccess','Extra access (ticked by admin)'],['role','Responsibilities'],['appRole','Access role'],['reportsTo','Reports to'],['workspaces','Workspaces'],['phone','Phone'],['email','Email'],['shiftStart','Shift start'],['shiftEnd','Shift end'],['workDays','Work days'],['remoteAllowed','Remote allowed'],['active','Active'],['deviceLock','Device lock'],['devices','Approved devices'],['mustChange','Must change password'],['mfa','Authenticator'],['pwSalt','_salt'],['pwHash','_hash'],['totpSecret','_totp'],['totpPending','_totp pending'],['totpLast','_totp last'],['failed','_failed'],['lockedUntil','_locked until']],
   clients: [['bookingId','Booking ID'],['clientId','Client ID'],['unit','Unit No.'],['status','Booking status'],['category','Customer category'],['title','Title'],['name','Primary applicant'],['coapp','Co-applicant(s)'],['buyerType','Buyer type'],['phone','Mobile (primary)'],['phone2','Mobile (alternate)'],['whatsapp','WhatsApp'],['email','Email'],['address','Correspondence address'],['city','City'],['country','Country'],['residency','Residential status'],['pan','PAN'],['aadhaar4','Aadhaar (last 4)'],['dob','Date of birth'],['language','Preferred language'],['contactPref','Preferred contact'],['purpose','Buying purpose'],['occupant','Who will live there'],['funding','Funding mode'],['loanBank','Lender'],['loanAmount','Loan amount (₹)'],['loanStatus','Loan status'],['occupation','Occupation'],['employer','Employer / business'],['income','Income band'],['marital','Marital status'],['familyProfile','Family profile'],['decisionMaker','Key decision-maker'],['source','Lead source'],['leadId','Lead ID'],['owner','Relationship owner'],['sourcedBy','Sourced by'],['closedBy','Closed by'],['bookingDate','Booking date'],['tc','Total consideration (₹)'],['adjustment','Adjustment (₹)'],['adjType','Adjustment type'],['plan','Payment plan'],['agreement','Agreement for sale'],['parkingEntitlement','Car parks entitled'],['remarks','Remarks'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   leads: [['id','Lead ID'],['date','Date captured'],['title','Title'],['name','Name'],['phone','Mobile'],['phone2','Other numbers'],['email','Email'],['city','City'],['country','Country'],['residency','Residential status'],['source','Lead source'],['partner','Channel partner'],['referredBy','Referred by'],['config','Configuration interest'],['budget','Budget band'],['purpose','Purpose'],['timeline','Buying timeline'],['owner','Assigned to'],['coOwners','Also responsible'],['stage','Stage'],['temperature','Temperature'],['svDone','Site visit done?'],['svDate','Site visit date'],['lostReason','Lost / dormant reason'],['clientId','Converted to Client ID'],['notes','Notes'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   interactions: [['id','Log ID'],['date','Date'],['time','Time'],['type','Record type'],['recordId','Client or Lead ID'],['mode','Mode'],['purpose','Purpose'],['by','Team member'],['summary','Summary of discussion'],['outcome','Outcome'],['nextAction','Next action'],['nextDate','Next action date'],['nextTime','Next action time'],['nextOwners','Follow-up owners'],['status','Status'],['updatedAt','Updated at']],
@@ -83,8 +83,14 @@ var WRITE = {
   clientForms:['admin','senior','sales'], files:['admin','senior','sales','finance','design','sourcing'], leadInbox:['admin','senior','sales'], tasks:['*'], notifications:['*'], accordSessions:['*'], attendance:['admin'], timeEvents:[], audit:[]
 };
 var MONEY_FIELDS = ['tc','adjustment','adjType','adjReason','receivedPerCollections','outstandingPerCollections','loanAmount','rate','total'];
-var seesMoney_ = function (u) { return ['admin','senior','finance'].indexOf(u.appRole) >= 0; };
-var seesAll_ = function (u) { return ['admin','senior','finance','viewer'].indexOf(u.appRole) >= 0; };
+// 4 Nov: extra access an admin ticks for one person (Users and access › Pages and permissions). Same list as perms.js.
+var GRANTS = { leads: ['leads','leadInbox','interactions'], clients: [], interactions: ['interactions'], payments: [], documents: ['documents','files'], messages: ['messages'],
+  issues: ['issues'], costSheet: ['costSheets'], inventory: [], viewings: ['viewings'], brochure: [], experience: [], time: [], tasks: [], team: [], performance: [],
+  analyticsLeads: [], analyticsFinance: [], analyticsOverall: [], projects: ['projects','rooms','packages','boq'], residences: [], showcase: [], sourcing: ['trips','stops','quotes','samples'],
+  vendors: ['vendors'], seeAll: [], money: [], recordPayments: ['payments','demandCalls'], construction: ['clpStages'], templates: ['templates'], assign: [] };
+function extras_(u) { var x = u.extraAccess; if (typeof x === 'string') { try { x = JSON.parse(x); } catch (e) { x = x.split(/[,\s]+/); } } return (x || []).filter(function (k) { return GRANTS.hasOwnProperty(k); }); }
+var seesMoney_ = function (u) { var x = extras_(u); return ['admin','senior','finance'].indexOf(u.appRole) >= 0 || x.indexOf('money') >= 0 || x.indexOf('recordPayments') >= 0; };
+var seesAll_ = function (u) { return ['admin','senior','finance','viewer'].indexOf(u.appRole) >= 0 || extras_(u).indexOf('seeAll') >= 0; };
 
 /* ───────────────────────── entry ───────────────────────── */
 function doGet() { return out_({ ok: true, app: 'Accord', version: VERSION, hint: 'POST JSON to use the API' }); }
@@ -192,7 +198,7 @@ function sha_(s) { return hex_(Utilities.computeDigest(Utilities.DigestAlgorithm
 function hash_(salt, pw) { var h = sha_(salt + ':' + pw); for (var i = 1; i < ROUNDS; i++) h = sha_(h + salt); return h; }
 function salt_() { return Utilities.getUuid().replace(/-/g, ''); }
 function strong_(pw) { return typeof pw === 'string' && pw.length >= 8 && /[A-Za-z]/.test(pw) && /\d/.test(pw); }
-function publicUser_(u) { return { id: u.id, name: u.name, username: u.username, appRole: u.appRole, workspaces: u.workspaces, designation: u.designation, email: u.email, mustChange: u.mustChange === 'Yes', mfa: !!u.totpSecret }; }
+function publicUser_(u) { return { id: u.id, name: u.name, username: u.username, appRole: u.appRole, workspaces: u.workspaces, designation: u.designation, email: u.email, extraAccess: extras_(u), mustChange: u.mustChange === 'Yes', mfa: !!u.totpSecret }; }
 function authMode_() { var s = read_('settings')[0] || {}; return s.authMode === 'password' ? 'password' : 'authenticator'; }
 
 /* TOTP (RFC 6238): 30-second steps, 6 digits, HMAC-SHA1, the format every authenticator app reads. */
@@ -363,10 +369,10 @@ function pull_(u) {
   var DIR = ['id','bookingId','clientId','unit','title','name','status','owner','category'];
   db.clients = db.clients.map(function (c) {
     var st = payState_(c, recv[c.unit] || 0, s, db.demandCalls), lp = last[c.unit] || '';
-    if (mine_(c)) { var o = strip_(c, MONEY_FIELDS); o.payState = st; o.lastPaymentDate = lp; o.mine = true; return o; }
+    if (mine_(c)) { var o = seesMoney_(u) ? JSON.parse(JSON.stringify(c)) : strip_(c, MONEY_FIELDS); o.payState = st; o.lastPaymentDate = lp; o.mine = true; return o; }
     var d = {}; DIR.forEach(function (k) { if (c[k] !== undefined) d[k] = c[k]; }); d.directoryOnly = true; return d;
   });
-  db.payments = db.payments.filter(function (p) { return mineUnits[String(p.unit)]; }).map(function (p) { return { id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, towards: p.towards, counted: p.counted }; });
+  db.payments = db.payments.filter(function (p) { return mineUnits[String(p.unit)]; }).map(function (p) { return seesMoney_(u) ? p : { id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, towards: p.towards, counted: p.counted }; });
   var mineL = {}; db.leads = db.leads.filter(function (l) { if (mine_(l)) { mineL[l.id] = 1; return true; } return false; });
   db.interactions = db.interactions.filter(function (i) { return i.by === me || (i.nextOwners || []).indexOf(me) >= 0 || i.nextOwner === me; });
   db.documents = db.documents.filter(function (d) { return mineB[d.bookingId] || mineB[d.id]; });
@@ -388,7 +394,7 @@ function pull_(u) {
 }
 
 /* ───────────────────────── writes ───────────────────────── */
-function can_(u, coll) { var w = WRITE[coll] || []; return u.appRole === 'admin' || w.indexOf('*') >= 0 || w.indexOf(u.appRole) >= 0; }
+function can_(u, coll) { var w = WRITE[coll] || []; return u.appRole === 'admin' || w.indexOf('*') >= 0 || w.indexOf(u.appRole) >= 0 || extras_(u).some(function (k) { return GRANTS[k].indexOf(coll) >= 0; }); }
 function push_(u, ops) {
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {

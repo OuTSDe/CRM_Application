@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useStore } from '../../lib/store.jsx'
-import { ROLES, ROLE_NOTES, WORKSPACES, workspacesOf } from '../../lib/perms.js'
+import { ROLES, ROLE_NOTES, WORKSPACES, workspacesOf, ACCESS, byRole, extrasOf } from '../../lib/perms.js'
 import RecordForm from '../../components/RecordForm.jsx'
 import { Page, Card, Button, Badge, Field, Input, Textarea, Select, Modal, Confirm, Chips } from '../../components/ui.jsx'
 import DataTable from '../../components/DataTable.jsx'
@@ -123,6 +123,28 @@ export function AdminSettings() {
   )
 }
 
+// 4 Nov: what a person can open. Ticks greyed out come with their role; the others are extra access an admin
+// gives this one person. Saved on the user (extraAccess) and applied on the server too.
+function AccessPicker({ u, onChange }) {
+  const extra = extrasOf(u)
+  const isAdminRole = u.appRole === 'admin'
+  const toggle = (k) => onChange(extra.includes(k) ? extra.filter((x) => x !== k) : [...extra, k])
+  const added = extra.filter((k) => !byRole(u, k))
+  return <div className="sheet" style={{ marginTop: 16 }}>
+    <div className="sheet-band"><span className="n">5</span><h4>Pages and permissions</h4><span className="note2">{isAdminRole ? 'Admins have everything' : added.length ? `${added.length} extra on top of the ${ROLES[u.appRole] || 'role'} defaults` : `${ROLES[u.appRole] || 'Role'} defaults only`}</span></div>
+    <div style={{ padding: '12px 18px' }}>
+      {!isAdminRole && <p className="small muted" style={{ marginTop: 0 }}>Greyed ticks come with the role and change when the role changes. Tick anything else to give this person extra access; untick to take it away. Only admins can change this.</p>}
+      <div className="access-grid">{ACCESS.map((g) => <fieldset key={g.group} className="access-group"><legend>{g.group}</legend>
+        {g.items.map((x) => { const def = byRole(u, x.key), on = def || extra.includes(x.key)
+          return <label key={x.key} className={'access-item' + (def ? ' def' : on ? ' extra' : '')}>
+            <input type="checkbox" checked={on} disabled={def || isAdminRole} onChange={() => toggle(x.key)} />
+            <span>{x.label}</span>{def ? <span className="small muted"> · role</span> : on ? <span className="small"> · extra</span> : null}</label> })}
+      </fieldset>)}</div>
+      {added.some((k) => ['clients', 'documents', 'payments', 'leads'].includes(k)) && !byRole(u, 'seeAll') && !extra.includes('seeAll') && <p className="note info small">These pages show only the clients and leads this person is responsible for. Tick <b>See every client and lead</b> to show all of them.</p>}
+    </div>
+  </div>
+}
+
 export function AdminUsers() {
   const { raw, upsert, nextId, notify, setUserPassword, approveDevice, releaseDevice, online } = useStore()
   const [edit, setEdit] = useState(null)
@@ -166,11 +188,13 @@ export function AdminUsers() {
           { key: 'shift', label: 'Shift', render: (u) => <span className="mono small">{u.shiftStart || '–'}–{u.shiftEnd || '–'}</span> },
           { key: 'mfa', label: 'Sign-in', render: (u) => u.mfa === 'Set' || u.totpSecret ? <Badge tone="good">App linked</Badge> : u.pwHash || u.hasPassword ? <Badge tone="warn">Temporary password</Badge> : <Badge tone="warn">Not set</Badge> },
           { key: 'dev', label: 'Devices', render: (u) => { const l = (u.devices || []).filter((x) => x.approved); return <span className="small">{l.length ? l.map((x) => (x.kind === 'phone' ? 'Phone' : 'Computer')).join(' + ') : '–'}{(u.devices || []).some((x) => !x.approved) ? ' · waiting' : ''}</span> } },
+          { key: 'extra', label: 'Extra access', sortValue: (u) => extrasOf(u).length, render: (u) => { const x = extrasOf(u).filter((k) => !byRole(u, k)); return x.length ? <Badge tone="purple">+{x.length}</Badge> : <span className="small muted">Role only</span> } },
           { key: 'active', label: 'Active', render: (u) => <Badge>{u.active}</Badge> }]} />
       <Card title="What each role can do"><table className="table dense"><tbody>{Object.entries(ROLE_NOTES).map(([k, v]) => <tr key={k}><td style={{ width: 160 }}><b>{ROLES[k]}</b></td><td>{v}</td></tr>)}</tbody></table></Card>
       <Modal open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? edit.name : 'New member'} wide footer={<><Button onClick={() => setEdit(null)}>Cancel</Button><Button variant="primary" onClick={save}>Save</Button></>}>
         {edit && <><RecordForm sheet cols={3} fields={F} value={edit} onChange={setEdit} />
-          {edit.id && <div className="sheet" style={{ marginTop: 16 }}><div className="sheet-band"><span className="n">5</span><h4>Sign-in and devices</h4><span className="note2">{edit.mfa === 'Set' || edit.totpSecret ? 'Authenticator app linked' : 'Authenticator not linked yet'} · {online ? 'on the server' : 'on this device only'}</span></div>
+          <AccessPicker u={edit} onChange={(extraAccess) => setEdit({ ...edit, extraAccess })} />
+          {edit.id && <div className="sheet" style={{ marginTop: 16 }}><div className="sheet-band"><span className="n">6</span><h4>Sign-in and devices</h4><span className="note2">{edit.mfa === 'Set' || edit.totpSecret ? 'Authenticator app linked' : 'Authenticator not linked yet'} · {online ? 'on the server' : 'on this device only'}</span></div>
             <div className="row" style={{ padding: 18 }}><input className="input" style={{ maxWidth: 280 }} type="text" autoComplete="off" placeholder="Temporary password" value={pw} onChange={(e) => setPw(e.target.value)} aria-label="Temporary password" />
               <Button onClick={temp} disabled={pw.length < 8}>Reset sign-in</Button><span className="small muted">New phone or lost phone: set a temporary password (8+ characters, a letter and a number). It unlinks the old app; they use the password once and link the app again.</span></div>
             {(edit.devices || []).length > 0 && <div style={{ padding: '0 18px 18px' }}>{edit.devices.map((dv) => <DevRow key={dv.id} u={edit} dv={dv} />)}</div>}

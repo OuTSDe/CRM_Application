@@ -195,6 +195,13 @@ My Drive / Accord_CRM_Application / Accord_Data /
 - **Audit.** Every write is recorded in the audit tab: who, when, what and which record.
 - **Backups.** `nightlyBackup` copies the whole sheet to `Accord_Data / Backups` at 23:00 and keeps the last 30 copies. It then writes `Accord_Data / Exports / Accord Database.xlsx`, so the data can always be opened in Excel.
 
+## Extra access (4 Nov)
+
+Admins tick extra pages and powers for one person in Users and access. They are saved on the user as `extraAccess`.
+- `GRANTS` in `Code.gs` lists what each tick lets the person write. It is the same list as `ACCESS` in `perms.js`.
+- `seeAll` gives the full data on pull, the same as senior sales.
+- `money` or `recordPayments` keeps the amounts on the person's own clients and payments.
+
 ## Lead inbox (2 Nov)
 
 Other tools post enquiries with `{"action":"inboundLead","key":"<inbound key>","source":"Website","lead":{"name","phone","email","city","config","message"}}` (or `"leads":[…]`, up to 50).

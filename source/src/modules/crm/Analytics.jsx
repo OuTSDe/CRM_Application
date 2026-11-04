@@ -7,6 +7,7 @@ import React, { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
 import { useCrm, BOOKED } from '../../lib/calc.js'
+import { canPage } from '../../lib/perms.js'
 import { Page, Card, Grid, Stat, Seg } from '../../components/ui.jsx'
 import { today, addDays, lakh, inr } from '../../lib/format.js'
 
@@ -25,9 +26,9 @@ function Bars({ rows, onPick, total }) {
 }
 
 export const ANALYTICS_TABS = [
-  { value: 'leads', label: 'Leads', roles: ['admin', 'senior', 'sales'] },
-  { value: 'finance', label: 'Finance', roles: ['admin', 'finance'] },
-  { value: 'overall', label: 'Overall', roles: ['admin'] },
+  { value: 'leads', label: 'Leads', key: 'analyticsLeads' },
+  { value: 'finance', label: 'Finance', key: 'analyticsFinance' },
+  { value: 'overall', label: 'Overall', key: 'analyticsOverall' },
 ]
 const RANGES = [{ value: '30', label: '30 days' }, { value: '90', label: '90 days' }, { value: '365', label: '1 year' }, { value: 'all', label: 'All time' }]
 const SUB = { leads: 'Where enquiries come from, who is handling them, how far they get and why they are lost.', finance: 'Money in, money due and how old it is, by month, mode and client.', overall: 'The whole project on one page: sales, collections and the pipeline behind them.' }
@@ -35,7 +36,7 @@ const SUB = { leads: 'Where enquiries come from, who is handling them, how far t
 export default function Analytics() {
   const { user } = useStore()
   const [qs, setQs] = useSearchParams()
-  const tabs = ANALYTICS_TABS.filter((x) => x.roles.includes(user.appRole))
+  const tabs = ANALYTICS_TABS.filter((x) => canPage(user, x.key))   // role default or ticked by an admin
   const tab = tabs.find((x) => x.value === qs.get('tab'))?.value || tabs[0]?.value
   const [range, setRange] = useState('90')
   if (!tabs.length) return <Page title="Analytics" back="/" backLabel="Dashboard"><div className="empty"><h3>Not part of your access</h3><p>Analytics is for the sales team, finance and admins.</p></div></Page>
