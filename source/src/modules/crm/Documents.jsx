@@ -10,6 +10,8 @@ import { pct, today, d } from '../../lib/format.js'
 import { CLIENT_FOLDER, clientFolder, fileName, OTHER, PROJECT_CATS, slug } from '../../lib/folders.js'
 import { Button, Field, Input, Seg, Modal } from '../../components/ui.jsx'
 import { checkCard } from '../../lib/kyc.js'
+import FileList, { useFileViewer } from '../../components/FileList.jsx'
+import { Confirm } from '../../components/ui.jsx'
 
 export default function Documents() {
   const { db, user, upsert, upload, backend, notify } = useStore()
@@ -26,6 +28,9 @@ export default function Documents() {
   const [other, setOther] = useState('')
   const filesFor = (key) => (db.files || []).filter((f) => f.recordId === b && f.doc === key)
   const [kycAsk, setKycAsk] = useState(null)
+  const [openRow, setOpenRow] = useState('')
+  const viewer = useFileViewer()
+  const label = Object.fromEntries(META.docTypes.map((t) => [t.key, t.label]))
   // 2 Nov: PAN and Aadhaar photos are read before filing; a wrong card or a name that does not match is flagged first.
   const onFile = async (t, f, checked) => {
     if (!f) return
@@ -66,19 +71,25 @@ export default function Documents() {
         : <div className="note info small">Uploads are renamed <b className="mono">{fileName(c, 'document', today())}</b> and filed in <b className="mono">Accord_Data / {clientFolder(c, '…')}</b> by category. On a phone, <b>Camera</b> photographs the paper directly.</div>}
       <div className="grid g2">{Object.entries(groups).map(([g, ts]) => <Card key={g} title={g}>
         {ts.map((t) => { const v = doc.items?.[t.key] || 'Pending'; const url = doc.files?.[t.key]; const more = filesFor(t.key)
-          return <div key={t.key} className="check-row doc-row" style={{ alignItems: 'center' }}><span className="lbl" style={{ flex: 1 }}>{t.label}{url && !more.length && <> · <a href={url} target="_blank" rel="noreferrer">open</a></>}
-              {more.length > 0 && <span className="small"> · {more.map((f, i) => <a key={f.id} href={f.url} target="_blank" rel="noreferrer" title={f.name + ' · ' + f.by}>{i ? ', ' : ''}{more.length > 1 ? 'file ' + (i + 1) : 'open'}</a>)}</span>}{more[0]?.kyc && <span className={"small " + (/^Checked/.test(more[0].kyc) ? "muted" : "missing")}> · {more[0].kyc}{more[0].kycNumber ? " " + more[0].kycNumber : ""}</span>}</span>
+          return <div key={t.key} className="check-row doc-row" style={{ alignItems: 'center' }}><span className="lbl" style={{ flex: 1 }}>{t.label}{url && !more.length && <> · <a href={url} target="_blank" rel="noreferrer">open</a></>}{more[0]?.kyc && <span className={"small " + (/^Checked/.test(more[0].kyc) ? "muted" : "missing")}> · {more[0].kyc}{more[0].kycNumber ? " " + more[0].kycNumber : ""}</span>}</span>
             <span className="row gap-s">
               <Select options={META.lists['Document status']} value={v} disabled={!can} onChange={(e) => setItem(t.key, e.target.value)} placeholder="Pending" style={{ minHeight: 30, padding: '3px 8px', width: 140 }} />
+              {more.length > 0 && <Button size="sm" variant={openRow === t.key ? 'primary' : undefined} onClick={() => setOpenRow(openRow === t.key ? '' : t.key)} title="See, check or delete what was uploaded">Files ({more.length})</Button>}
               {can && backend && <><label className="btn btn-sm">{busy === t.key ? '…' : 'Upload'}<input type="file" hidden accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => onFile(t, e.target.files[0])} /></label>
                 <label className="btn btn-sm only-touch">Camera<input type="file" hidden accept="image/*" capture="environment" onChange={(e) => onFile(t, e.target.files[0])} /></label></>}
-            </span></div> })}
+            </span>
+            {openRow === t.key && <div className="doc-files"><FileList files={more} onView={viewer.open} /></div>}</div> })}
       </Card>)}
       {can && backend && <Card title="Any other document">
         <div className="row"><input className="input" style={{ flex: 1, minWidth: 200 }} value={other} onChange={(e) => setOther(e.target.value)} placeholder="What is it? e.g. NOC from society" aria-label="Document name" />
           <label className={'btn' + (!other.trim() ? ' disabled' : '')}>{busy === 'other' ? 'Uploading…' : 'Upload'}<input type="file" hidden disabled={!other.trim()} onChange={(e) => onOther(e.target.files[0])} /></label></div>
-        {(db.files || []).filter((f) => f.recordId === b && String(f.doc).startsWith('other:')).map((f) => <div key={f.id} className="check-row"><a href={f.url} target="_blank" rel="noreferrer">{f.name}</a><span className="small muted">{f.by} · {d(String(f.at).slice(0, 10))}</span></div>)}
+        <FileList files={(db.files || []).filter((f) => f.recordId === b && String(f.doc).startsWith('other:'))} onView={viewer.open} empty="Nothing uploaded here yet." />
       </Card>}</div>
+      <Card title={`All uploaded files for ${c.name} (${(db.files || []).filter((f) => f.recordId === b).length})`}>
+        <p className="small muted" style={{ marginTop: 0 }}>Everything uploaded for this booking, newest first. Press View to check a file. A wrong upload can be deleted by the person who uploaded it, or an admin, and then uploaded again.</p>
+        <FileList showDoc files={(db.files || []).filter((f) => f.recordId === b).map((f) => ({ ...f, docLabel: label[f.doc] || String(f.doc || '').replace(/^other:/, 'Other: ') }))} onView={viewer.open} />
+      </Card>
+      {viewer.modal}
       <Modal open={!!kycAsk} onClose={() => setKycAsk(null)} title="Check this card" footer={<><Button onClick={() => setKycAsk(null)}>Choose another file</Button><Button variant="primary" onClick={() => { const k = kycAsk; setKycAsk(null); onFile(k.t, k.f, { ...k.res, ok: false }) }}>Upload anyway</Button></>}>
         {kycAsk && <><div className="kyc-box kyc-warn">{kycAsk.res.note}</div>
           <p className="small muted">For {kycAsk.t.label}. The card is read on this device only; Aadhaar numbers are kept as the last 4 digits. If the photo is right but blurred, upload it anyway and mark it Verified after checking by eye.</p></>}
@@ -99,6 +110,8 @@ function ProjectDocs({ tab, setTab }) {
   const [label, setLabel] = useState('')
   const [busy, setBusy] = useState(false)
   const list = (db.files || []).filter((f) => f.kind === 'project')
+  const viewer = useFileViewer()
+  const { fileDelete } = useStore()
   const go = async (f) => {
     if (!f) return
     if (!label.trim()) return notify('Name the document first', 'bad')
@@ -118,8 +131,10 @@ function ProjectDocs({ tab, setTab }) {
           <label className="btn only-touch">Camera<input type="file" hidden accept="image/*" capture="environment" disabled={!label.trim()} onChange={(e) => go(e.target.files[0])} /></label></div>
       </Card>}
       <DataTable rows={list} initialSort={{ key: 'at', dir: 'desc' }} searchKeys={['doc', 'name', 'by', 'category']} filters={[{ key: 'category', label: 'Category' }]} empty="No project documents yet."
-        columns={[{ key: 'doc', label: 'Document', render: (f) => <a href={f.url} target="_blank" rel="noreferrer"><b>{f.doc}</b></a> }, { key: 'category', label: 'Category' }, { key: 'name', label: 'File', render: (f) => <span className="small mono">{f.name}</span> },
-          { key: 'by', label: 'By' }, { key: 'at', label: 'Uploaded', render: (f) => d(String(f.at).slice(0, 10)) }]} />
+        columns={[{ key: 'doc', label: 'Document', render: (f) => <button type="button" className="linklike" onClick={() => viewer.open(f)}><b>{f.doc}</b></button> }, { key: 'category', label: 'Category' }, { key: 'name', label: 'File', render: (f) => <span className="small mono">{f.name}</span> },
+          { key: 'by', label: 'By' }, { key: 'at', label: 'Uploaded', render: (f) => d(String(f.at).slice(0, 10)) },
+          { key: 'act', label: '', sort: false, render: (f) => <span className="row gap-s"><Button size="sm" onClick={() => viewer.open(f)}>View</Button>{(user.appRole === 'admin' || f.by === user.name) && <Confirm size="sm" label="Delete this file?" onConfirm={async () => { try { await fileDelete(f.id); notify(f.name + ' deleted') } catch (e) { notify('Not deleted: ' + e.message, 'bad') } }}>Delete</Confirm>}</span> }]} />
+      {viewer.modal}
     </Page>
   )
 }

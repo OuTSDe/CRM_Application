@@ -195,6 +195,17 @@ My Drive / Accord_CRM_Application / Accord_Data /
 - **Audit.** Every write is recorded in the audit tab: who, when, what and which record.
 - **Backups.** `nightlyBackup` copies the whole sheet to `Accord_Data / Backups` at 23:00 and keeps the last 30 copies. It then writes `Accord_Data / Exports / Accord Database.xlsx`, so the data can always be opened in Excel.
 
+## Viewing and deleting files (4 Nov)
+
+- **`fileGet`** returns a file's content so Accord can show it in place.
+  - Allowed: anyone who sees all clients, the uploader, and the people responsible for that client or lead.
+  - Project documents can be viewed by everyone.
+  - Files over 30 MB return a Drive link instead.
+- **`fileDelete`**: only the uploader or an admin.
+  - The Drive file goes to the bin, and its row is removed from the `files` tab.
+  - The checklist line points to the next newest file. If none is left, a *Received* line goes back to *Pending*.
+  - The deletion is written to the audit log.
+
 ## Extra access (4 Nov)
 
 Admins tick extra pages and powers for one person in Users and access. They are saved on the user as `extraAccess`.

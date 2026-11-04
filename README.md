@@ -227,6 +227,13 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
   - New views: **Missing details** and **No follow-up set**. The dashboard shows how many open leads have no follow-up.
   - **Paste an enquiry**: paste a WhatsApp or 99acres message and Accord fills in the new lead.
   - **Lead inbox**: other tools (website form, WhatsApp tool, 99acres reader, a chatbot) can post enquiries to Accord. They wait in Leads › Inbox to be accepted or rejected. The address and key are in Settings › Lead inbox.
+- **Backend version check** (4 Nov). If the Google backend is older than the site, admins see a banner at the top until the new `Code.gs` is deployed as a new version. A client someone cannot open now says why, and what to ask an admin for.
+- **Check and delete uploads** (4 Nov).
+  - On a client's Documents page, a line that has uploads shows **Files (n)**. Open it to see each file, who uploaded it and when.
+  - **View** shows the file inside Accord: photos and PDFs in place, other types as a download. Nobody needs access to the OuTSDe Drive.
+  - **All uploaded files** at the bottom lists everything for that booking, newest first.
+  - **Delete** is for the person who uploaded the file, and for admins. The file goes to the Drive bin, where it can be recovered for 30 days. If it was the line's only file, the line goes back to *Pending*. Then upload the right one.
+  - Project documents have View and Delete too.
 - **Extra access per person** (4 Nov). Users and access › open a person › **Pages and permissions**.
   - Every page and power is listed with a tick box, in four groups: Sales, Team, Design and vendors, and Extra powers.
   - Ticks that come with the person's role are greyed out. Tick anything else to give that one person extra access; untick to take it back. Only admins can do this.

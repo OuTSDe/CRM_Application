@@ -29,6 +29,7 @@ const ALL = [
   { id: 'clients', title: 'Clients, documents and cost sheets', roles: ['admin', 'senior', 'sales'], items: [
     'Client 360 has everything about a booking: details, payments status, papers, history and messages.',
     'Documents: upload each paper against its line. Files are renamed and filed in the client\'s folder in the OuTSDe Drive. PAN and Aadhaar photos are read first; a wrong card or a different name is flagged before upload. Aadhaar numbers are kept as the last 4 digits only.',
+    'Uploaded the wrong file? Press Files (n) on that line, or look under All uploaded files at the bottom. View shows the file; Delete removes it (only the person who uploaded it, or an admin). Then upload the right one.',
     'Cost sheet: pick a residence that is free. Booked, on-hold and to-verify residences cannot be offered. Covered car parks come with the type; extra car parks are priced separately.',
     'Seniors and admins can round the total to a clean figure; the rounding adjustment is shown on the sheet.',
     'Send the cost sheet by WhatsApp or e-mail from the sheet itself. Upload the agreed cost sheet against the client when it is signed.'] },

@@ -474,3 +474,16 @@ body { overscroll-behavior-y: none }
 .access-item.extra span:first-of-type { font-weight: 600; }
 .access-item input { width: 16px; height: 16px; accent-color: var(--accent); }
 .copy-access { padding: 10px 12px; margin-bottom: 12px; border: 1px dashed var(--line); border-radius: 8px; background: var(--bg3); }
+
+/* 4 Nov: uploaded files */
+.doc-row { flex-wrap: wrap; }
+.doc-files { flex-basis: 100%; padding: 6px 0 4px 12px; border-left: 2px solid var(--line); margin: 4px 0 2px; }
+.file-list { display: flex; flex-direction: column; }
+.file-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); }
+.file-row:first-child { border-top: 0; }
+.file-ico { font: 600 9.5px var(--mono); letter-spacing: .06em; padding: 4px 5px; border: 1px solid var(--line); border-radius: 4px; color: var(--fg3); min-width: 30px; text-align: center; }
+.file-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.file-meta .linklike, .linklike { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-align: left; font: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.linklike:hover { text-decoration: underline; }
+.file-view img { max-width: 100%; max-height: 70vh; display: block; margin: 0 auto; border-radius: 6px; }
+.file-view iframe { width: 100%; height: 70vh; border: 1px solid var(--line); border-radius: 6px; background: #fff; }

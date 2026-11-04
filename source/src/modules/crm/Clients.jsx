@@ -81,7 +81,7 @@ export function Clients() {
       </div>
       {tab === 'mine' && !mine.length && <div className="note info">No clients have you as relationship owner yet. {all ? 'Assign owners from each client\'s Edit form, or use the "No relationship owner" view under Sort and filter.' : 'Ask Cyril or an admin to assign your clients.'}</div>}
       <DataTable key={tab} rows={rows} initialSort={{ key: 'unit', dir: 'asc' }} searchKeys={['name', 'coapp', 'clientId', 'bookingId', 'phone', 'phone2', 'email', (c) => String(c.unit)]}
-        onRowClick={(c) => (directory && !c.mine ? null : nav('/crm/clients/' + c.id))} views={views} defaultView={views ? 'live' : undefined}
+        onRowClick={(c) => nav('/crm/clients/' + c.id)} views={views} defaultView={views ? 'live' : undefined}
         filters={directory ? [{ key: 'status', label: 'Status' }, { key: 'owner', label: 'Owner' }] : [{ key: 'status', label: 'Status' }, { key: 'config', label: 'Type' }, { key: 'funding', label: 'Funding' }, ...(money ? [{ key: 'age', label: 'Ageing' }] : [{ key: 'payState', label: 'Payment' }]), { key: 'agreement', label: 'Agreement' }, { key: 'owner', label: 'Owner' }]}
         columns={cols} />
     </Page>
@@ -98,7 +98,12 @@ export function Client360() {
   const [log, setLog] = useState(false)
   const [pay, setPay] = useState(false)
   if (!c) return <Page title="Client not found" back="/crm/clients" backLabel="Client 360" />
-  if (c.directoryOnly) return <Page title={c.name} back="/crm/clients" backLabel="Client 360" subtitle={`Residence ${c.unit} · ${c.status}`}><div className="note info">{c.owner ? `${c.owner} looks after this client.` : 'No relationship owner yet.'} Details, history and payments stay with the relationship owner.</div></Page>
+  // 4 Nov: say why the details are hidden and what to do about it
+  if (c.directoryOnly) return <Page title={c.name} back="/crm/clients" backLabel="Client 360" subtitle={`Residence ${c.unit} · ${c.status}`}>
+    <div className="note info">{c.owner ? `${c.owner} looks after this client.` : 'No relationship owner yet.'} Details, history and payments are shown to the people responsible for this client.</div>
+    {seesAll(user) ? <div className="note warn">An admin has given you access to every client, but the Google backend has not been updated yet, so it still sends only the name and residence. Ask an admin to paste the new backend/Code.gs into Apps Script and deploy a new version. Then reload Accord.</div>
+      : <div className="note">To open this client, ask an admin to make you the <b>Relationship owner</b> or add you under <b>Also responsible</b>. Or ask them to tick <b>See and edit every client and lead</b> for you in Users and access.</div>}
+  </Page>
   const raw = db.clients.find((x) => x.id === c.id)
   const money = seesMoney(user)
   const team = db.users.filter((u) => ['admin', 'senior', 'sales'].includes(u.appRole) && u.active !== 'No').map((u) => u.name)

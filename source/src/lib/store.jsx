@@ -15,6 +15,9 @@ export const EXP_SESSIONS = 'accord.experience.sessions'   // written by the Acc
 export const EXP_UNITS = 'accord.units.status'             // read by the Accord experience bridge
 const Ctx = createContext(null)
 // The backend address is published with the site (accord.config.js), so every device connects to the same Drive database.
+// 4 Nov: the backend version this site needs (backend/Code.gs VERSION). An older one means Code.gs was not redeployed.
+export const NEEDS_BACKEND = '3.4.0'
+const verLess = (a, b) => { const x = String(a).match(/\d+/g)?.map(Number), y = String(b).split('.').map(Number); if (!x) return true; for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0) } return false }
 const SITE_BACKEND = (typeof window !== 'undefined' && window.ACCORD_CONFIG?.backendUrl) || ''
 const uid = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 
@@ -99,11 +102,13 @@ export function StoreProvider({ children }) {
       setSync({ state: 'synced', at: new Date().toISOString(), error: r.refused?.length ? 'Not allowed: ' + [...new Set(r.refused)].join(', ') : null })
     } catch (e) { setSync({ state: 'error', at: null, error: e.message }); if (/expired|signed in/i.test(e.message)) logout() }
   }, [online, session, call]) // eslint-disable-line
+  const [serverVersion, setServerVersion] = useState('')
   const pull = useCallback(async () => {
     if (!online || holdPull.current || trainingSnap.current) return
     try {
       setSync((s) => ({ ...s, state: 'syncing' }))
       const j = await call({ action: 'pull', token: session.token })
+      setServerVersion(j.version || 'older than 3.4.0')
       setRaw((cur) => {
         const next = { ...cur }
         Object.keys(j.db || {}).forEach((c) => { if (c !== 'settings' || j.db[c].length) next[c] = j.db[c] })
@@ -328,6 +333,18 @@ export function StoreProvider({ children }) {
     if (j.file) setRaw((cur) => ({ ...cur, files: [j.file, ...(cur.files || []).filter((x) => x.id !== j.file.id)] }))
     return j.url
   }, [online, session, call, demo])
+  // 4 Nov: open an uploaded file inside Accord, and delete a wrong upload (uploader or admin; the server checks too).
+  const fileGet = useCallback(async (id) => {
+    if (!online) throw new Error('Files are opened from the shared database. Connect it first.')
+    return call({ action: 'fileGet', token: session.token, id })
+  }, [online, session, call])
+  const fileDelete = useCallback(async (id) => {
+    if (demo) throw new Error('Files cannot be deleted in training mode')
+    if (!online) throw new Error('Connect the shared database to delete files')
+    const j = await call({ action: 'fileDelete', token: session.token, id })
+    setRaw((cur) => ({ ...cur, files: (cur.files || []).filter((x) => x.id !== id), ...(j.document ? { documents: [j.document, ...(cur.documents || []).filter((x) => x.id !== j.document.id)] } : {}) }))
+    return j
+  }, [online, session, call, demo])
   const sendEmail = useCallback(async (msg) => {
     if (demo) throw new Error('E-mails are not sent in training mode')
     if (!online) throw new Error('E-mail is sent by the shared database. Connect it under Admin, Data and sync.')
@@ -356,8 +373,8 @@ export function StoreProvider({ children }) {
   const seedBackend = useCallback(async (url = backend) => { const r = await call({ action: 'seed', token: online ? session.token : '', db: raw }, url); queue.current = []; safeSet(QKEY, '[]'); holdPull.current = false; setTimeout(() => pull(), 500); return r }, [call, session, raw, online, backend])
 
   const value = { db, raw, settings, user, session, sync, toast, notify, upsert, remove, setSettings, nextId, login, logout, changePassword, setUserPassword, approveDevice, releaseDevice,
-    enrolStart, enrolConfirm, punch, myDay, punchedIn, pushNote, markRead, replaceAll, resetToSeed, upload, sendEmail, exportNow, loadStartingData, pull, flush, seedBackend,
-    backend, siteBackend: SITE_BACKEND, online, call, today, nowTime, demo, toggleDemo }
+    enrolStart, enrolConfirm, punch, myDay, punchedIn, pushNote, markRead, replaceAll, resetToSeed, upload, fileGet, fileDelete, sendEmail, exportNow, loadStartingData, pull, flush, seedBackend,
+    backend, serverVersion, backendOld: !!serverVersion && verLess(serverVersion, NEEDS_BACKEND), siteBackend: SITE_BACKEND, online, call, today, nowTime, demo, toggleDemo }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 export const useStore = () => useContext(Ctx)

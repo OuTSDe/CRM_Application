@@ -39,7 +39,7 @@
  *  - Records made in demo mode carry _test = Yes: they send no reminders and are listed for clean-up.
  */
 
-var VERSION = '3.0.0';
+var VERSION = '3.4.0';   // 4 Nov: the site warns admins when the deployed backend is older than this
 var DATA_PATH = 'Accord_CRM_Application/Accord_Data';   // inside My Drive of the account that runs this script
 var TEMP_PASSWORD = 'Accord2026';                        // first sign-in only, to link the authenticator
 // The team, created by setup() when the Users tab is empty, so the first admin can sign in (temporary password, then the authenticator).
@@ -110,6 +110,8 @@ function doPost(e) {
       case 'setPassword': return out_(setPassword_(auth_(req.token), req));
       case 'approveDevice': return out_(approveDevice_(auth_(req.token), req));
       case 'upload': return out_(upload_(auth_(req.token), req));
+      case 'fileGet': return out_(fileGet_(auth_(req.token), req));
+      case 'fileDelete': return out_(fileDelete_(auth_(req.token), req));
       case 'sendEmail': return out_(sendEmail_(auth_(req.token), req));
       case 'exportNow': return out_(exportNow_(auth_(req.token)));
       case 'releaseDevice': return out_(releaseDevice_(auth_(req.token), req));
@@ -358,7 +360,7 @@ function pull_(u) {
   var db = {};
   COLLECTIONS.forEach(function (c) { db[c] = read_(c); });
   db.users = db.users.map(function (x) { var y = strip_(x, ['pwSalt','pwHash','failed','lockedUntil','totpSecret','totpPending','totpLast']); y.hasPassword = !!x.pwHash; y.mfa = x.totpSecret ? 'Set' : 'Not set'; if (u.appRole !== 'admin') { delete y.devices; } return y; });
-  if (seesAll_(u) && u.appRole !== 'viewer') return { db: db, serverTime: now_(), user: publicUser_(u) };
+  if (seesAll_(u) && u.appRole !== 'viewer') return { db: db, serverTime: now_(), user: publicUser_(u), version: VERSION };
 
   var me = u.name, s = db.settings[0] || {};
   var mine_ = function (r) { return r.owner === me || (r.coOwners || []).indexOf(me) >= 0; };
@@ -390,7 +392,7 @@ function pull_(u) {
   db.files = (db.files || []).filter(function (f) { return f.by === me || mineCid[f.recordId] || mineL[f.recordId]; });
   db.audit = [];
   db.demandCalls = db.demandCalls.map(function (k) { return { id: k.id, stage: k.stage, description: k.description, raisedOn: k.raisedOn }; });
-  return { db: db, serverTime: now_(), user: publicUser_(u) };
+  return { db: db, serverTime: now_(), user: publicUser_(u), version: VERSION };
 }
 
 /* ───────────────────────── writes ───────────────────────── */
@@ -608,6 +610,40 @@ var EXT = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png'
   'video/mp4': '.mp4', 'audio/mpeg': '.mp3', 'audio/mp4': '.m4a', 'audio/aac': '.aac', 'image/svg+xml': '.svg' };
 /** Every upload lands in the folder tree under Accord_Data and is listed in the Files tab.
  *  req: folder (relative to Accord_Data), name (without extension), mime, data (base64), meta { kind, recordId, label, category, doc, test } */
+/* 4 Nov: look at an uploaded file inside Accord (staff do not need access to the OuTSDe Drive), and delete a wrong one.
+   Who may look: anyone who sees all clients, the person who uploaded it, and the people responsible for that client or lead.
+   Who may delete: the person who uploaded it, and admins. The Drive file goes to the Drive bin (recoverable for 30 days). */
+function fileAllowed_(u, f) {
+  if (seesAll_(u) && u.appRole !== 'viewer' || f.by === u.name || f.kind === 'project') return true;
+  var mine = function (r) { return r && (r.owner === u.name || (r.coOwners || []).indexOf(u.name) >= 0); };
+  var c = read_('clients').filter(function (x) { return x.bookingId === f.recordId || x.clientId === f.recordId; })[0];
+  if (mine(c)) return true;
+  return mine(read_('leads').filter(function (x) { return x.id === f.recordId; })[0]);
+}
+function fileGet_(u, req) {
+  var f = find_('files', req.id); if (!f) throw new Error('File not found');
+  if (!fileAllowed_(u, f)) throw new Error('Not allowed');
+  var file = DriveApp.getFileById(f.driveId), blob = file.getBlob();
+  if (blob.getBytes().length > 30 * 1024 * 1024) return { ok: true, tooBig: true, name: f.name, url: f.url };
+  return { ok: true, name: f.name, mime: blob.getContentType(), data: Utilities.base64Encode(blob.getBytes()) };
+}
+function fileDelete_(u, req) {
+  var f = find_('files', req.id); if (!f) throw new Error('File not found');
+  if (u.appRole !== 'admin' && f.by !== u.name) throw new Error('Only the person who uploaded it, or an admin, can delete this file');
+  try { DriveApp.getFileById(f.driveId).setTrashed(true); } catch (e) { /* already gone from Drive */ }
+  delete_('files', f.id); audit_(u, 'files', f.id, 'deleted ' + f.name);
+  var doc = null;
+  if (f.kind === 'client' && f.doc) {   // the checklist line goes back to Pending when its last file is deleted
+    doc = find_('documents', f.recordId);
+    if (doc) {
+      var left = read_('files').filter(function (x) { return x.recordId === f.recordId && x.doc === f.doc; }).sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+      doc.files = doc.files || {}; doc.items = doc.items || {};
+      if (left.length) doc.files[f.doc] = left[0].url; else { delete doc.files[f.doc]; if (doc.items[f.doc] === 'Received') doc.items[f.doc] = 'Pending'; }
+      doc.updatedAt = now_(); doc.updatedBy = u.name; upsert_('documents', doc);
+    }
+  }
+  return { ok: true, deleted: f.id, document: doc };
+}
 function upload_(u, req) {
   if (!req.data) throw new Error('No file');
   var m = req.meta || {}, ext = EXT[req.mime] || (String(req.origName || '').match(/\.[a-z0-9]{2,5}$/i) || [''])[0];

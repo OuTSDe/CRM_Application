@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { useStore, daySums } from '../lib/store.jsx'
+import { useStore, daySums, NEEDS_BACKEND } from '../lib/store.jsx'
 import { canOpen, canPage, ROLES, WORKSPACES, workspacesOf } from '../lib/perms.js'
 import { setTheme } from '../lib/theme.js'
 import { initials, d } from '../lib/format.js'
@@ -39,7 +39,7 @@ export function useWorkspace() {
 }
 
 export default function Layout() {
-  const { user, logout, sync, backend, punchedIn, myDay, punch, notify, db, markRead, demo, toggleDemo, settings } = useStore()
+  const { user, logout, sync, backend, punchedIn, myDay, punch, notify, db, markRead, demo, toggleDemo, settings, backendOld, serverVersion } = useStore()
   const nav = useNavigate()
   const loc = useLocation()
   const [ws, setWs, wsAll] = useWorkspace()
@@ -96,6 +96,7 @@ export default function Layout() {
             <UserMenu user={user} logout={() => { logout(); nav('/') }} demo={demo} toggleDemo={toggleDemo} passwords={settings.authMode === 'password'} />
           </div>
         </header>
+        {backendOld && user?.appRole === 'admin' && <div className="demo-band" role="alert"><b>The Google backend needs updating</b> · it is version {serverVersion}, this site needs {NEEDS_BACKEND}. Until then, newer features (extra access, deleting files, follow-up times) do not work on the server. In Apps Script: paste the new backend/Code.gs, then Deploy › Manage deployments › Edit › New version.</div>}
         {demo && <div className="demo-band" role="status"><b>Training mode</b> · practise freely: nothing you enter is saved to the database, no reminders or e-mails go out. Leaving training mode discards it all. <button type="button" onClick={() => toggleDemo(false)}>End training</button></div>}
         <main className="content"><Outlet context={{ ws }} /></main>
       </div>
