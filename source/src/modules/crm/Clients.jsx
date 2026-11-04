@@ -11,7 +11,7 @@ import DataTable from '../../components/DataTable.jsx'
 import RecordForm from '../../components/RecordForm.jsx'
 import LogInteraction, { OutcomeBadge } from '../../components/LogInteraction.jsx'
 import PaymentForm from './PaymentForm.jsx'
-import { d, inr, pct, lakh, waLink, TITLES, CITIES, fullName, salute, n } from '../../lib/format.js'
+import { d, inr, pct, lakh, waLink, TITLES, CITIES, fullName, salute, n, nextWhen } from '../../lib/format.js'
 
 // Mirrors the Client Master tab: BOOKING · 1 BASIC INFORMATION · 2 BACKGROUND · 6 TEAM · UNIT & DEAL (3, 4 and 5 are worked out from the logs).
 export const CLIENT_FIELDS = (team, { money = true, assign = true } = {}) => [
@@ -151,7 +151,7 @@ export function Client360() {
             <div className="row gap-s small muted" style={{ marginBottom: 10 }}>Last private viewing or site visit: <b>{c.contact.lastSite ? d(c.contact.lastSite) : 'none recorded'}</b> · {c.contact.count} interactions</div>
             {!c.contact.list.length ? <p className="muted">No interactions logged.</p> : <div className="timeline">{c.contact.list.slice(0, 25).map((i) => <div key={i.id} className="tl-item">
               <div className="tl-meta">{d(i.date)} {i.time} · {i.mode} · {i.purpose} {i.by ? '· ' + i.by : ''} <OutcomeBadge v={i.outcome} /></div><p>{i.summary}</p>
-              {i.nextDate && <div className="small muted">Next: {i.nextAction || 'follow up'} on {d(i.nextDate)}{i.status === 'Open' ? '' : ' (closed)'}</div>}</div>)}</div>}
+              {i.nextDate && <div className="small muted">Next: {i.nextAction || 'follow up'} on {nextWhen(i)}{i.status === 'Open' ? '' : ' (closed)'}</div>}</div>)}</div>}
           </Card>
           <Card title={`Documents · ${c.docsDone} of ${c.docsApplicable} applicable`} actions={<Link className="btn btn-sm" to={'/crm/documents?b=' + c.bookingId}>Manage</Link>}>
             <div className="grid g2" style={{ marginBottom: 0 }}>{Object.entries(groups).map(([g, ts]) => <div key={g}><div className="form-section">{g}</div>

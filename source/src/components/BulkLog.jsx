@@ -9,7 +9,7 @@ import { useLogSaver } from './LogInteraction.jsx'
 import { today, addDays } from '../lib/format.js'
 
 const NEXT = [{ value: '', label: 'No follow-up' }, { value: '1', label: 'Tomorrow' }, { value: '3', label: 'In 3 days' }, { value: '7', label: 'In a week' }, { value: '14', label: 'In 2 weeks' }]
-const row = () => ({ key: Math.random().toString(36).slice(2), recordId: '', mode: 'Call - outgoing', purpose: 'Follow-up', outcome: '', summary: '', next: '3', nextAction: '' })
+const row = () => ({ key: Math.random().toString(36).slice(2), recordId: '', mode: 'Call - outgoing', purpose: 'Follow-up', outcome: '', summary: '', next: '3', nextTime: '10:00', nextAction: '' })
 
 export default function BulkLog({ open, onClose }) {
   const { user, notify } = useStore()
@@ -18,13 +18,13 @@ export default function BulkLog({ open, onClose }) {
   const set = (i, k, x) => setRows((r) => r.map((y, j) => (j === i ? { ...y, [k]: x } : y)))
   const filled = rows.filter((r) => r.recordId)
   // 2 Nov: when the same message went to many people (festival wishes, a site update), fill it once for every row.
-  const [all, setAll] = useState({ mode: '', purpose: '', outcome: '', summary: '', next: '' })
+  const [all, setAll] = useState({ mode: '', purpose: '', outcome: '', summary: '', next: '', nextTime: '' })
   const applyAll = () => { const p = Object.fromEntries(Object.entries(all).filter(([, v]) => v !== '')); if (!Object.keys(p).length) return notify('Fill at least one of the boxes above first', 'bad'); setRows((r) => r.map((y) => ({ ...y, ...p }))); notify('Copied to all ' + rows.length + ' rows') }
   const submit = () => {
     if (!filled.length) return notify('Pick at least one person', 'bad')
     const bad = filled.find((r) => !r.summary.trim()); if (bad) return notify('Every row needs a short summary', 'bad')
     let k = 0
-    filled.forEach((r) => { if (save({ recordId: r.recordId, mode: r.mode, purpose: r.purpose, outcome: r.outcome, summary: r.summary, nextAction: r.nextAction, nextDate: r.next ? addDays(today(), Number(r.next)) : '', nextOwners: [user.name] }, { quiet: true })) k++ })
+    filled.forEach((r) => { if (save({ recordId: r.recordId, mode: r.mode, purpose: r.purpose, outcome: r.outcome, summary: r.summary, nextAction: r.nextAction, nextDate: r.next ? addDays(today(), Number(r.next)) : '', nextTime: r.next ? r.nextTime || '10:00' : '', nextOwners: [user.name] }, { quiet: true })) k++ })
     notify(`${k} interaction${k === 1 ? '' : 's'} logged`)
     setRows([row(), row(), row()]); onClose()
   }
@@ -37,6 +37,7 @@ export default function BulkLog({ open, onClose }) {
         <Select options={META.lists.Outcome} value={all.outcome} onChange={(e) => setAll({ ...all, outcome: e.target.value })} placeholder="Outcome" />
         <div className="bulk-sum"><Input value={all.summary} onChange={(e) => setAll({ ...all, summary: e.target.value })} placeholder="Summary for everyone, e.g. Sent Diwali wishes" /></div>
         <Select options={NEXT} value={all.next} onChange={(e) => setAll({ ...all, next: e.target.value })} placeholder="Follow-up" />
+        <Input type="time" step={300} value={all.nextTime} onChange={(e) => setAll({ ...all, nextTime: e.target.value })} aria-label="Follow-up time for every row" style={{ width: 110 }} />
         <Button size="sm" onClick={applyAll}>Copy to all rows</Button>
       </div>
       <div className="bulk">
@@ -48,6 +49,7 @@ export default function BulkLog({ open, onClose }) {
           <div className="bulk-sum"><Input value={r.summary} onChange={(e) => set(i, 'summary', e.target.value)} placeholder="What was discussed" /></div>
           <Input value={r.nextAction} onChange={(e) => set(i, 'nextAction', e.target.value)} placeholder="Next action" />
           <Select options={NEXT} value={r.next} onChange={(e) => set(i, 'next', e.target.value)} placeholder="Follow-up" />
+          <Input type="time" step={300} value={r.nextTime} disabled={!r.next} onChange={(e) => set(i, 'nextTime', e.target.value)} aria-label="Follow-up time" style={{ width: 110 }} />
           <button type="button" className="icon-btn" aria-label="Remove row" onClick={() => setRows(rows.length > 1 ? rows.filter((_, j) => j !== i) : [row()])}>×</button>
         </div>)}
       </div>

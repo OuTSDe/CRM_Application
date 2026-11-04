@@ -8,7 +8,7 @@ import { STATE_LABEL } from '../components/Layout.jsx'
 import { sessionsFor, projectsFor } from '../lib/designLink.js'
 import { escalationsFor } from '../lib/escalate.js'
 import MiniCalendar from '../components/MiniCalendar.jsx'
-import { d, today, cr, lakh, pct } from '../lib/format.js'
+import { d, today, cr, lakh, pct, hm12 } from '../lib/format.js'
 
 const greet = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening' }
 const hm = (m) => `${Math.floor((m || 0) / 60)}h ${String((m || 0) % 60).padStart(2, '0')}m`
@@ -26,7 +26,7 @@ function useFollowUps() {
   const t = today()
   return useMemo(() => {
     const owners = (i) => (i.nextOwners?.length ? i.nextOwners : [i.nextOwner || i.by])
-    const list = db.interactions.filter((i) => i.status === 'Open' && i.nextDate && i.nextDate <= t && owners(i).includes(user.name)).sort((a, b) => a.nextDate.localeCompare(b.nextDate))
+    const list = db.interactions.filter((i) => i.status === 'Open' && i.nextDate && i.nextDate <= t && owners(i).includes(user.name)).sort((a, b) => a.nextDate.localeCompare(b.nextDate) || String(a.nextTime || '10:00').localeCompare(String(b.nextTime || '10:00')))
     const nameOf = (rid) => crm.clients.find((c) => c.clientId === rid)?.name || db.leads.find((l) => l.id === rid)?.name || rid
     const unitOf = (rid) => crm.clients.find((c) => c.clientId === rid)?.unit
     const linkOf = (rid) => (rid?.startsWith('YSC-C') ? '/crm/clients/' + (crm.clients.find((c) => c.clientId === rid)?.bookingId || rid) : '/crm/leads/' + rid)
@@ -65,7 +65,7 @@ function SalesHome() {
   const linkOf = (rid) => (rid?.startsWith('YSC-C') ? '/crm/clients/' + (crm.clients.find((c) => c.clientId === rid)?.bookingId || rid) : '/crm/leads/' + rid)
   const owners = (i) => (i.nextOwners?.length ? i.nextOwners : [i.nextOwner || i.by])
   const calItems = useMemo(() => [
-    ...db.interactions.filter((i) => i.status === 'Open' && i.nextDate && owners(i).includes(user.name)).map((i) => ({ kind: 'followup', id: i.id, date: i.nextDate, title: nameOf(i.recordId) + ' · ' + (i.nextAction || 'follow up'), link: linkOf(i.recordId) })),
+    ...db.interactions.filter((i) => i.status === 'Open' && i.nextDate && owners(i).includes(user.name)).map((i) => ({ kind: 'followup', id: i.id, date: i.nextDate, title: (i.nextTime ? hm12(i.nextTime) + ' · ' : '') + nameOf(i.recordId) + ' · ' + (i.nextAction || 'follow up'), link: linkOf(i.recordId) })),
     ...db.viewings.filter((v) => v.status !== 'Cancelled' && (all || v.advisor === user.name)).map((v) => ({ kind: 'viewing', id: v.id, date: v.date, time: v.time, title: 'Private viewing · ' + v.name, link: '/presales/viewings/' + v.id })),
     ...db.tasks.filter((x) => x.owner === user.name && x.status !== 'Done' && x.due).map((x) => ({ kind: 'task', id: x.id, date: x.due, title: x.title, link: '/people/tasks' })),
   ], [db.interactions, db.viewings, db.tasks, user.name, all]) // eslint-disable-line
@@ -108,7 +108,7 @@ function SalesHome() {
         <Card title="Follow-ups due" pad={false} actions={<Link className="small" to="/crm/interactions?view=due">All follow-ups</Link>}>
           {!fups.length ? <div className="empty">Nothing due. Follow-ups you or a colleague set for you land here on their date.</div>
             : fups.slice(0, 9).map((i) => <Link key={i.id} to={i.link} className="fup" style={{ color: 'inherit' }}>
-              <span className={'t ' + (i.nextDate < t ? 'over' : 'today')}>{i.nextDate < t ? d(i.nextDate).slice(0, 6) : 'Today'}</span>
+              <span className={'t ' + (i.nextDate < t ? 'over' : 'today')}>{i.nextDate < t ? d(i.nextDate).slice(0, 6) : i.nextTime ? hm12(i.nextTime) : 'Today'}</span>
               <span style={{ minWidth: 0 }}><span>{i.who}</span> <span className="small muted">· {i.unit || i.recordId}</span><div className="small muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.nextAction || i.purpose}</div></span>
               <span className="small muted">{i.shared.length ? 'with ' + i.shared.join(', ') : 'you'}</span></Link>)}
         </Card>

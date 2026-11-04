@@ -54,7 +54,7 @@ var SCHEMA = {
   users: [['id','Member ID'],['name','Name'],['username','Username'],['team','Team'],['department','Department'],['employment','On roll / off roll'],['company','Company'],['designation','Designation'],['role','Responsibilities'],['appRole','Access role'],['reportsTo','Reports to'],['workspaces','Workspaces'],['phone','Phone'],['email','Email'],['shiftStart','Shift start'],['shiftEnd','Shift end'],['workDays','Work days'],['remoteAllowed','Remote allowed'],['active','Active'],['deviceLock','Device lock'],['devices','Approved devices'],['mustChange','Must change password'],['mfa','Authenticator'],['pwSalt','_salt'],['pwHash','_hash'],['totpSecret','_totp'],['totpPending','_totp pending'],['totpLast','_totp last'],['failed','_failed'],['lockedUntil','_locked until']],
   clients: [['bookingId','Booking ID'],['clientId','Client ID'],['unit','Unit No.'],['status','Booking status'],['category','Customer category'],['title','Title'],['name','Primary applicant'],['coapp','Co-applicant(s)'],['buyerType','Buyer type'],['phone','Mobile (primary)'],['phone2','Mobile (alternate)'],['whatsapp','WhatsApp'],['email','Email'],['address','Correspondence address'],['city','City'],['country','Country'],['residency','Residential status'],['pan','PAN'],['aadhaar4','Aadhaar (last 4)'],['dob','Date of birth'],['language','Preferred language'],['contactPref','Preferred contact'],['purpose','Buying purpose'],['occupant','Who will live there'],['funding','Funding mode'],['loanBank','Lender'],['loanAmount','Loan amount (₹)'],['loanStatus','Loan status'],['occupation','Occupation'],['employer','Employer / business'],['income','Income band'],['marital','Marital status'],['familyProfile','Family profile'],['decisionMaker','Key decision-maker'],['source','Lead source'],['leadId','Lead ID'],['owner','Relationship owner'],['sourcedBy','Sourced by'],['closedBy','Closed by'],['bookingDate','Booking date'],['tc','Total consideration (₹)'],['adjustment','Adjustment (₹)'],['adjType','Adjustment type'],['plan','Payment plan'],['agreement','Agreement for sale'],['parkingEntitlement','Car parks entitled'],['remarks','Remarks'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   leads: [['id','Lead ID'],['date','Date captured'],['title','Title'],['name','Name'],['phone','Mobile'],['phone2','Other numbers'],['email','Email'],['city','City'],['country','Country'],['residency','Residential status'],['source','Lead source'],['partner','Channel partner'],['referredBy','Referred by'],['config','Configuration interest'],['budget','Budget band'],['purpose','Purpose'],['timeline','Buying timeline'],['owner','Assigned to'],['coOwners','Also responsible'],['stage','Stage'],['temperature','Temperature'],['svDone','Site visit done?'],['svDate','Site visit date'],['lostReason','Lost / dormant reason'],['clientId','Converted to Client ID'],['notes','Notes'],['updatedAt','Updated at'],['updatedBy','Updated by']],
-  interactions: [['id','Log ID'],['date','Date'],['time','Time'],['type','Record type'],['recordId','Client or Lead ID'],['mode','Mode'],['purpose','Purpose'],['by','Team member'],['summary','Summary of discussion'],['outcome','Outcome'],['nextAction','Next action'],['nextDate','Next action date'],['nextOwners','Follow-up owners'],['status','Status'],['updatedAt','Updated at']],
+  interactions: [['id','Log ID'],['date','Date'],['time','Time'],['type','Record type'],['recordId','Client or Lead ID'],['mode','Mode'],['purpose','Purpose'],['by','Team member'],['summary','Summary of discussion'],['outcome','Outcome'],['nextAction','Next action'],['nextDate','Next action date'],['nextTime','Next action time'],['nextOwners','Follow-up owners'],['status','Status'],['updatedAt','Updated at']],
   payments: [['id','Entry No.'],['receiptNo','Receipt No.'],['date','Receipt date'],['unit','Unit No.'],['payer','Received from'],['thirdParty','Third-party payer'],['amount','Amount received (₹)'],['counted','Counted in totals?'],['towards','Towards'],['mode','Mode'],['instrument','Instrument / UTR no.'],['instrumentDate','Instrument date'],['bank','Bank'],['tds','TDS (₹)'],['realisation','Realisation'],['proofUrl','Proof (Drive)'],['note','Note'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   attendance: [['id','Entry'],['userId','Member ID'],['name','Name'],['date','Date'],['in','Punch in'],['out','Punch out'],['mode','Started as'],['state','Current state'],['workMin','Worked (min)'],['breakMin','Breaks (min)'],['siteMin','Site visits (min)'],['status','Status'],['where','Location check'],['events','Events'],['note','Note'],['updatedAt','Updated at']],
   timeEvents: [['id','Event'],['at','Server time'],['date','Date'],['time','Time'],['userId','Member ID'],['name','Name'],['type','Type'],['note','Note'],['device','Device'],['where','Location check'],['lat','Latitude'],['lng','Longitude'],['acc','Accuracy (m)'],['dist','Distance to Sky City (m)']],
@@ -136,7 +136,7 @@ function sheet_(name) {
 function keys_(sh) { var w = sh.getLastColumn(); return w ? sh.getRange(2, 1, 1, w).getValues()[0].map(String) : []; }
 function cell_(v) { if (v === null || v === undefined) return ''; if (typeof v === 'object') return JSON.stringify(v); return v; }
 // Columns that hold text even when they look like numbers (Sheets turns 9845012345 into a number; Accord needs it back as text).
-var TEXT_KEYS = { kycNumber: 1, kycDob: 1, phone: 1, phone2: 1, whatsapp: 1, coPhone: 1, pan: 1, coPan: 1, aadhaar4: 1, receiptNo: 1, instrument: 1, account: 1, ifsc: 1, pincode: 1, username: 1, name: 1, title: 1, email: 1, designation: 1, shiftStart: 1, shiftEnd: 1, time: 1, in: 1, out: 1, gstin: 1 };
+var TEXT_KEYS = { nextTime: 1, kycNumber: 1, kycDob: 1, phone: 1, phone2: 1, whatsapp: 1, coPhone: 1, pan: 1, coPan: 1, aadhaar4: 1, receiptNo: 1, instrument: 1, account: 1, ifsc: 1, pincode: 1, username: 1, name: 1, title: 1, email: 1, designation: 1, shiftStart: 1, shiftEnd: 1, time: 1, in: 1, out: 1, gstin: 1 };
 function parse_(v) {
   if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
   if (typeof v === 'string' && (v.charAt(0) === '[' || v.charAt(0) === '{')) { try { return JSON.parse(v); } catch (e) {} }
@@ -155,7 +155,7 @@ function read_(name) {
   vals.forEach(function (r) {
     if (r.join('') === '') return;
     var o = {};
-    keys.forEach(function (k, i) { if (k === '_extra') { if (r[i]) { try { var x = JSON.parse(r[i]); Object.keys(x).forEach(function (kk) { o[kk] = x[kk]; }); } catch (e) {} } } else if (r[i] !== '') o[k] = TEXT_KEYS[k] ? (r[i] instanceof Date ? Utilities.formatDate(r[i], TZ, /^(time|in|out|shiftStart|shiftEnd)$/.test(k) ? 'HH:mm' : 'yyyy-MM-dd') : String(r[i])) : parse_(r[i]); });
+    keys.forEach(function (k, i) { if (k === '_extra') { if (r[i]) { try { var x = JSON.parse(r[i]); Object.keys(x).forEach(function (kk) { o[kk] = x[kk]; }); } catch (e) {} } } else if (r[i] !== '') o[k] = TEXT_KEYS[k] ? (r[i] instanceof Date ? Utilities.formatDate(r[i], TZ, /^(time|nextTime|in|out|shiftStart|shiftEnd)$/.test(k) ? 'HH:mm' : 'yyyy-MM-dd') : String(r[i])) : parse_(r[i]); });
     if (name === 'clients' && !o.id) o.id = o.bookingId;
     if (o.id !== undefined) o.id = String(o.id);
     out.push(o);
@@ -482,11 +482,13 @@ function inboundLead_(req) {
 function notify_(to, kind, title, body, link, dueAt, by) {
   upsert_('notifications', { id: 'N-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to: to, kind: kind, title: title, body: body, link: link, dueAt: dueAt || now_(), createdBy: by, createdAt: now_(), readAt: '', emailedAt: '' });
 }
+// 4 Nov: follow-ups carry a time. Due moments are stored as real instants (UTC ISO), read as India time.
+function dueIso_(date, time) { var t = /^\d{1,2}:\d{2}$/.test(String(time || '')) ? String(time) : '10:00'; if (t.length === 4) t = '0' + t; return new Date(date + 'T' + t + ':00+05:30').toISOString(); }
 function notifyFollowUp_(u, i) {
   if (!i.nextDate || i.status !== 'Open') return;
   var owners = i.nextOwners && i.nextOwners.length ? i.nextOwners : [i.nextOwner || u.name];
   var existing = read_('notifications').filter(function (n) { return n.kind === 'followup' && n.link === 'i:' + i.id; }).map(function (n) { return n.to; });
-  owners.forEach(function (o) { if (existing.indexOf(o) < 0) notify_(o, 'followup', 'Follow up: ' + (i.recordName || i.recordId), (i.nextAction || 'Follow up') + ' · logged by ' + u.name, 'i:' + i.id, i.nextDate + 'T10:00', u.name); });
+  owners.forEach(function (o) { if (existing.indexOf(o) < 0) notify_(o, 'followup', 'Follow up: ' + (i.recordName || i.recordId), (i.nextAction || 'Follow up') + ' · logged by ' + u.name, 'i:' + i.id, dueIso_(i.nextDate, i.nextTime), u.name); });
 }
 
 /* ───────────────────────── time: server-stamped punch ───────────────────────── */
@@ -716,14 +718,14 @@ function workingDays_(a, b) { var s = new Date(a + 'T00:00:00'), e = new Date(b 
 /* ───────────────────────── scheduled jobs (run installTriggers once) ───────────────────────── */
 function installTriggers() {
   ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger('sendDueReminders').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('sendDueReminders').timeBased().everyMinutes(15).create();   // 4 Nov: follow-ups have a time now
   ScriptApp.newTrigger('morningDigest').timeBased().atHour(9).nearMinute(5).everyDays(1).inTimezone(TZ).create();
   ScriptApp.newTrigger('escalateOverdue').timeBased().atHour(8).nearMinute(30).everyDays(1).inTimezone(TZ).create();
   ScriptApp.newTrigger('nightlyBackup').timeBased().atHour(23).everyDays(1).inTimezone(TZ).create();
 }
-/** E-mails each follow-up and task notification once, when it falls due (09:00 to 19:00). */
+/** E-mails each follow-up and task notification once, when it falls due (checked every 15 minutes, 08:00 to 21:00). */
 function sendDueReminders() {
-  var h = Number(Utilities.formatDate(new Date(), TZ, 'H')); if (h < 9 || h > 19) return;
+  var h = Number(Utilities.formatDate(new Date(), TZ, 'H')); if (h < 8 || h > 21) return;
   var users = read_('users'), email = {}; users.forEach(function (u) { if (u.email) email[u.name] = u.email; });
   var nowIso = now_();
   read_('notifications').forEach(function (n) {
@@ -738,7 +740,7 @@ function morningDigest() {
   users.forEach(function (u) {
     var mine = ints.filter(function (i) { return (i.nextOwners || [i.nextOwner || i.by]).indexOf(u.name) >= 0; });
     if (!mine.length) return;
-    var body = 'Good morning ' + u.name + ',\n\nFollow-ups due today or overdue: ' + mine.length + '\n\n' + mine.map(function (i) { return '· ' + i.recordId + ' · ' + (i.nextAction || i.purpose || 'follow up') + (i.nextDate < d ? ' (overdue since ' + i.nextDate + ')' : ''); }).join('\n') + '\n\nAccord by OuTSDe';
+    var body = 'Good morning ' + u.name + ',\n\nFollow-ups due today or overdue: ' + mine.length + '\n\n' + mine.map(function (i) { return '· ' + i.recordId + ' · ' + (i.nextAction || i.purpose || 'follow up') + (i.nextTime && i.nextDate === d ? ' at ' + i.nextTime : '') + (i.nextDate < d ? ' (overdue since ' + i.nextDate + ')' : ''); }).join('\n') + '\n\nAccord by OuTSDe';
     try { mail_({ to: u.email, subject: 'Accord · your follow-ups for ' + d, title: 'Your follow-ups for ' + d, text: body.replace(/\n\nAccord by OuTSDe$/, ''), fromName: 'Accord', footer: 'Accord by OuTSDe · internal digest' }); } catch (e) { }
   });
 }

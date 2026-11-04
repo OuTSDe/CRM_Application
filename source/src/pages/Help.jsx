@@ -23,7 +23,7 @@ const ALL = [
     'When a lead is lost, pick the reason. Accord offers a short closing message by WhatsApp and closes its open follow-ups.',
     'Admins can delete a lead from its page (Delete lead). This cannot be undone, so use Lost for real enquiries.'] },
   { id: 'log', title: 'Logging calls and follow-ups', roles: ['admin', 'senior', 'sales', 'finance'], items: [
-    'Log interaction (top of the dashboard) after every call, visit or message. Set a next date and the follow-up comes back to you on that day.',
+    'Log interaction (top of the dashboard) after every call, visit or message. Set the next follow-up date and time (or tap a quick time). The reminder comes to you, and to everyone picked as a follow-up owner, at that time on that day.',
     'Log several at once: one row per person. "Same for every row" fills the same message (for example festival wishes) into every row in one go.',
     'A follow-up left open for too long is escalated to your manager, then one level up.'] },
   { id: 'clients', title: 'Clients, documents and cost sheets', roles: ['admin', 'senior', 'sales'], items: [
@@ -39,7 +39,13 @@ const ALL = [
   { id: 'team', title: 'Team, time and performance', roles: ['admin', 'senior'], items: [
     'Team shows who reports to whom, department and on roll / off roll / consultant.',
     'Time shows punches and breaks for each person, with the reason for each break.',
-    'Lead analytics (under Team) shows leads by week or month, source, advisor, stage, how far they get and why they were lost.'] },
+    'Team › Analytics, Leads tab: leads by week or month, source, advisor and stage, how far they get and why they were lost.'] },
+  { id: 'analytics', title: 'Analytics', roles: ['*'], items: [
+    'Team › Analytics has three parts. Each person sees only the parts for their role.',
+    'Leads: for the sales team and admins. Advisors see the figures for their own leads.',
+    'Finance: for finance and admins. Collections by month and mode, outstanding and how old it is, the largest amounts due.',
+    'Overall: for admins only. Bookings, booking value, collections, the lead pipeline and team activity on one page.',
+    'Pick 30 days, 90 days, 1 year or all time at the top.'] },
   { id: 'admin', title: 'Admin', roles: ['admin'], items: [
     'Users and access: add a person, give them a role and platforms, and send the authenticator set-up. Add department, employment and company for the team view.',
     'Settings: the rate card (base rate, floor rise, car parks, MESCOM and others), payment plans and terms. Everyone is told when these change, with what changed.',

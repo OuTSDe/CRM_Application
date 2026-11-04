@@ -227,10 +227,15 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
   - New views: **Missing details** and **No follow-up set**. The dashboard shows how many open leads have no follow-up.
   - **Paste an enquiry**: paste a WhatsApp or 99acres message and Accord fills in the new lead.
   - **Lead inbox**: other tools (website form, WhatsApp tool, 99acres reader, a chatbot) can post enquiries to Accord. They wait in Leads › Inbox to be accepted or rejected. The address and key are in Settings › Lead inbox.
-- **Lead analytics** (Team › Lead analytics, admin and senior). It shows:
-  - leads by week or month, source and advisor;
-  - stages and how far leads get;
-  - why leads were lost, and conversion.
+- **Follow-up time** (4 Nov). Log interaction has a follow-up time next to the follow-up date, with quick times (10 am, 12 pm, 3 pm, 5 pm, 7 pm). Log several at once has a time on each row too.
+  - The reminder comes at that time: in Accord, as a phone or desktop notification, and by e-mail.
+  - The time shows wherever the next follow-up is listed, and follow-ups due on the same day are sorted by time.
+  - Server e-mail reminders now run every 15 minutes, between 8 am and 9 pm. Run `installTriggers` once in Apps Script after updating `Code.gs`.
+  - Reminders used to fall due at 10:00 UTC (3:30 pm India time) instead of 10:00 India time. That is fixed.
+- **Analytics** (Team › Analytics). One page with three tabs, each shown only to the roles it is for:
+  - **Leads** (sales team and admins): leads by week or month, source, advisor and stage, how far leads get, why they were lost, and conversion. Advisors see their own leads.
+  - **Finance** (finance and admins): collections by month, payment mode and purpose; outstanding by ageing; the largest amounts due; entries not counted.
+  - **Overall** (admins only): bookings, booking value, collections and outstanding, the lead pipeline, interactions logged and open issues.
 - **Messages.** New templates *Closing enquiry* and *Festival wishes*, and new contact purposes. In **Log several at once**, *Same for every row* fills one message into every row.
 - **Client complaints.** The issue category *Client complaint* notifies the advisor's manager and the admins.
 - **Settings changes are announced.** When the rate card, plans or terms change, everyone gets a notification saying what changed.

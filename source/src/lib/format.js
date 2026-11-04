@@ -50,3 +50,8 @@ export const salute = (r) => (!r ? 'Sir/Madam' : r.title ? fullName(r) : (r.name
 export const CITIES = ['Mangaluru', 'Udupi', 'Bengaluru', 'Mumbai', 'Pune', 'Hyderabad', 'Chennai', 'Kochi', 'Kasaragod', 'Puttur', 'Bantwal', 'Manipal', 'Karkala', 'Kundapura', 'Shivamogga', 'Mysuru', 'Hubballi', 'Belagavi', 'Delhi', 'Dubai', 'Abu Dhabi', 'Sharjah', 'Doha', 'Muscat', 'Kuwait City', 'Riyadh', 'Jeddah', 'Dammam', 'Bahrain', 'Singapore', 'London', 'New York', 'Toronto', 'Sydney', 'Melbourne']
 export const addWorkingDays = (iso, k, off = [0]) => { const t = new Date(iso); let left = k; while (left > 0) { t.setDate(t.getDate() + 1); if (!off.includes(t.getDay())) left-- } return t.toISOString().slice(0, 10) }
 export const workingDaysBetween = (a, b = today(), off = [0]) => { if (!a) return null; const s = new Date(String(a).slice(0, 10)), e = new Date(String(b).slice(0, 10)); let k = 0; while (s < e) { s.setDate(s.getDate() + 1); if (!off.includes(s.getDay())) k++ } return k }
+
+// 4 Nov: follow-ups have a time as well as a date. dueAt is a real instant (UTC ISO) so reminders fire at that local time.
+export const dueAtOf = (date, time) => (date ? new Date(`${date}T${time || '10:00'}:00`).toISOString() : '')
+export const hm12 = (t) => { if (!t) return ''; const [h, m] = String(t).split(':').map(Number); if (isNaN(h)) return t; return `${((h + 11) % 12) + 1}:${String(m || 0).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}` }
+export const nextWhen = (i) => (i?.nextDate ? d(i.nextDate) + (i.nextTime ? ', ' + hm12(i.nextTime) : '') : '')

@@ -6,7 +6,7 @@ import { seesAll } from '../../lib/perms.js'
 import DataTable from '../../components/DataTable.jsx'
 import LogInteraction, { recordType, OutcomeBadge } from '../../components/LogInteraction.jsx'
 import BulkLog from '../../components/BulkLog.jsx'
-import { d, today } from '../../lib/format.js'
+import { d, today, hm12 } from '../../lib/format.js'
 
 export default function Interactions() {
   const { db, user } = useStore()
@@ -39,7 +39,7 @@ export default function Interactions() {
           { key: 'mode', label: 'Mode' }, { key: 'purpose', label: 'Purpose' },
           { key: 'summary', label: 'Summary', render: (x) => <div style={{ maxWidth: 380 }}>{x.summary}</div> },
           { key: 'outcome', label: 'Outcome', render: (x) => <OutcomeBadge v={x.outcome} /> },
-          { key: 'nextDate', label: 'Next', render: (x) => x.nextDate ? <div><Badge tone={x.status !== 'Open' ? 'muted' : x.nextDate < t ? 'bad' : x.nextDate === t ? 'warn' : 'info'}>{d(x.nextDate)}</Badge><div className="small muted">{x.nextAction}</div></div> : <span className="muted">–</span> },
+          { key: 'nextDate', label: 'Next', render: (x) => x.nextDate ? <div><Badge tone={x.status !== 'Open' ? 'muted' : x.nextDate < t ? 'bad' : x.nextDate === t ? 'warn' : 'info'}>{d(x.nextDate)}</Badge>{x.nextTime && <span className="small"> {hm12(x.nextTime)}</span>}<div className="small muted">{x.nextAction}</div></div> : <span className="muted">–</span> },
           { key: 'by', label: 'By' }, { key: 'owners', label: 'Follow-up with' }, { key: 'status', label: 'Status', render: (x) => <Badge>{x.status}</Badge> },
         ]} />
       <LogInteraction open={open} onClose={() => setOpen(false)} />

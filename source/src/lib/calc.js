@@ -27,7 +27,7 @@ export function deriveCrm(db) {
   const contact = (rid) => {
     const l = ints[rid] || []
     const dated = l.filter((i) => i.date)
-    const open = l.filter((i) => i.status === 'Open' && i.nextDate).sort((a, b) => a.nextDate.localeCompare(b.nextDate))
+    const open = l.filter((i) => i.status === 'Open' && i.nextDate).sort((a, b) => a.nextDate.localeCompare(b.nextDate) || String(a.nextTime || '10:00').localeCompare(String(b.nextTime || '10:00')))
     return { list: l, last: dated[0] || null, lastDate: dated[0]?.date || null, days: dated[0] ? daysBetween(dated[0].date) : null, next: open[0] || null, count: l.length,
       lastSite: dated.find((i) => i.mode === 'Site visit')?.date || null }
   }

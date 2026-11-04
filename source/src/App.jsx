@@ -68,7 +68,7 @@ function Main() {
         <Route path="crm/interactions" element={G('crm', <Interactions />)} />
         <Route path="crm/payments" element={G('crm', <Payments />)} />
         <Route path="crm/payments/receipts" element={G('crm', <BulkReceipts />)} />
-        <Route path="crm/analytics" element={G('performance', <Analytics />)} />
+        <Route path="crm/analytics" element={G('analytics', <Analytics />)} />
         <Route path="help" element={G('help', <Help />)} />
         <Route path="crm/payments/receipt/:id" element={G('crm', <Receipt />)} />
         <Route path="crm/clients/:id/statement" element={G('crm', <PaymentSummary />)} />

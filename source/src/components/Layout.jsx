@@ -13,7 +13,7 @@ export const NAV = {
     { label: 'Today', items: [['/', 'Dashboard', 'crm', true], ['/crm/interactions', 'Interaction log', 'crm'], ['/people/tasks', 'Tasks', 'people']] },
     { label: 'Clients', items: [['/crm/leads', 'Leads', 'crm'], ['/crm/clients', 'Client 360', 'crm'], ['/crm/payments', 'Payments', 'crm'], ['/crm/documents', 'Documents', 'crm'], ['/crm/messages', 'Messages', 'crm'], ['/crm/issues', 'Issues', 'crm']] },
     { label: 'Selling', items: [['/crm/cost-sheet', 'Cost sheet', 'crm'], ['/crm/inventory', 'Building and parking', 'crm'], ['/presales', 'Private viewings', 'presales'], ['/brochure', 'e-Brochure', 'brochure'], ['/experience', 'Accord experience', 'experience']] },
-    { label: 'Team', items: [['/people', 'Time', 'people', true], ['/people/team', 'Team', 'people'], ['/people/performance', 'Performance', 'performance'], ['/crm/analytics', 'Lead analytics', 'performance'], ['/help', 'User guide', 'help']] },
+    { label: 'Team', items: [['/people', 'Time', 'people', true], ['/people/team', 'Team', 'people'], ['/people/performance', 'Performance', 'performance'], ['/crm/analytics', 'Analytics', 'analytics'], ['/help', 'User guide', 'help']] },
   ],
   design: [
     { label: 'Design', items: [['/', 'Overview', 'accord', true], ['/experience', 'Accord experience', 'experience'], ['/accord', 'Projects and BOQ', 'accord', true], ['/accord/residences', 'Residences', 'accord'], ['/presales/showcase', 'Design showcase', 'presales']] },

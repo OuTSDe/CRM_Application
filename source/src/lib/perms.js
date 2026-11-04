@@ -45,6 +45,7 @@ const MODULES = {
   sourcing: ['admin', 'design', 'sourcing'],
   accord: ['admin', 'design', 'sourcing'],
   admin: ['admin'],
+  analytics: ['admin', 'senior', 'sales', 'finance'],
   help: ['admin', 'senior', 'sales', 'finance', 'design', 'sourcing', 'viewer'],
 }
 const WRITE = {

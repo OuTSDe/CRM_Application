@@ -9,7 +9,7 @@ import DocHeader from '../../components/DocHeader.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import RecordForm, { missingRequired, missingKeys } from '../../components/RecordForm.jsx'
 import LogInteraction, { OutcomeBadge } from '../../components/LogInteraction.jsx'
-import { d, today, waLink, TITLES, CITIES, fullName, salute } from '../../lib/format.js'
+import { d, today, waLink, TITLES, CITIES, fullName, salute, hm12, nextWhen } from '../../lib/format.js'
 
 // Mirrors the "Leads & Prospects" tab: LEAD · SOURCE · REQUIREMENT · PIPELINE · OUTCOME
 export const LEAD_FIELDS = (team, canAssign = true) => [
@@ -139,7 +139,7 @@ export function Leads() {
           { key: 'source', label: 'Source' }, { key: 'stage', label: 'Stage', render: (l) => <Badge tone={l.stage === 'Lost' ? 'muted' : l.stage === 'Booked' ? 'good' : 'info'}>{l.stage}</Badge> },
           { key: 'temperature', label: 'Temp', render: (l) => <Badge>{l.temperature}</Badge> }, { key: 'config', label: 'Wants' },
           { key: 'last', label: 'Last contact', sortValue: (l) => l.contact.lastDate || '', render: (l) => l.contact.lastDate ? <span>{d(l.contact.lastDate)}<div className="small muted">{l.contact.last.mode}</div></span> : <span className="muted">–</span> },
-          { key: 'next', label: 'Next follow-up', sortValue: (l) => l.contact.next?.nextDate || (OPEN(l) ? '9999' : 'zzzz'), render: (l) => l.contact.next ? <div><Badge tone={l.contact.next.nextDate < t ? 'bad' : l.contact.next.nextDate === t ? 'warn' : 'info'}>{d(l.contact.next.nextDate)}</Badge><div className="small muted">{l.contact.next.nextAction}</div></div> : OPEN(l) ? <Badge tone="warn">Not set</Badge> : <span className="muted">–</span> },
+          { key: 'next', label: 'Next follow-up', sortValue: (l) => l.contact.next?.nextDate || (OPEN(l) ? '9999' : 'zzzz'), render: (l) => l.contact.next ? <div><Badge tone={l.contact.next.nextDate < t ? 'bad' : l.contact.next.nextDate === t ? 'warn' : 'info'}>{d(l.contact.next.nextDate)}</Badge>{l.contact.next.nextTime && <span className="small"> {hm12(l.contact.next.nextTime)}</span>}<div className="small muted">{l.contact.next.nextAction}</div></div> : OPEN(l) ? <Badge tone="warn">Not set</Badge> : <span className="muted">–</span> },
           { key: 'owner', label: 'Advisor', render: (l) => <span>{l.owner || <span className="missing">Not assigned</span>}{l.coOwners?.length ? <span className="small muted"> + {l.coOwners.join(', ')}</span> : null}</span> },
           { key: 'gaps', label: 'Missing', sortValue: (l) => gapsOf(l).length, render: (l) => { const g = gapsOf(l); return g.length ? <span className="small missing" title={g.join(', ')}>{g.length} missing</span> : <span className="small muted">Complete</span> } },
         ]} />}
@@ -199,14 +199,14 @@ export function LeadDetail() {
           <Card title="History" actions={<Button size="sm" onClick={() => setLog(true)}>+ Log</Button>}>
             {!l.contact.list.length ? <p className="muted">No interactions yet. Log the first call.</p> : <div className="timeline">
               {l.contact.list.map((i) => <div key={i.id} className="tl-item"><div className="tl-meta">{d(i.date)} {i.time} · {i.mode} · {i.purpose} {i.by ? '· ' + i.by : ''} <OutcomeBadge v={i.outcome} /></div>
-                <p>{i.summary}</p>{i.nextDate && <div className="small muted">Next: {i.nextAction || 'follow up'} on {d(i.nextDate)} {i.status === 'Open' ? '' : '(closed)'}</div>}</div>)}
+                <p>{i.summary}</p>{i.nextDate && <div className="small muted">Next: {i.nextAction || 'follow up'} on {nextWhen(i)} {i.status === 'Open' ? '' : '(closed)'}</div>}</div>)}
             </div>}
           </Card>
           {views.length > 0 && <Card title="Private viewings">{views.map((v) => <div key={v.id} className="check-row"><Link to={'/presales/viewings/' + v.id}>{d(v.date)} {v.time}</Link><Badge>{v.status}</Badge></div>)}</Card>}
         </div>
         <div>
           <Card title="Next follow-up">
-            {l.contact.next ? <><div style={{ font: '600 20px var(--f-head)' }}>{d(l.contact.next.nextDate)}</div><p className="muted" style={{ margin: '4px 0 0' }}>{l.contact.next.nextAction} · {l.contact.next.nextOwner || l.contact.next.by}</p></> : <p className="muted">Not set. Log an interaction with a next date.</p>}
+            {l.contact.next ? <><div style={{ font: '600 20px var(--f-head)' }}>{nextWhen(l.contact.next)}</div><p className="muted" style={{ margin: '4px 0 0' }}>{l.contact.next.nextAction} · {l.contact.next.nextOwner || l.contact.next.by}</p></> : <p className="muted">Not set. Log an interaction with a next date.</p>}
           </Card>
           <Card title="Profile">
             <KV rows={[['Phone', l.phone], ['Email', l.email], ['City / country', [l.city, l.country].filter(Boolean).join(', ')], ['Residency', l.residency], ['Wants', l.config], ['Budget', l.budget], ['Purpose', l.purpose], ['Timeline', l.timeline],
@@ -241,7 +241,7 @@ function LeadSheet({ l, onBack }) {
         <table><tbody>{rows.map(([k, v]) => <tr key={k}><th style={{ width: '30%' }}>{k}</th><td>{v || '–'}</td></tr>)}</tbody></table>
         <div className="sec">Interactions</div>
         <table><thead><tr><th>Date</th><th>Mode</th><th>By</th><th>Summary</th><th>Next</th></tr></thead>
-          <tbody>{l.contact.list.map((i) => <tr key={i.id}><td className="nowrap">{d(i.date)} {i.time}</td><td>{i.mode}</td><td>{i.by}</td><td>{i.summary}</td><td>{i.nextDate ? d(i.nextDate) + ' · ' + (i.nextAction || '') : '–'}</td></tr>)}
+          <tbody>{l.contact.list.map((i) => <tr key={i.id}><td className="nowrap">{d(i.date)} {i.time}</td><td>{i.mode}</td><td>{i.by}</td><td>{i.summary}</td><td>{i.nextDate ? nextWhen(i) + ' · ' + (i.nextAction || '') : '–'}</td></tr>)}
             {!l.contact.list.length && <tr><td colSpan={5} className="muted">None yet</td></tr>}</tbody></table>
         <div className="foot">Lead record from Accord · confidential, for the Yamuna Sky City sales team</div>
       </div>
