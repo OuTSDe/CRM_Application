@@ -9,7 +9,6 @@ import DataTable from '../../components/DataTable.jsx'
 import { pct, today, d } from '../../lib/format.js'
 import { CLIENT_FOLDER, clientFolder, fileName, OTHER, PROJECT_CATS, slug } from '../../lib/folders.js'
 import { Button, Field, Input, Seg, Modal } from '../../components/ui.jsx'
-import { checkCard } from '../../lib/kyc.js'
 import FileList, { useFileViewer } from '../../components/FileList.jsx'
 import { Confirm } from '../../components/ui.jsx'
 
@@ -27,26 +26,16 @@ export default function Documents() {
   const [tab, setTab] = useState(qs.get('tab') || 'clients')
   const [other, setOther] = useState('')
   const filesFor = (key) => (db.files || []).filter((f) => f.recordId === b && f.doc === key)
-  const [kycAsk, setKycAsk] = useState(null)
   const [openRow, setOpenRow] = useState('')
   const viewer = useFileViewer()
   const label = Object.fromEntries(META.docTypes.map((t) => [t.key, t.label]))
-  // 2 Nov: PAN and Aadhaar photos are read before filing; a wrong card or a name that does not match is flagged first.
-  const onFile = async (t, f, checked) => {
+  // 4 Nov: files go straight to Drive (the PAN / Aadhaar card reading was removed on request).
+  const onFile = async (t, f) => {
     if (!f) return
     setBusy(t.key)
     try {
-      const card = /^(entity_)?pan/.test(t.key) ? 'pan' : /^aadhaar/.test(t.key) ? 'aadhaar' : ''
-      let res = checked
-      if (card && !res) {
-        notify('Reading the card…')
-        try { res = await checkCard(f, card, /co_applicant/.test(t.key) ? (c.coapp || c.name) : c.name) } catch (e) { res = { ok: null, note: e.message } }
-        if (res.ok === false) { setKycAsk({ t, f, res }); return }
-      }
-      const kycMeta = res ? { kyc: res.ok ? 'Checked: ' + res.kind : res.ok === null ? 'Not checked' : 'Uploaded despite: ' + res.note.slice(0, 60), kycNumber: res.number || '', kycName: res.name || '', kycDob: res.dob || '' } : {}
       const name = fileName(c, t.label, today())
-      const url = await upload(f, clientFolder(c, CLIENT_FOLDER[t.group] || OTHER), name, { kind: 'client', recordId: c.bookingId, label: `${c.unit} ${c.name}`, category: t.group, doc: t.key, ...kycMeta })
-      if (url && res?.note) notify(res.ok ? 'Card checked: ' + res.note : res.note, res.ok ? 'good' : 'warn')
+      const url = await upload(f, clientFolder(c, CLIENT_FOLDER[t.group] || OTHER), name, { kind: 'client', recordId: c.bookingId, label: `${c.unit} ${c.name}`, category: t.group, doc: t.key })
       if (url) { upsert('documents', { ...doc, items: { ...doc.items, [t.key]: doc.items?.[t.key] === 'Verified' ? 'Verified' : 'Received' }, files: { ...(doc.files || {}), [t.key]: url } }, { action: 'uploaded ' + t.label }); notify(`Saved to Drive: ${clientFolder(c, CLIENT_FOLDER[t.group] || OTHER)} / ${name}`) }
     } catch (e) { notify('Upload failed: ' + e.message, 'bad') } finally { setBusy('') }
   }
@@ -71,7 +60,7 @@ export default function Documents() {
         : <div className="note info small">Uploads are renamed <b className="mono">{fileName(c, 'document', today())}</b> and filed in <b className="mono">Accord_Data / {clientFolder(c, '…')}</b> by category. On a phone, <b>Camera</b> photographs the paper directly.</div>}
       <div className="grid g2">{Object.entries(groups).map(([g, ts]) => <Card key={g} title={g}>
         {ts.map((t) => { const v = doc.items?.[t.key] || 'Pending'; const url = doc.files?.[t.key]; const more = filesFor(t.key)
-          return <div key={t.key} className="check-row doc-row" style={{ alignItems: 'center' }}><span className="lbl" style={{ flex: 1 }}>{t.label}{url && !more.length && <> · <a href={url} target="_blank" rel="noreferrer">open</a></>}{more[0]?.kyc && <span className={"small " + (/^Checked/.test(more[0].kyc) ? "muted" : "missing")}> · {more[0].kyc}{more[0].kycNumber ? " " + more[0].kycNumber : ""}</span>}</span>
+          return <div key={t.key} className="check-row doc-row" style={{ alignItems: 'center' }}><span className="lbl" style={{ flex: 1 }}>{t.label}{url && !more.length && <> · <a href={url} target="_blank" rel="noreferrer">open</a></>}</span>
             <span className="row gap-s">
               <Select options={META.lists['Document status']} value={v} disabled={!can} onChange={(e) => setItem(t.key, e.target.value)} placeholder="Pending" style={{ minHeight: 30, padding: '3px 8px', width: 140 }} />
               {more.length > 0 && <Button size="sm" variant={openRow === t.key ? 'primary' : undefined} onClick={() => setOpenRow(openRow === t.key ? '' : t.key)} title="See, check or delete what was uploaded">Files ({more.length})</Button>}
@@ -90,10 +79,6 @@ export default function Documents() {
         <FileList showDoc files={(db.files || []).filter((f) => f.recordId === b).map((f) => ({ ...f, docLabel: label[f.doc] || String(f.doc || '').replace(/^other:/, 'Other: ') }))} onView={viewer.open} />
       </Card>
       {viewer.modal}
-      <Modal open={!!kycAsk} onClose={() => setKycAsk(null)} title="Check this card" footer={<><Button onClick={() => setKycAsk(null)}>Choose another file</Button><Button variant="primary" onClick={() => { const k = kycAsk; setKycAsk(null); onFile(k.t, k.f, { ...k.res, ok: false }) }}>Upload anyway</Button></>}>
-        {kycAsk && <><div className="kyc-box kyc-warn">{kycAsk.res.note}</div>
-          <p className="small muted">For {kycAsk.t.label}. The card is read on this device only; Aadhaar numbers are kept as the last 4 digits. If the photo is right but blurred, upload it anyway and mark it Verified after checking by eye.</p></>}
-      </Modal>
     </Page>
   )
 }

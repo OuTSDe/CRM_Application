@@ -227,7 +227,7 @@ Other tools post enquiries with `{"action":"inboundLead","key":"<inbound key>","
 - **Settings changes.** When settings change, every active user gets a notification listing what changed.
 - **Client complaints.** An issue in the category *Client complaint* notifies the advisor's manager and the admins.
 - **Double booking.** A new booking on a residence that already has a live booking is refused.
-- **KYC readings.** The card readings are stored in the `files` tab (`kyc`, `kycNumber`, `kycName`, `kycDob`). Aadhaar numbers are reduced to the last 4 digits on the server as well.
+- **KYC readings.** No longer used: the card check was removed on 4 Nov. The `kyc` columns in the `files` tab stay empty.
 
 ## Limits to know
 

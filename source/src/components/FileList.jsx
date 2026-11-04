@@ -26,7 +26,7 @@ export function useFileViewer() {
   const modal = <Modal open={!!view} onClose={() => setView(null)} title={view?.f?.name || 'File'} wide
     footer={<>{view?.url && <a className="btn" href={view.url} download={view.f.name}>Download</a>}{view?.f?.url && <a className="btn" href={view.f.url} target="_blank" rel="noreferrer">Open in Drive</a>}<Button variant="primary" onClick={() => setView(null)}>Close</Button></>}>
     {view && <div className="file-view">
-      <p className="small muted" style={{ marginTop: 0 }}>Uploaded by {view.f.by} · {when(view.f.at)}{view.f.kyc ? ' · ' + view.f.kyc + (view.f.kycNumber ? ' ' + view.f.kycNumber : '') : ''}</p>
+      <p className="small muted" style={{ marginTop: 0 }}>Uploaded by {view.f.by} · {when(view.f.at)}</p>
       {view.busy && <p className="muted">Opening…</p>}
       {view.err && <div className="note warn">{view.err}</div>}
       {view.url && (/^image\//.test(view.mime) ? <img src={view.url} alt={view.f.name} /> : /pdf/.test(view.mime) ? <iframe title={view.f.name} src={view.url} /> :
@@ -49,7 +49,7 @@ export default function FileList({ files, onView, empty = 'No files uploaded yet
     return <div key={f.id} className="file-row">
       <span className="file-ico" aria-hidden="true">{/\.pdf$/i.test(f.name) ? 'PDF' : /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name) ? 'IMG' : 'DOC'}</span>
       <span className="file-meta"><button type="button" className="linklike" onClick={() => onView(f)} title="View this file">{f.name}</button>
-        <span className="small muted">{showDoc && f.docLabel ? f.docLabel + ' · ' : ''}{f.by} · {when(f.at)}{f.kyc ? ' · ' + f.kyc : ''}</span></span>
+        <span className="small muted">{showDoc && f.docLabel ? f.docLabel + ' · ' : ''}{f.by} · {when(f.at)}</span></span>
       <span className="row gap-s">
         <Button size="sm" onClick={() => onView(f)}>View</Button>
         {mayDelete && <Confirm size="sm" label="Delete this file?" onConfirm={() => del(f)}>{busy === f.id ? '…' : 'Delete'}</Confirm>}

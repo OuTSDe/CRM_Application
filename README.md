@@ -254,10 +254,7 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
 - **Messages.** New templates *Closing enquiry* and *Festival wishes*, and new contact purposes. In **Log several at once**, *Same for every row* fills one message into every row.
 - **Client complaints.** The issue category *Client complaint* notifies the advisor's manager and the admins.
 - **Settings changes are announced.** When the rate card, plans or terms change, everyone gets a notification saying what changed.
-- **KYC check on upload.**
-  - PAN and Aadhaar photos are read in the browser before filing.
-  - A wrong card, or a name that does not match the client, is flagged and can still be uploaded on purpose.
-  - The number, name and date of birth read are saved with the file. Aadhaar is kept as the last 4 digits only.
+- **KYC check on upload** was added on 2 Nov and **removed on 4 Nov** at your request. Uploads go straight to Drive.
 - **Payments.** **Print receipts in bulk**: pick a date range, and every receipt prints on its own A4 page.
 - **Building.**
   - **Elevation** view: a white-model drawing with clickable floors.
@@ -294,7 +291,6 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
 17. **From the 2 and 3 November meetings, still waiting.**
    - The AI chatbot and AI analytics (Grok or another model) need a hosted model. The lead inbox is ready for a bot to post into.
    - Automatic capture from WhatsApp and 99acres needs the WhatsApp Business API or a mail reader. Both can post to the lead inbox.
-   - A local vision model needs hardware. The KYC check runs in the browser for now.
    - KRA and KPI scoring is waiting for HR.
    - The 4:25 pm recording was not transcribed.
    - The rendered white model will replace the drawn elevation when it is shared.
