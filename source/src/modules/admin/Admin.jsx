@@ -140,7 +140,7 @@ function AccessPicker({ u, onChange }) {
             <input type="checkbox" checked={on} disabled={def || isAdminRole} onChange={() => toggle(x.key)} />
             <span>{x.label}</span>{def ? <span className="small muted"> · role</span> : on ? <span className="small"> · extra</span> : null}</label> })}
       </fieldset>)}</div>
-      {added.some((k) => ['clients', 'documents', 'payments', 'leads'].includes(k)) && !byRole(u, 'seeAll') && !extra.includes('seeAll') && <p className="note info small">These pages show only the clients and leads this person is responsible for. Tick <b>See every client and lead</b> to show all of them.</p>}
+      {added.some((k) => ['clients', 'documents', 'payments', 'leads'].includes(k)) && !byRole(u, 'seeAll') && !extra.includes('seeAll') && <p className="note info small">These pages show only the clients and leads this person is responsible for. Tick <b>See and edit every client and lead</b> to show all of them.</p>}
     </div>
   </div>
 }

@@ -108,7 +108,7 @@ export const ACCESS = [
     { key: 'vendors', label: 'Vendor directory', mod: 'vendors', roles: R('vendors'), writes: ['vendors'], ws: 'vendors' },
   ] },
   { group: 'Extra powers', ws: '', items: [
-    { key: 'seeAll', label: 'See every client and lead, not only their own', roles: ['admin', 'senior', 'finance', 'viewer'], writes: [] },
+    { key: 'seeAll', label: 'See and edit every client and lead, not only their own', roles: ['admin', 'senior', 'finance', 'viewer'], writes: [] },
     { key: 'money', label: 'See amounts: consideration, payments, outstanding', roles: ['admin', 'senior', 'finance'], writes: [] },
     { key: 'recordPayments', label: 'Record payments and issue receipts (includes seeing amounts)', roles: ['admin', 'finance'], writes: ['payments', 'demandCalls'] },
     { key: 'construction', label: 'Update construction stages', roles: ['admin', 'finance'], writes: ['clpStages'] },

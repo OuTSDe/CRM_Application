@@ -405,9 +405,10 @@ function push_(u, ops) {
       if (op.op === 'delete') { if (u.appRole !== 'admin' && ['tasks','notifications'].indexOf(c) < 0) { refused.push(c + ' delete'); return; } delete_(c, op.id); audit_(u, c, op.id, 'deleted'); done++; return; }
       var rec = op.rec || {};
       rec.updatedAt = now_(); rec.updatedBy = u.name;
+      var editAll = extras_(u).indexOf('seeAll') >= 0;   // 4 Nov: ticked "See and edit every client and lead"
       if (u.appRole === 'sales') {
-        if (c === 'clients') { var cur = find_('clients', rec.bookingId || rec.id); if (!cur || (cur.owner !== u.name && (cur.coOwners || []).indexOf(u.name) < 0)) { refused.push('clients (not yours)'); return; } var safe = strip_(rec, MONEY_FIELDS.concat(['owner','coOwners','status','payState','lastPaymentDate','mine','directoryOnly'])); Object.keys(safe).forEach(function (k) { cur[k] = safe[k]; }); rec = cur; }
-        if (c === 'leads') { var cl = find_('leads', rec.id); if (cl && cl.owner && cl.owner !== u.name && (cl.coOwners || []).indexOf(u.name) < 0) { refused.push('leads (not yours)'); return; } if (!cl) rec.owner = rec.owner || u.name; }
+        if (c === 'clients') { var cur = find_('clients', rec.bookingId || rec.id); if (!cur || (!editAll && cur.owner !== u.name && (cur.coOwners || []).indexOf(u.name) < 0)) { refused.push('clients (not yours)'); return; } var safe = strip_(rec, MONEY_FIELDS.concat(['owner','coOwners','status','payState','lastPaymentDate','mine','directoryOnly'])); Object.keys(safe).forEach(function (k) { cur[k] = safe[k]; }); rec = cur; }
+        if (c === 'leads') { var cl = find_('leads', rec.id); if (cl && cl.owner && !editAll && cl.owner !== u.name && (cl.coOwners || []).indexOf(u.name) < 0) { refused.push('leads (not yours)'); return; } if (!cl) rec.owner = rec.owner || u.name; }
         if (c === 'interactions') rec.by = rec.by || u.name;
         if (c === 'tasks' && rec.owner !== u.name) { refused.push('tasks (sales can only add their own)'); return; }
       }
