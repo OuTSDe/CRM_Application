@@ -4,13 +4,14 @@ import { useStore } from '../../lib/store.jsx'
 import { sessionsFor, projectsFor } from '../../lib/designLink.js'
 import { experienceUrl } from '../../components/Tower.jsx'
 import { useCrm } from '../../lib/calc.js'
-import { canWrite, canOpen, seesAll, seesMoney, canAssignTasks, canRecordPayment } from '../../lib/perms.js'
+import { canWrite, canOpen, canPage, seesAll, seesMoney, canAssignTasks, canRecordPayment } from '../../lib/perms.js'
 import { META, OPS } from '../../lib/seed.js'
 import { Page, Card, Button, Badge, Modal, Grid, Stat, KV, Bar, Chips, Locked } from '../../components/ui.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import RecordForm from '../../components/RecordForm.jsx'
 import LogInteraction, { OutcomeBadge } from '../../components/LogInteraction.jsx'
 import PaymentForm from './PaymentForm.jsx'
+import { useBookingChanges, CancellationCard } from './BookingChanges.jsx'
 import { d, inr, pct, lakh, waLink, TITLES, CITIES, fullName, salute, n, nextWhen } from '../../lib/format.js'
 
 // Mirrors the Client Master tab: BOOKING · 1 BASIC INFORMATION · 2 BACKGROUND · 6 TEAM · UNIT & DEAL (3, 4 and 5 are worked out from the logs).
@@ -48,7 +49,7 @@ export function Clients() {
   const { user } = useStore()
   const crm = useCrm()
   const nav = useNavigate()
-  const all = seesAll(user), money = seesMoney(user)
+  const all = seesAll(user) || user.appRole === 'bank', money = seesMoney(user)
   const mine = crm.clients.filter((c) => (all ? c.owner === user.name : c.mine))
   const [tab, setTab] = useState(all ? 'all' : 'mine')
   const rows = tab === 'mine' ? mine : crm.clients
@@ -104,6 +105,13 @@ export function Client360() {
     {seesAll(user) ? <div className="note warn">An admin has given you access to every client, but the Google backend has not been updated yet, so it still sends only the name and residence. Ask an admin to paste the new backend/Code.gs into Apps Script and deploy a new version. Then reload Accord.</div>
       : <div className="note">To open this client, ask an admin to make you the <b>Relationship owner</b> or add you under <b>Also responsible</b>. Or ask them to tick <b>See and edit every client and lead</b> for you in Users and access.</div>}
   </Page>
+  return <Client360Body c={c} edit={edit} setEdit={setEdit} log={log} setLog={setLog} pay={pay} setPay={setPay} />
+}
+function Client360Body({ c, edit, setEdit, log, setLog, pay, setPay }) {
+  const { db, user, upsert } = useStore()
+  const crm = useCrm()
+  const nav = useNavigate()
+  const changes = useBookingChanges(c)
   const raw = db.clients.find((x) => x.id === c.id)
   const money = seesMoney(user)
   const team = db.users.filter((u) => ['admin', 'senior', 'sales'].includes(u.appRole) && u.active !== 'No').map((u) => u.name)
@@ -117,14 +125,16 @@ export function Client360() {
       subtitle={`${c.clientId} · ${c.bookingId} · Residence ${c.unit} · ${c.config} · ${c.area} sft · ${c.band || ''}`}
       actions={<>
         {c.phone && <a className="btn" href={waLink(c.phone, `Dear ${salute(c)}, `)} target="_blank" rel="noreferrer">WhatsApp</a>}
-        <Button onClick={() => setLog(true)}>Log interaction</Button>
+        {canWrite(user, 'interactions') && <Button onClick={() => setLog(true)}>Log interaction</Button>}
         {canRecordPayment(user) && <Button onClick={() => setPay(true)}>Record payment</Button>}
-        <Link className="btn" to={'/crm/messages?to=' + c.clientId}>Message</Link>
-        <Link className="btn" to={'/crm/booking/' + c.bookingId}>Booking form</Link>
+        {canPage(user, 'messages') && <Link className="btn" to={'/crm/messages?to=' + c.clientId}>Message</Link>}
+        {canPage(user, 'interactions') && <Link className="btn" to={'/crm/booking/' + c.bookingId}>Booking form</Link>}
         {money && <Link className="btn" to={'/crm/clients/' + c.id + '/statement'}>Payment summary</Link>}
-        <Link className="btn" to={'/brochure?for=' + c.clientId + '&visit=return'}>e-Brochure</Link>
+        {canPage(user, 'brochure') && <Link className="btn" to={'/brochure?for=' + c.clientId + '&visit=return'}>e-Brochure</Link>}
+        {changes.buttons}
         {canWrite(user, 'clients') && <Button variant="primary" onClick={() => setEdit({ ...raw })}>Edit details</Button>}
       </>}>
+      <CancellationCard c={c} />
       <div className="hero">
         <div className="flags">{c.red.map((f) => <span key={f} className="flag red">{f}</span>)}{c.amber.map((f) => <span key={f} className="flag amber">{f}</span>)}</div>
         <span className={'health ' + c.health}>{c.health}</span>
@@ -188,7 +198,8 @@ export function Client360() {
         {edit && <RecordForm sheet fields={CLIENT_FIELDS(team, { money, assign: canAssignTasks(user) })} value={edit} onChange={setEdit} />}
       </Modal>
       <LogInteraction open={log} onClose={() => setLog(false)} recordId={c.clientId} />
-      <PaymentForm open={pay} onClose={(p) => { setPay(false); if (p?.id) nav('/crm/payments/receipt/' + p.id) }} unit={c.unit} />
+      {changes.modals}
+      <PaymentForm open={pay} onClose={(p) => { setPay(false); if (p?.id && !p.ledger) nav('/crm/payments/receipt/' + p.id) }} unit={c.unit} />
     </Page>
   )
 }

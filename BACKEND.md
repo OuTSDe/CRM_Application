@@ -195,6 +195,17 @@ My Drive / Accord_CRM_Application / Accord_Data /
 - **Audit.** Every write is recorded in the audit tab: who, when, what and which record.
 - **Backups.** `nightlyBackup` copies the whole sheet to `Accord_Data / Backups` at 23:00 and keeps the last 30 copies. It then writes `Accord_Data / Exports / Accord Database.xlsx`, so the data can always be opened in Excel.
 
+## 5 Nov additions
+
+- **New tabs.** `demandLetters` (one row per letter; `credit` is money received before letters existed) and `partners` (channel partners with codes).
+- **New payment fields.** `demandLetter` and `ledgerOnly`.
+- **Roles.**
+  - `consultant`: `pull` goes through `consultantView_`, which strips contact fields (`CONTACT_FIELDS`), interaction text, files, messages, cost sheets and the inbox.
+  - `bank`: `pull` goes through `bankView_`, which keeps loan clients only. Bank users are notified of payments and demand letters on those clients.
+- **Trusted device.** `login` accepts `trust` and returns a token. The device entry stores only its SHA-256 hash and `trustUntil`. A later `login` with `trustToken` from the same device skips the code. `settings.trustDays` (default 3; 0 is off) controls it. `setPassword` clears trust on every device.
+- **`setPhoto`.** A person sets their own picture; admins can set anyone's. The picture is a small JPEG data URL, at most 45 KB.
+- **Clients write access.** Finance can now write to clients, to record refunds on cancellations.
+
 ## Viewing and deleting files (4 Nov)
 
 - **`fileGet`** returns a file's content so Accord can show it in place.

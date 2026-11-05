@@ -7,7 +7,7 @@ import * as ops from '../seed/ops.js'
 // Each collection is an array of records with a string `id`.
 export const COLLECTIONS = ['settings', 'users', 'units', 'clients', 'payments', 'leads', 'interactions', 'documents', 'issues', 'clpStages', 'demandCalls',
   'costSheets', 'parking', 'messages', 'templates', 'attendance', 'tasks', 'viewings', 'brochure', 'vendors', 'trips', 'stops', 'quotes', 'samples',
-  'projects', 'rooms', 'packages', 'boq', 'audit', 'timeEvents', 'notifications', 'accordSessions', 'clientForms', 'files', 'leadInbox']
+  'projects', 'rooms', 'packages', 'boq', 'audit', 'timeEvents', 'notifications', 'accordSessions', 'clientForms', 'files', 'leadInbox', 'demandLetters', 'partners']
 
 export const META = { lists: crm.lists, docTypes: crm.docTypes }
 
@@ -19,6 +19,7 @@ export const DEFAULT_TEMPLATES = [
   { id: 'TP-05', name: 'Private viewing invitation', channel: 'WhatsApp', body: 'Dear {name}, we would be delighted to host you for a private viewing at Yamuna Sky City. Would {date} suit you?\n\nWarm regards,\n{signature}' },
   { id: 'TP-07', name: 'Closing enquiry', channel: 'WhatsApp', body: 'Dear {name}, as we have not been able to reach you about your enquiry for Yamuna Sky City, we are closing it for now. Whenever you would like to take it forward, just reply here and I will be happy to help.\n\nWarm regards,\n{signature}' },
   { id: 'TP-08', name: 'Festival wishes', channel: 'WhatsApp', body: 'Dear {name}, warm wishes to you and your family from all of us at Yamuna Sky City. May the season bring you joy and good health.\n\nWarm regards,\n{signature}' },
+  { id: 'TP-09', name: 'Booking cancellation confirmation', channel: 'Email', body: 'Dear {name},\n\nWe confirm that your booking of residence {unit} at Yamuna Sky City has been cancelled as requested, with effect from {date}.\n\n{refund}\n\nWe are sorry to see you go, and thank you for the trust you placed in us. Should your plans change, our doors remain open and we would be glad to help you again.\n\n{signature}' },
   { id: 'TP-06', name: 'Receipt shared', channel: 'Email', body: 'Dear {name},\n\nPlease find attached the receipt for your payment towards residence {unit}.\n\nWarm regards,\n{signature}' },
 ]
 

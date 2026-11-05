@@ -100,6 +100,17 @@ function LeadAnalytics({ from, range }) {
         <Card title="Wants"><Bars rows={count(leads, 'config')} total={leads.length} /></Card>
         <Card title="Temperature of open leads"><Bars rows={count(open, 'temperature')} total={open.length} /></Card>
       </div>
+      <div className="split">
+        <Card title="Where leads come from: city"><Bars rows={count(leads, (l) => l.city || 'City not recorded').slice(0, 12)} total={leads.length} /></Card>
+        <Card title="Where leads come from: country"><Bars rows={count(leads, (l) => l.country || (l.city ? 'India' : 'Not recorded')).slice(0, 10)} total={leads.length} /></Card>
+      </div>
+      <Card title="By channel partner" pad={false}>
+        {(() => { const cp = leads.filter((l) => l.partner || l.source === 'Channel partner'); const rows = count(cp, (l) => l.partner || 'Partner not named')
+          return !rows.length ? <p className="muted" style={{ padding: 16, margin: 0 }}>No partner leads in this period. Pick the partner on a lead (Leads › Channel partners keeps the list and codes).</p> :
+          <table className="table"><thead><tr><th>Partner</th><th className="right">Leads</th><th className="right">Site visits</th><th className="right">Booked</th><th className="right">Conversion</th></tr></thead>
+            <tbody>{rows.map(([k, v]) => { const mine = cp.filter((l) => (l.partner || 'Partner not named') === k), b = mine.filter((l) => l.stage === 'Booked').length
+              return <tr key={k}><td>{k}</td><td className="right">{v}</td><td className="right">{mine.filter((l) => l.svDone === 'Yes').length}</td><td className="right">{b}</td><td className="right">{pct(b, v)}</td></tr> })}</tbody></table> })()}
+      </Card>
     </>
   )
 }

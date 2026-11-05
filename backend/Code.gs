@@ -39,11 +39,11 @@
  *  - Records made in demo mode carry _test = Yes: they send no reminders and are listed for clean-up.
  */
 
-var VERSION = '3.4.0';   // 4 Nov: the site warns admins when the deployed backend is older than this
+var VERSION = '3.5.0';   // 4 Nov: the site warns admins when the deployed backend is older than this
 var DATA_PATH = 'Accord_CRM_Application/Accord_Data';   // inside My Drive of the account that runs this script
 var TEMP_PASSWORD = 'Accord2026';                        // first sign-in only, to link the authenticator
 // The team, created by setup() when the Users tab is empty, so the first admin can sign in (temporary password, then the authenticator).
-var DEFAULT_USERS = [{"id": "T-01", "name": "Anuradha", "username": "anuradha", "team": "Sales", "designation": "Client Relations", "role": "Channel partners; CRM health and updates", "appRole": "sales", "reportsTo": "Cyril", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-02", "name": "Medha", "username": "medha", "team": "Sales", "designation": "Client Relations", "role": "Follow-up calls; client relations", "appRole": "sales", "reportsTo": "Cyril", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-03", "name": "Cyril", "username": "cyril", "team": "Sales", "designation": "Senior Sales Manager", "role": "Closing; client relations", "appRole": "senior", "reportsTo": "Aryan", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-04", "name": "Khushi", "username": "khushi", "team": "Sales", "designation": "Sales and CRM", "role": "Generalist; updates", "appRole": "senior", "reportsTo": "Aryan", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-05", "name": "Aryan", "username": "aryan", "team": "Management", "designation": "Director", "role": "Director; client relations", "appRole": "admin", "reportsTo": "", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "Yes", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-06", "name": "Yakshith", "username": "yakshith", "team": "Sales", "designation": "Client Relations", "role": "To confirm (named in CRM remarks for 2503)", "appRole": "sales", "reportsTo": "Cyril", "active": "To verify", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "X-01", "name": "Smitha (SBI)", "username": "smithasbi", "team": "External", "designation": "Bank contact, State Bank of India", "role": "Bank contact, State Bank of India", "appRole": "none", "reportsTo": "", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-07", "name": "Shruthadev", "username": "shruthadev", "team": "Management", "designation": "Research Director", "role": "Research Director, OuTSDe", "appRole": "admin", "reportsTo": "", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "Yes", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-08", "name": "Kajal", "username": "kajal", "team": "Design", "designation": "Creative Director", "role": "Creative Director, [INSD]e*", "appRole": "design", "reportsTo": "Shruthadev", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}];
+var DEFAULT_USERS = [{"id": "T-01", "name": "Anuradha", "username": "anuradha", "team": "Sales", "designation": "Client Relations", "role": "Channel partners; CRM health and updates", "appRole": "sales", "reportsTo": "Cyril", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-02", "name": "Medha", "username": "medha", "team": "Sales", "designation": "Client Relations", "role": "Follow-up calls; client relations", "appRole": "sales", "reportsTo": "Cyril", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-03", "name": "Cyril", "username": "cyril", "team": "Sales", "designation": "Senior Sales Manager", "role": "Closing; client relations", "appRole": "senior", "reportsTo": "Aryan", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-04", "name": "Khushi", "username": "khushi", "team": "Sales", "designation": "Sales and CRM", "role": "Generalist; updates", "appRole": "senior", "reportsTo": "Aryan", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-05", "name": "Aryan", "username": "aryan", "team": "Management", "designation": "Director", "role": "Director; client relations", "appRole": "admin", "reportsTo": "", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "Yes", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-06", "name": "Yakshith", "username": "yakshith", "team": "Sales", "designation": "Client Relations", "role": "To confirm (named in CRM remarks for 2503)", "appRole": "sales", "reportsTo": "Cyril", "active": "To verify", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "X-01", "name": "Smitha (SBI)", "username": "smithasbi", "team": "External", "designation": "Bank contact, State Bank of India", "role": "Bank contact, State Bank of India", "appRole": "bank", "reportsTo": "", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-07", "name": "Shruthadev", "username": "shruthadev", "team": "Management", "designation": "Research Director", "role": "Research Director, OuTSDe", "appRole": "admin", "reportsTo": "", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "Yes", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-08", "name": "Kajal", "username": "kajal", "team": "Design", "designation": "Creative Director", "role": "Creative Director, [INSD]e*", "appRole": "design", "reportsTo": "Shruthadev", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}];
 var FOLDERS = ['Clients', 'Leads', 'Project documents/Legal', 'Project documents/Approvals', 'Project documents/Forms and templates', 'Project documents/Marketing', 'Project documents/Site progress', 'Team', 'Vendors', 'Brand', 'Exports', 'Backups', 'Starting data'];
 var CLIENT_SUB = ['01 KYC', '02 Booking', '03 Agreement and legal', '04 Home loan', '05 Receipts', '06 Cost sheets', '07 Changes', '08 Possession', '09 Accord sessions', '10 Correspondence'];
 var TZ = 'Asia/Kolkata';
@@ -51,11 +51,11 @@ var ROUNDS = 1000;
 
 /* ───────────────────────── schema: tab columns (key, heading) ───────────────────────── */
 var SCHEMA = {
-  users: [['id','Member ID'],['name','Name'],['username','Username'],['team','Team'],['department','Department'],['employment','On roll / off roll'],['company','Company'],['designation','Designation'],['extraAccess','Extra access (ticked by admin)'],['role','Responsibilities'],['appRole','Access role'],['reportsTo','Reports to'],['workspaces','Workspaces'],['phone','Phone'],['email','Email'],['shiftStart','Shift start'],['shiftEnd','Shift end'],['workDays','Work days'],['remoteAllowed','Remote allowed'],['active','Active'],['deviceLock','Device lock'],['devices','Approved devices'],['mustChange','Must change password'],['mfa','Authenticator'],['pwSalt','_salt'],['pwHash','_hash'],['totpSecret','_totp'],['totpPending','_totp pending'],['totpLast','_totp last'],['failed','_failed'],['lockedUntil','_locked until']],
+  users: [['id','Member ID'],['name','Name'],['username','Username'],['team','Team'],['department','Department'],['employment','On roll / off roll'],['company','Company'],['designation','Designation'],['photo','Profile picture'],['extraAccess','Extra access (ticked by admin)'],['role','Responsibilities'],['appRole','Access role'],['reportsTo','Reports to'],['workspaces','Workspaces'],['phone','Phone'],['email','Email'],['shiftStart','Shift start'],['shiftEnd','Shift end'],['workDays','Work days'],['remoteAllowed','Remote allowed'],['active','Active'],['deviceLock','Device lock'],['devices','Approved devices'],['mustChange','Must change password'],['mfa','Authenticator'],['pwSalt','_salt'],['pwHash','_hash'],['totpSecret','_totp'],['totpPending','_totp pending'],['totpLast','_totp last'],['failed','_failed'],['lockedUntil','_locked until']],
   clients: [['bookingId','Booking ID'],['clientId','Client ID'],['unit','Unit No.'],['status','Booking status'],['category','Customer category'],['title','Title'],['name','Primary applicant'],['coapp','Co-applicant(s)'],['buyerType','Buyer type'],['phone','Mobile (primary)'],['phone2','Mobile (alternate)'],['whatsapp','WhatsApp'],['email','Email'],['address','Correspondence address'],['city','City'],['country','Country'],['residency','Residential status'],['pan','PAN'],['aadhaar4','Aadhaar (last 4)'],['dob','Date of birth'],['language','Preferred language'],['contactPref','Preferred contact'],['purpose','Buying purpose'],['occupant','Who will live there'],['funding','Funding mode'],['loanBank','Lender'],['loanAmount','Loan amount (₹)'],['loanStatus','Loan status'],['occupation','Occupation'],['employer','Employer / business'],['income','Income band'],['marital','Marital status'],['familyProfile','Family profile'],['decisionMaker','Key decision-maker'],['source','Lead source'],['leadId','Lead ID'],['owner','Relationship owner'],['sourcedBy','Sourced by'],['closedBy','Closed by'],['bookingDate','Booking date'],['tc','Total consideration (₹)'],['adjustment','Adjustment (₹)'],['adjType','Adjustment type'],['plan','Payment plan'],['agreement','Agreement for sale'],['parkingEntitlement','Car parks entitled'],['remarks','Remarks'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   leads: [['id','Lead ID'],['date','Date captured'],['title','Title'],['name','Name'],['phone','Mobile'],['phone2','Other numbers'],['email','Email'],['city','City'],['country','Country'],['residency','Residential status'],['source','Lead source'],['partner','Channel partner'],['referredBy','Referred by'],['config','Configuration interest'],['budget','Budget band'],['purpose','Purpose'],['timeline','Buying timeline'],['owner','Assigned to'],['coOwners','Also responsible'],['stage','Stage'],['temperature','Temperature'],['svDone','Site visit done?'],['svDate','Site visit date'],['lostReason','Lost / dormant reason'],['clientId','Converted to Client ID'],['notes','Notes'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   interactions: [['id','Log ID'],['date','Date'],['time','Time'],['type','Record type'],['recordId','Client or Lead ID'],['mode','Mode'],['purpose','Purpose'],['by','Team member'],['summary','Summary of discussion'],['outcome','Outcome'],['nextAction','Next action'],['nextDate','Next action date'],['nextTime','Next action time'],['nextOwners','Follow-up owners'],['status','Status'],['updatedAt','Updated at']],
-  payments: [['id','Entry No.'],['receiptNo','Receipt No.'],['date','Receipt date'],['unit','Unit No.'],['payer','Received from'],['thirdParty','Third-party payer'],['amount','Amount received (₹)'],['counted','Counted in totals?'],['towards','Towards'],['mode','Mode'],['instrument','Instrument / UTR no.'],['instrumentDate','Instrument date'],['bank','Bank'],['tds','TDS (₹)'],['realisation','Realisation'],['proofUrl','Proof (Drive)'],['note','Note'],['updatedAt','Updated at'],['updatedBy','Updated by']],
+  payments: [['id','Entry No.'],['receiptNo','Receipt No.'],['date','Receipt date'],['unit','Unit No.'],['payer','Received from'],['thirdParty','Third-party payer'],['amount','Amount received (₹)'],['counted','Counted in totals?'],['towards','Towards'],['mode','Mode'],['instrument','Instrument / UTR no.'],['instrumentDate','Instrument date'],['bank','Bank'],['tds','TDS (₹)'],['realisation','Realisation'],['demandLetter','Against demand letter'],['ledgerOnly','Ledger entry only (no receipt)'],['proofUrl','Proof (Drive)'],['note','Note'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   attendance: [['id','Entry'],['userId','Member ID'],['name','Name'],['date','Date'],['in','Punch in'],['out','Punch out'],['mode','Started as'],['state','Current state'],['workMin','Worked (min)'],['breakMin','Breaks (min)'],['siteMin','Site visits (min)'],['status','Status'],['where','Location check'],['events','Events'],['note','Note'],['updatedAt','Updated at']],
   timeEvents: [['id','Event'],['at','Server time'],['date','Date'],['time','Time'],['userId','Member ID'],['name','Name'],['type','Type'],['note','Note'],['device','Device'],['where','Location check'],['lat','Latitude'],['lng','Longitude'],['acc','Accuracy (m)'],['dist','Distance to Sky City (m)']],
   tasks: [['id','Task ID'],['title','Task'],['owner','Owner'],['by','Assigned by'],['due','Due'],['priority','Priority'],['module','Area'],['link','Related ID'],['status','Status'],['doneOn','Done on'],['notes','Notes'],['updatedAt','Updated at']],
@@ -64,32 +64,34 @@ var SCHEMA = {
   accordSessions: [['id','Session ID'],['startedAt','Started'],['buyer','Buyer'],['unitRef','Unit reference'],['recordId','Client or Lead ID'],['residence','Residence'],['persona','Persona'],['palette','Chosen palette'],['register','Register'],['configId','Configuration ID'],['total','Indicative total'],['by','Hosted by'],['fileUrl','Workbook (Drive)'],['updatedAt','Updated at']],
   clientForms: [['id','Response ID'],['bookingId','Booking ID'],['clientId','Client ID'],['unit','Unit No.'],['name','Client'],['submittedAt','Submitted at'],['status','Status'],['data','Answers'],['appliedBy','Applied by'],['appliedAt','Applied at']],
   files: [['id','File ID'],['at','Uploaded'],['by','By'],['kind','For'],['recordId','Record'],['label','Record name'],['category','Category'],['doc','Document'],['name','File name'],['url','Open (Drive)'],['folder','Folder'],['driveId','Drive ID'],['kyc','Card check'],['kycNumber','PAN / Aadhaar (last 4)'],['kycName','Name on card'],['kycDob','Date of birth on card'],['_test','Test entry']],
+  demandLetters: [['id','Demand letter No.'],['date','Letter date'],['callId','Demand call'],['stage','Stage'],['unit','Unit No.'],['bookingId','Booking ID'],['clientId','Client ID'],['name','Client'],['pct','Share of consideration'],['basis','Basis (₹)'],['gst','GST'],['amount','Amount demanded (₹)'],['credit','Received earlier, set against it (₹)'],['dueDate','Due date'],['status','Status'],['by','Raised by'],['sentAt','Sent'],['note','Note'],['updatedAt','Updated at']],
+  partners: [['id','ID'],['code','Partner code'],['name','Name'],['firm','Firm'],['phone','Mobile'],['email','Email'],['city','City'],['rera','RERA agent no.'],['commission','Brokerage %'],['since','Since'],['status','Status'],['owner','Our contact'],['notes','Notes'],['updatedAt','Updated at']],
   leadInbox: [['id','Inbox ID'],['at','Received'],['source','Source'],['name','Name'],['phone','Mobile'],['email','Email'],['city','City'],['config','Interest'],['message','Message'],['status','Status'],['leadId','Lead ID'],['by','Handled by'],['handledAt','Handled at']],
   audit: [['id','ID'],['at','When'],['by','By'],['coll','Collection'],['recId','Record'],['action','Action']]
 };
 var COLLECTIONS = ['settings','users','units','clients','payments','leads','interactions','documents','issues','clpStages','demandCalls','costSheets','parking',
   'messages','templates','attendance','timeEvents','tasks','notifications','viewings','brochure','vendors','trips','stops','quotes','samples','projects','rooms',
-  'packages','boq','accordSessions','clientForms','files','leadInbox','audit'];
+  'packages','boq','accordSessions','clientForms','files','leadInbox','demandLetters','partners','audit'];
 
 /* ───────────────────────── roles ───────────────────────── */
-var ALL = ['admin','senior','sales','finance','design','sourcing','viewer'];
+var ALL = ['admin','senior','sales','finance','design','sourcing','viewer','consultant','bank'];
 var WRITE = {
-  leads:['admin','senior','sales'], interactions:['admin','senior','sales','finance'], clients:['admin','senior','sales'], payments:['admin','finance'],
+  leads:['admin','senior','sales'], interactions:['admin','senior','sales','finance'], clients:['admin','senior','sales','finance'], payments:['admin','finance'],
   documents:['admin','senior','sales'], issues:['admin','senior','sales'], costSheets:['admin','senior','sales'], parking:['admin','senior'],
   demandCalls:['admin','finance'], clpStages:['admin','finance'], settings:['admin'], users:['admin'], units:['admin'], templates:['admin','senior'],
   messages:['admin','senior','sales','finance'], viewings:['admin','senior','sales','design'], brochure:['admin','senior','design'],
   vendors:['admin','design','sourcing'], trips:['admin','design','sourcing'], stops:['admin','design','sourcing'], quotes:['admin','design','sourcing'],
   samples:['admin','design','sourcing'], projects:['admin','design'], rooms:['admin','design'], packages:['admin','design','sourcing'], boq:['admin','design','sourcing'],
-  clientForms:['admin','senior','sales'], files:['admin','senior','sales','finance','design','sourcing'], leadInbox:['admin','senior','sales'], tasks:['*'], notifications:['*'], accordSessions:['*'], attendance:['admin'], timeEvents:[], audit:[]
+  clientForms:['admin','senior','sales'], files:['admin','senior','sales','finance','design','sourcing'], leadInbox:['admin','senior','sales'], demandLetters:['admin','finance'], partners:['admin','senior'], tasks:['*'], notifications:['*'], accordSessions:['*'], attendance:['admin'], timeEvents:[], audit:[]
 };
 var MONEY_FIELDS = ['tc','adjustment','adjType','adjReason','receivedPerCollections','outstandingPerCollections','loanAmount','rate','total'];
 // 4 Nov: extra access an admin ticks for one person (Users and access › Pages and permissions). Same list as perms.js.
 var GRANTS = { leads: ['leads','leadInbox','interactions'], clients: [], interactions: ['interactions'], payments: [], documents: ['documents','files'], messages: ['messages'],
   issues: ['issues'], costSheet: ['costSheets'], inventory: [], viewings: ['viewings'], brochure: [], experience: [], time: [], tasks: [], team: [], performance: [],
   analyticsLeads: [], analyticsFinance: [], analyticsOverall: [], projects: ['projects','rooms','packages','boq'], residences: [], showcase: [], sourcing: ['trips','stops','quotes','samples'],
-  vendors: ['vendors'], seeAll: [], money: [], recordPayments: ['payments','demandCalls'], construction: ['clpStages'], templates: ['templates'], assign: [] };
+  vendors: ['vendors'], partners: ['partners'], seeAll: [], money: [], recordPayments: ['payments','demandCalls','demandLetters'], construction: ['clpStages'], templates: ['templates'], assign: [] };
 function extras_(u) { var x = u.extraAccess; if (typeof x === 'string') { try { x = JSON.parse(x); } catch (e) { x = x.split(/[,\s]+/); } } return (x || []).filter(function (k) { return GRANTS.hasOwnProperty(k); }); }
-var seesMoney_ = function (u) { var x = extras_(u); return ['admin','senior','finance'].indexOf(u.appRole) >= 0 || x.indexOf('money') >= 0 || x.indexOf('recordPayments') >= 0; };
+var seesMoney_ = function (u) { var x = extras_(u); return ['admin','senior','finance','consultant','bank'].indexOf(u.appRole) >= 0 || x.indexOf('money') >= 0 || x.indexOf('recordPayments') >= 0; };
 var seesAll_ = function (u) { return ['admin','senior','finance','viewer'].indexOf(u.appRole) >= 0 || extras_(u).indexOf('seeAll') >= 0; };
 
 /* ───────────────────────── entry ───────────────────────── */
@@ -111,6 +113,7 @@ function doPost(e) {
       case 'approveDevice': return out_(approveDevice_(auth_(req.token), req));
       case 'upload': return out_(upload_(auth_(req.token), req));
       case 'fileGet': return out_(fileGet_(auth_(req.token), req));
+      case 'setPhoto': return out_(setPhoto_(auth_(req.token), req));
       case 'fileDelete': return out_(fileDelete_(auth_(req.token), req));
       case 'sendEmail': return out_(sendEmail_(auth_(req.token), req));
       case 'exportNow': return out_(exportNow_(auth_(req.token)));
@@ -200,7 +203,7 @@ function sha_(s) { return hex_(Utilities.computeDigest(Utilities.DigestAlgorithm
 function hash_(salt, pw) { var h = sha_(salt + ':' + pw); for (var i = 1; i < ROUNDS; i++) h = sha_(h + salt); return h; }
 function salt_() { return Utilities.getUuid().replace(/-/g, ''); }
 function strong_(pw) { return typeof pw === 'string' && pw.length >= 8 && /[A-Za-z]/.test(pw) && /\d/.test(pw); }
-function publicUser_(u) { return { id: u.id, name: u.name, username: u.username, appRole: u.appRole, workspaces: u.workspaces, designation: u.designation, email: u.email, extraAccess: extras_(u), mustChange: u.mustChange === 'Yes', mfa: !!u.totpSecret }; }
+function publicUser_(u) { return { id: u.id, photo: u.photo, name: u.name, username: u.username, appRole: u.appRole, workspaces: u.workspaces, designation: u.designation, email: u.email, extraAccess: extras_(u), mustChange: u.mustChange === 'Yes', mfa: !!u.totpSecret }; }
 function authMode_() { var s = read_('settings')[0] || {}; return s.authMode === 'password' ? 'password' : 'authenticator'; }
 
 /* TOTP (RFC 6238): 30-second steps, 6 digits, HMAC-SHA1, the format every authenticator app reads. */
@@ -252,7 +255,15 @@ function login_(req) {
   if (u.lockedUntil && new Date(u.lockedUntil) > new Date()) throw new Error('Too many attempts. Try again after ' + Utilities.formatDate(new Date(u.lockedUntil), TZ, 'HH:mm'));
   var fail = function (msg) { u.failed = Number(u.failed || 0) + 1; if (u.failed >= 5) { u.lockedUntil = new Date(Date.now() + 15 * 60000).toISOString(); u.failed = 0; } upsert_('users', u); throw new Error(msg); };
   var mode = authMode_(), enrolled = !!u.totpSecret;
-  if (mode === 'authenticator' && enrolled) {
+  // 5 Nov: a trusted device signs in without the code until its trust runs out (Settings: trustDays, 3 by default)
+  var trusted = false;
+  if (req.trustToken && enrolled) {
+    var td = (u.devices || []).filter(function (d) { return d.id === String(req.deviceId || '') && d.approved; })[0];
+    if (td && td.trustHash && td.trustHash === sha_(String(req.trustToken)) && new Date(td.trustUntil) > new Date()) trusted = true;
+    else if (!req.code) throw new Error('This device is no longer trusted. Enter the 6-digit code from your authenticator app.');
+  }
+  if (trusted) { /* code not needed */ }
+  else if (mode === 'authenticator' && enrolled) {
     var st = totpCheck_(u.totpSecret, req.code, u.totpLast);
     if (st < 0) fail('That code is not right. Open your authenticator app and type the 6 digits shown for Accord.');
     u.totpLast = st;
@@ -262,13 +273,18 @@ function login_(req) {
     if (hash_(u.pwSalt, String(req.password || '')) !== u.pwHash) fail(enrolled || mode === 'password' ? 'Unknown username or password' : 'Unknown username or temporary password');
   }
   checkDevice_(u, req);
+  var trust = null, days = Number((read_('settings')[0] || {}).trustDays); if (isNaN(days)) days = 3;
+  if (req.trust && days > 0 && enrolled && !trusted) {
+    var me = (u.devices || []).filter(function (d) { return d.id === String(req.deviceId || ''); })[0];
+    if (me) { var tok = Utilities.getUuid() + Utilities.getUuid(); me.trustHash = sha_(tok); me.trustUntil = new Date(Date.now() + days * 864e5).toISOString(); trust = { token: tok, until: me.trustUntil }; }
+  }
   u.failed = 0; u.lockedUntil = ''; upsert_('users', u);
   var token = Utilities.getUuid();
   CacheService.getScriptCache().put('t:' + token, u.id, 21600);
   PropertiesService.getScriptProperties().setProperty('t:' + token, u.id + '|' + Date.now());
   audit_(u, 'users', u.id, 'signed in on ' + devKind_(req) + ' · ' + (req.deviceLabel || ''));
   var pu = publicUser_(u); pu.mustEnrol = mode === 'authenticator' && !enrolled;
-  return { token: token, user: pu, serverTime: now_() };
+  return { token: token, user: pu, serverTime: now_(), trust: trust, trusted: trusted };
 }
 /** Sign-out (button, closed tab, refresh): saves anything still waiting, then ends the session. Never fails loudly. */
 function logout_(req) {
@@ -315,7 +331,7 @@ function setPassword_(admin, req) {
   var u = find_('users', req.userId); if (!u) throw new Error('Unknown user');
   if (!strong_(req.password)) throw new Error('Use at least 8 characters with a letter and a number');
   u.pwSalt = salt_(); u.pwHash = hash_(u.pwSalt, req.password); u.mustChange = 'Yes'; u.failed = 0; u.lockedUntil = '';
-  if (req.resetAuthenticator !== false) { u.totpSecret = ''; u.totpPending = ''; u.totpLast = ''; u.mfa = 'Not set'; }
+  if (req.resetAuthenticator !== false) { u.totpSecret = ''; u.totpPending = ''; u.totpLast = ''; u.mfa = 'Not set'; (u.devices || []).forEach(function (d) { delete d.trustHash; delete d.trustUntil; }); }
   upsert_('users', u);
   audit_(admin, 'users', u.id, 'sign-in reset (temporary password)');
   return { ok: true };
@@ -360,6 +376,8 @@ function pull_(u) {
   var db = {};
   COLLECTIONS.forEach(function (c) { db[c] = read_(c); });
   db.users = db.users.map(function (x) { var y = strip_(x, ['pwSalt','pwHash','failed','lockedUntil','totpSecret','totpPending','totpLast']); y.hasPassword = !!x.pwHash; y.mfa = x.totpSecret ? 'Set' : 'Not set'; if (u.appRole !== 'admin') { delete y.devices; } return y; });
+  if (u.appRole === 'consultant') return { db: consultantView_(db, u), serverTime: now_(), user: publicUser_(u), version: VERSION };
+  if (u.appRole === 'bank') return { db: bankView_(db, u), serverTime: now_(), user: publicUser_(u), version: VERSION };
   if (seesAll_(u) && u.appRole !== 'viewer') return { db: db, serverTime: now_(), user: publicUser_(u), version: VERSION };
 
   var me = u.name, s = db.settings[0] || {};
@@ -375,6 +393,7 @@ function pull_(u) {
     var d = {}; DIR.forEach(function (k) { if (c[k] !== undefined) d[k] = c[k]; }); d.directoryOnly = true; return d;
   });
   db.payments = db.payments.filter(function (p) { return mineUnits[String(p.unit)]; }).map(function (p) { return seesMoney_(u) ? p : { id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, towards: p.towards, counted: p.counted }; });
+  db.demandLetters = (db.demandLetters || []).filter(function (x) { return mineUnits[String(x.unit)]; }).map(function (x) { return seesMoney_(u) ? x : { id: x.id, unit: x.unit, callId: x.callId, date: x.date, dueDate: x.dueDate, status: x.status }; });
   var mineL = {}; db.leads = db.leads.filter(function (l) { if (mine_(l)) { mineL[l.id] = 1; return true; } return false; });
   db.interactions = db.interactions.filter(function (i) { return i.by === me || (i.nextOwners || []).indexOf(me) >= 0 || i.nextOwner === me; });
   db.documents = db.documents.filter(function (d) { return mineB[d.bookingId] || mineB[d.id]; });
@@ -393,6 +412,37 @@ function pull_(u) {
   db.audit = [];
   db.demandCalls = db.demandCalls.map(function (k) { return { id: k.id, stage: k.stage, description: k.description, raisedOn: k.raisedOn }; });
   return { db: db, serverTime: now_(), user: publicUser_(u), version: VERSION };
+}
+
+/* 5 Nov: consultants see the business, never the people (they also consult for other developers): no phone, e-mail,
+   address, PAN, notes, files, messages or conversation text. Same rules as redactForConsultant() in perms.js. */
+var CONTACT_FIELDS = ['phone','phone2','whatsapp','email','address','pan','coPan','aadhaar4','dob','coPhone','coEmail','employer','income','familyProfile','remarks','notes','referredBy','partnerPhone'];
+function consultantView_(db, u) {
+  var cut = function (o) { return strip_(o, CONTACT_FIELDS); };
+  db.clients = db.clients.map(cut); db.leads = db.leads.map(cut); db.viewings = (db.viewings || []).map(cut); db.partners = (db.partners || []).map(cut);
+  db.users = db.users.map(function (x) { return strip_(x, ['phone','email','devices']); });
+  db.interactions = db.interactions.map(function (i) { return strip_(i, ['summary','nextAction']); });
+  db.payments = db.payments.map(function (p) { return strip_(p, ['instrument','bank','proofUrl','thirdParty']); });
+  db.documents = db.documents.map(function (d) { return { id: d.id, bookingId: d.bookingId, items: d.items }; });
+  db.timeEvents = db.timeEvents.map(function (t) { return strip_(t, ['lat','lng','device']); });
+  ['costSheets','files','messages','leadInbox','clientForms','audit'].forEach(function (k) { db[k] = []; });
+  db.notifications = db.notifications.filter(function (n) { return n.to === u.name; });
+  db.tasks = db.tasks.filter(function (t) { return t.owner === u.name || t.by === u.name; });
+  return db;
+}
+/* 5 Nov: a bank or DSA contact (Smitha, SBI) sees only the clients funding with a bank loan, their payments and demand letters. */
+function isLoan_(c) { return /loan/i.test(String(c && c.funding || '')); }
+function bankView_(db, u) {
+  var loan = db.clients.filter(isLoan_), units = {}; loan.forEach(function (c) { units[String(c.unit)] = 1; });
+  var KEEP = ['id','bookingId','clientId','unit','title','name','coapp','status','funding','loanBank','loanAmount','loanStatus','tc','adjustment','plan','agreement','bookingDate','phone','email','owner','residency'];
+  db.clients = loan.map(function (c) { var o = {}; KEEP.forEach(function (k) { if (c[k] !== undefined) o[k] = c[k]; }); return o; });
+  db.payments = db.payments.filter(function (p) { return units[String(p.unit)]; }).map(function (p) { return { id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, amount: p.amount, tds: p.tds, towards: p.towards, mode: p.mode, counted: p.counted, demandLetter: p.demandLetter, ledgerOnly: p.ledgerOnly }; });
+  db.demandLetters = (db.demandLetters || []).filter(function (x) { return units[String(x.unit)]; });
+  ['leads','interactions','documents','issues','costSheets','messages','files','leadInbox','clientForms','viewings','accordSessions','audit','attendance','timeEvents','partners'].forEach(function (k) { db[k] = []; });
+  db.users = db.users.map(function (x) { return { id: x.id, name: x.name, designation: x.designation, appRole: x.appRole, team: x.team, active: x.active }; });
+  db.notifications = db.notifications.filter(function (n) { return n.to === u.name; });
+  db.tasks = db.tasks.filter(function (t) { return t.owner === u.name; });
+  return db;
 }
 
 /* ───────────────────────── writes ───────────────────────── */
@@ -416,7 +466,7 @@ function push_(u, ops) {
       }
       if (c === 'users') { var cu = find_('users', rec.id); ['pwSalt','pwHash','failed','lockedUntil','totpSecret','totpPending','totpLast','devices'].forEach(function (k) { rec[k] = cu ? cu[k] : (k === 'devices' ? [] : ''); }); rec.mfa = cu && cu.totpSecret ? 'Set' : 'Not set'; delete rec.hasPassword; }
       if (c === 'notifications' && rec.to !== u.name && !op.create) { var cn = find_('notifications', rec.id); if (cn && cn.to !== u.name && u.appRole !== 'admin') { refused.push('notifications'); return; } }
-      var before = (c === 'leads' || c === 'clients' || c === 'settings') ? find_(c, rec.bookingId || rec.id) : null;
+      var before = (c === 'leads' || c === 'clients' || c === 'settings' || c === 'payments' || c === 'demandLetters') ? find_(c, rec.bookingId || rec.id) : null;
       if (c === 'clients' && !before && rec.unit) {   // 2 Nov: no double booking, checked on the server too
         var clash = read_('clients').filter(function (x) { return String(x.unit) === String(rec.unit) && ['Cancelled', 'Transferred'].indexOf(x.status) < 0; })[0];
         if (clash) { refused.push('booking (residence ' + rec.unit + ' is already booked by ' + clash.name + ')'); return; }
@@ -445,6 +495,12 @@ function afterSave_(u, c, rec, before) {
     var diff = changes_(before, rec);
     if (diff.length) read_('users').filter(function (x) { return x.active !== 'No' && x.appRole !== 'none' && x.name !== u.name; }).forEach(function (x) {
       notify_(x.name, 'settings', 'Settings changed by ' + u.name, diff.slice(0, 6).join(' · ') + (diff.length > 6 ? ' · and ' + (diff.length - 6) + ' more' : ''), '#/', now_(), u.name);
+    });
+  }
+  if ((c === 'payments' || c === 'demandLetters') && !before && rec.unit) {   // 5 Nov: the bank contact hears about loan clients
+    var cli = read_('clients').filter(function (x) { return String(x.unit) === String(rec.unit); })[0];
+    if (isLoan_(cli)) read_('users').filter(function (x) { return x.appRole === 'bank' && x.active !== 'No'; }).forEach(function (x) {
+      notify_(x.name, 'bank', (c === 'payments' ? 'Payment received' : 'Demand letter ' + rec.id) + ' · residence ' + rec.unit, (cli.name || '') + ' · ₹' + Math.round(Number(rec.amount || 0)).toLocaleString('en-IN') + (c === 'payments' ? ' · ' + (rec.towards || '') : ' due ' + (rec.dueDate || '')), c === 'payments' ? '#/crm/payments' : '#/crm/payments/demand/' + rec.id, now_(), u.name);
     });
   }
   if (c === 'issues' && rec.category === 'Client complaint' && !rec.notifiedAt) {
@@ -613,6 +669,13 @@ var EXT = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png'
 /* 4 Nov: look at an uploaded file inside Accord (staff do not need access to the OuTSDe Drive), and delete a wrong one.
    Who may look: anyone who sees all clients, the person who uploaded it, and the people responsible for that client or lead.
    Who may delete: the person who uploaded it, and admins. The Drive file goes to the Drive bin (recoverable for 30 days). */
+/* 5 Nov: a person sets their own profile picture (admins: anyone's). A small JPEG, already shrunk in the browser. */
+function setPhoto_(u, req) {
+  var id = req.userId || u.id; if (id !== u.id && u.appRole !== 'admin') throw new Error('Only admins can change someone else\'s picture');
+  var p = String(req.photo || ''); if (p && (!/^data:image\/(jpeg|png|webp);base64,/.test(p) || p.length > 45000)) throw new Error('Use a smaller photo');
+  var x = find_('users', id); if (!x) throw new Error('Unknown user');
+  x.photo = p; upsert_('users', x); return { ok: true };
+}
 function fileAllowed_(u, f) {
   if (seesAll_(u) && u.appRole !== 'viewer' || f.by === u.name || f.kind === 'project') return true;
   var mine = function (r) { return r && (r.owner === u.name || (r.coOwners || []).indexOf(u.name) >= 0); };

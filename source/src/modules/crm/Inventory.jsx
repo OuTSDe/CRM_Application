@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
 import { useCrm, BOOKED } from '../../lib/calc.js'
-import { canWrite, canOpen, seesMoney } from '../../lib/perms.js'
+import { canWrite, canOpen, canPage, seesMoney } from '../../lib/perms.js'
 import { TowerStack, FloorPlan, usePlateTone, useAvailability, plateOf, plateRange, ordinal, unitNo, tagOf, experienceUrl } from '../../components/Tower.jsx'
 import { sessionsFor, projectsFor } from '../../lib/designLink.js'
 import { Page, Card, Button, Badge, Grid, Stat, Seg, Modal, Field, Input, Select, KV, Confirm } from '../../components/ui.jsx'
@@ -209,7 +209,7 @@ function UnitCard({ unit, statusOf, user, db, crm }) {
           {!c.directoryOnly && c.health && <span className={'health ' + c.health} style={{ padding: '3px 10px', fontSize: 12 }}>{c.health}</span>}
         </div>
       </div> : <div className="row" style={{ marginTop: 12 }}>
-        {canOpen(user, 'crm') && <Link className="btn btn-primary btn-sm" to={'/crm/cost-sheet?unit=' + u.unit}>Start cost sheet</Link>}
+        {canPage(user, 'costSheet') && <Link className="btn btn-primary btn-sm" to={'/crm/cost-sheet?unit=' + u.unit}>Start cost sheet</Link>}
         {canOpen(user, 'experience') && <a className="btn btn-sm" href={experienceUrl({ unit: u.unit, by: user.name, client: false })} target="_blank" rel="noreferrer">Open in the Accord experience</a>}
       </div>}
       {(sessions.length > 0 || projects.length > 0) && <div style={{ marginTop: 14 }}>

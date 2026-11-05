@@ -12,14 +12,14 @@ import LogInteraction, { OutcomeBadge } from '../../components/LogInteraction.js
 import { d, today, waLink, TITLES, CITIES, fullName, salute, hm12, nextWhen } from '../../lib/format.js'
 
 // Mirrors the "Leads & Prospects" tab: LEAD · SOURCE · REQUIREMENT · PIPELINE · OUTCOME
-export const LEAD_FIELDS = (team, canAssign = true) => [
+export const LEAD_FIELDS = (team, canAssign = true, partners = []) => [
   { section: 'Lead', n: '1' },
   { k: 'id', l: 'Lead ID', auto: true, ph: 'Given on save' }, { k: 'date', l: 'Date captured', t: 'date' }, { k: 'title', l: 'Title', t: 'select', o: TITLES, hint: 'Used in every message: Dear Dr. …' },
   { k: 'name', l: 'Name', req: true, span: 2 }, { k: 'phone', l: 'Mobile (primary)', t: 'tel', req: true, hint: 'Checked for duplicates on save' },
   { k: 'phone2', l: 'Other numbers', t: 'tel', hint: 'Separate with commas' }, { k: 'email', l: 'Email', t: 'email', req: true },
   { k: 'city', l: 'City', suggest: CITIES, ph: 'Start typing' }, { k: 'country', l: 'Country', suggest: ['India', 'UAE', 'Qatar', 'Oman', 'Kuwait', 'Saudi Arabia', 'Bahrain', 'Singapore', 'United Kingdom', 'USA', 'Canada', 'Australia'] }, { k: 'residency', l: 'Residential status', t: 'select', o: 'Residential status' },
   { section: 'Source', n: '2' },
-  { k: 'source', l: 'Primary lead source', t: 'select', o: 'Lead source', req: true }, { k: 'partner', l: 'Channel partner' }, { k: 'referredBy', l: 'Referred by', hint: 'Name of the person who referred them' },
+  { k: 'source', l: 'Primary lead source', t: 'select', o: 'Lead source', req: true }, partners.length ? { k: 'partner', l: 'Channel partner', t: 'select', o: partners, hint: 'From Leads › Channel partners' } : { k: 'partner', l: 'Channel partner', hint: 'Add partners under Leads › Channel partners' }, { k: 'referredBy', l: 'Referred by', hint: 'Name of the person who referred them' },
   { k: 'sources', l: 'Also came through', t: 'chips', o: 'Lead source', span: 'all' },
   { section: 'Requirement', n: '3' },
   { k: 'config', l: 'Configuration interest', t: 'select', o: 'Configuration' }, { k: 'budget', l: 'Budget band', t: 'select', o: 'Budget band' }, { k: 'purpose', l: 'Purpose', t: 'select', o: 'Buying purpose' },
@@ -39,6 +39,9 @@ export const LOST_REASONS = ['Not responding', 'Budget', 'Bought elsewhere', 'Lo
 export const LEAD_GAPS = [['title', 'Title'], ['email', 'Email'], ['city', 'City'], ['config', 'Configuration'], ['budget', 'Budget'], ['purpose', 'Purpose'], ['timeline', 'Timeline'], ['owner', 'Advisor']]
 export const gapsOf = (l) => LEAD_GAPS.filter(([k]) => !l[k] || String(l[k]).trim() === '' || /^name not given$/i.test(String(l[k]))).map(([, x]) => x).concat(!l.name || /not given/i.test(l.name) ? ['Name'] : [])
 const OPEN = (l) => !['Lost', 'Booked', 'Dormant'].includes(l.stage)
+// 5 Nov: channel partners are picked from the partner directory (each has a code)
+export const partnerLabel = (p) => `${p.name}${p.firm ? ', ' + p.firm : ''} (${p.code})`
+export const partnerOptions = (db) => { const a = (db.partners || []).filter((p) => p.status !== 'Inactive').map(partnerLabel); const old = [...new Set(db.leads.map((l) => l.partner).filter((x) => x && !a.includes(x)))]; return a.length ? [...a, ...old] : [] }
 
 // 2 Nov: enquiries that come in by themselves (bot, WhatsApp tool, 99acres, website) land in the inbox first.
 const SRC = { whatsapp: 'WhatsApp', '99acres': '99acres', website: 'Website', sms: 'SMS', facebook: 'Facebook / Instagram', instagram: 'Facebook / Instagram', google: 'Google ads' }
@@ -91,6 +94,7 @@ export function Leads() {
   const inbox = (db.leadInbox || []).filter((x) => x.status === 'New')
   const team = db.users.filter((u) => ['admin', 'senior', 'sales'].includes(u.appRole) && u.active !== 'No').map((u) => u.name)
   const assign = canAssignTasks(user)
+  const partnerOpts = partnerOptions(db)
   const rows = crm.leads
   const views = [{ value: 'open', label: 'Open leads', test: OPEN }, { value: 'due', label: 'Follow-up due', test: (l) => l.contact.next && l.contact.next.nextDate <= t },
     { value: 'hot', label: 'Hot', test: (l) => l.temperature === 'Hot' && OPEN(l) }, { value: 'untouched', label: 'Never contacted', test: (l) => !l.contact.count || l.contact.list.every((i) => i.mode === 'Note (imported)') },
@@ -100,7 +104,7 @@ export function Leads() {
   // 2 Nov: a refused save says why inside the form and marks the cells, instead of a 3-second message at the bottom.
   const refuse = (e, msg) => { setErrs(e); setWhy(msg); setTimeout(() => document.querySelector('.modal .field.invalid')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50) }
   const save = () => {
-    const F = LEAD_FIELDS(team), e = {}
+    const F = LEAD_FIELDS(team, true, partnerOpts), e = {}
     missingKeys(F, add).forEach((k) => (e[k] = 'Required'))
     if (add.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(add.email)) e.email = 'This e-mail address does not look right'
     if (add.phone && String(add.phone).replace(/\D/g, '').length < 10) e.phone = 'At least 10 digits'
@@ -122,6 +126,7 @@ export function Leads() {
       actions={canWrite(user, 'leads') && <>
         <Button onClick={() => setView(view === 'inbox' ? 'open' : 'inbox')}>{view === 'inbox' ? 'Back to leads' : `Inbox${inbox.length ? ' (' + inbox.length + ')' : ''}`}</Button>
         <Button onClick={() => setPaste('')}>Paste an enquiry</Button>
+        <Link className="btn" to="/crm/partners">Channel partners</Link>
         <Button variant="primary" onClick={() => setAdd({ date: t, stage: 'New', temperature: 'Warm', owner: user.name, interests: [] })}>New lead</Button></>}>
       <Grid cols={5}>
         <Stat label="Open" value={crm.leads.filter(OPEN).length} tone="info" onClick={() => setView('open')} />
@@ -148,7 +153,7 @@ export function Leads() {
         <textarea className="input" rows={8} style={{ width: '100%' }} value={paste || ''} onChange={(e) => setPaste(e.target.value)} placeholder="e.g. Name: Ravi Kumar, Mobile +91 98450 12345, ravi@example.com, looking for 3 BHK, from Bengaluru" />
       </Modal>
       <Modal open={!!add} onClose={close} title="New lead" wide footer={<>{why && <div className="form-why" role="alert">{why}</div>}<Button onClick={close}>Cancel</Button><Button variant="primary" onClick={save}>Save lead</Button></>}>
-        {add && <RecordForm sheet fields={LEAD_FIELDS(team, assign)} value={add} onChange={(v) => { setAdd(v); if (why && !v.confirmDup) setWhy('') }} errors={errs} />}
+        {add && <RecordForm sheet fields={LEAD_FIELDS(team, assign, partnerOpts)} value={add} onChange={(v) => { setAdd(v); if (why && !v.confirmDup) setWhy('') }} errors={errs} />}
       </Modal>
     </Page>
   )
@@ -158,6 +163,7 @@ export function LeadDetail() {
   const { id } = useParams()
   const { db, user, upsert, notify } = useStore()
   const crm = useCrm()
+  const partnerOpts = partnerOptions(db)
   const nav = useNavigate()
   const l = crm.leads.find((x) => x.id === id)
   const [edit, setEdit] = useState(null)
@@ -220,7 +226,7 @@ export function LeadDetail() {
         </div>
       </div>
       <Modal open={!!edit} onClose={() => setEdit(null)} title={'Edit ' + l.name} wide footer={<><Button onClick={() => setEdit(null)}>Cancel</Button><Button variant="primary" onClick={save}>Save</Button></>}>
-        {edit && <RecordForm sheet fields={LEAD_FIELDS(team, canAssignTasks(user))} value={edit} onChange={setEdit} />}
+        {edit && <RecordForm sheet fields={LEAD_FIELDS(team, canAssignTasks(user), partnerOpts)} value={edit} onChange={setEdit} />}
       </Modal>
       <LogInteraction open={log} onClose={() => setLog(false)} recordId={l.id} />
     </Page>

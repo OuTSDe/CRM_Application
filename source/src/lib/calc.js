@@ -80,7 +80,11 @@ export function deriveCrm(db) {
   })
   const byUnit = {}; clients.forEach((c) => (byUnit[c.unit] = c))
   const leads = db.leads.map((l) => ({ ...l, contact: contact(l.id) }))
-  return { clients, byUnit, leads, units: db.units, cum, billedPct, gst, contact, recvByUnit }
+  // 5 Nov: demand letters. Each has a code (DL-041); receipts are coded against the letter they pay.
+  const paidOn = {}; db.payments.forEach((p) => { if (p.demandLetter && p.counted === 'Yes') paidOn[p.demandLetter] = (paidOn[p.demandLetter] || 0) + n(p.amount) + n(p.tds) })
+  const letters = (db.demandLetters || []).map((x) => { const paid = paidOn[x.id] || 0, bal = Math.max(0, n(x.amount) - n(x.credit) - paid)
+    return { ...x, paid, balance: bal, state: x.status === 'Withdrawn' ? 'Withdrawn' : bal <= 0.5 ? 'Paid' : paid <= 0 ? (x.dueDate && x.dueDate < today() ? 'Overdue' : 'Raised') : bal > 0.5 ? 'Part paid' : 'Paid' } })
+  return { clients, byUnit, leads, units: db.units, cum, billedPct, gst, contact, recvByUnit, letters }
 }
 export function useCrm() {
   const { db } = useStore()
@@ -127,3 +131,15 @@ export function attendanceSummary(rows) {
   return rows.map((r) => ({ ...r, minutes: mins(r.in, r.out) }))
 }
 export { today }
+
+// 5 Nov: what a receipt says about its demand letter. Payments against the letter are taken in date and receipt order,
+// so each receipt knows what was paid before it, and whether it is a part payment or completes the letter.
+export function letterStatus(p, letter, payments) {
+  if (!letter) return null
+  const order = (x) => String(x.date || '') + String(x.receiptNo || '').padStart(12, '0')
+  const on = payments.filter((x) => x.demandLetter === letter.id && x.counted === 'Yes').sort((a, b) => order(a).localeCompare(order(b)))
+  let before = 0; for (const x of on) { if (x.id === p.id) break; before += n(x.amount) + n(x.tds) }
+  const now = before + n(p.amount) + n(p.tds), bal = Math.max(0, n(letter.amount) - n(letter.credit) - now)
+  const part = on.findIndex((x) => x.id === p.id) + 1
+  return { before, now, balance: bal, full: bal <= 0.5, part, of: on.length }
+}

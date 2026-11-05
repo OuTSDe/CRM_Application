@@ -12,6 +12,8 @@ const ALL = [
     'Accord asks you to sign in again whenever the page is refreshed or closed, and signs you out after a spell with no activity. Save your work before stepping away.',
     'Punch in from the clock at the top. At Sky City it counts as Office; elsewhere it is logged as Remote. Use Break for lunch, tea or a personal break, and Site visit when you go out. Punch out at the end of the day.',
     'While you are punched in at the office, Accord checks your location every 15 minutes. If you leave, it marks you as Remote. During a site visit it reminds you every hour.',
+    'On your own computer or phone, tick "Trust this device" at sign-in: for the next few days you only press Continue, without the code. Stop it any time from the menu under your name.',
+    'Profile picture: menu under your name › Profile picture.',
     'Training mode (in the menu under your name) lets you practise. Nothing you enter while it is on is saved, and it is all wiped when you switch it off.',
     'Every text box checks spelling as you type. Words underlined in red can be fixed with a right-click.'] },
   { id: 'leads', title: 'Leads', roles: ['admin', 'senior', 'sales'], items: [
@@ -37,6 +39,17 @@ const ALL = [
     'Payments › Record payment. Each entry gets a receipt number and an A4 receipt to print or save as PDF.',
     'Print receipts in bulk: choose a date range (and a residence if needed); every receipt prints on its own page in one go.',
     'Building and parking › Construction: keep each stage\'s status and dates up to date. Demand calls follow the completed stages.'] },
+  { id: 'letters', title: 'Demand letters, receipts and cancellations', roles: ['admin', 'finance', 'senior'], items: [
+    'Payments › Demand calls › Raise letters: one demand letter per live booking, each with its own code. Print each from Payments › Demand letters.',
+    'Record payment picks the open demand letter of that residence. The receipt says when it is a part payment, and what is still due on the letter.',
+    'Furniture, barter and other adjustments: choose "Ledger entry only, no receipt".',
+    'Cancel booking (Client 360): reason, date, deduction. Accounts get a refund task; record the refund when paid, then send the cancellation e-mail from the same card.',
+    'Move to another residence (Client 360): the booking and its payments move to a free residence; make a new cost sheet for it.'] },
+  { id: 'reports', title: 'Reports', roles: ['*'], items: [
+    'Team › Reports: pick a person or the whole team, the period and A4 portrait or landscape, then Print or save as PDF.',
+    'Reports show names and residences only, never phone numbers or e-mails.'] },
+  { id: 'partners', title: 'Channel partners', roles: ['admin', 'senior', 'sales'], items: [
+    'Leads › Channel partners: add a partner once; they get a code. Pick them on the lead under Channel partner so analytics can show what each partner brings.'] },
   { id: 'team', title: 'Team, time and performance', roles: ['admin', 'senior'], items: [
     'Team shows who reports to whom, department and on roll / off roll / consultant.',
     'Time shows punches and breaks for each person, with the reason for each break.',
@@ -48,6 +61,7 @@ const ALL = [
     'Overall: for admins only. Bookings, booking value, collections, the lead pipeline and team activity on one page.',
     'Pick 30 days, 90 days, 1 year or all time at the top.'] },
   { id: 'admin', title: 'Admin', roles: ['admin'], items: [
+    'Consultant role: for outside consultants; they see analytics, reports and progress but never contact details. Bank / DSA role: for a bank contact; they see loan clients only.',
     'Users and access: add a person, give them a role and platforms, and send the authenticator set-up. Add department, employment and company for the team view.',
     'Extra access: open a person in Users and access and go to Pages and permissions. Greyed ticks come with their role; tick any other page or power (for example Analytics: finance, or Record payments) to give it to that person only. To match a colleague, use Same access as, pick them, choose Client 360 only or Everything, then Give and Save.',
     'Settings: the rate card (base rate, floor rise, car parks, MESCOM and others), payment plans and terms. Everyone is told when these change, with what changed.',

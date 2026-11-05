@@ -11,9 +11,9 @@ import { cx, Button, Modal } from './ui.jsx'
 export const NAV = {
   sales: [
     { label: 'Today', items: [['/', 'Dashboard', 'crm', true], ['/crm/interactions', 'Interaction log', 'interactions'], ['/people/tasks', 'Tasks', 'tasks']] },
-    { label: 'Clients', items: [['/crm/leads', 'Leads', 'leads'], ['/crm/clients', 'Client 360', 'clients'], ['/crm/payments', 'Payments', 'payments'], ['/crm/documents', 'Documents', 'documents'], ['/crm/messages', 'Messages', 'messages'], ['/crm/issues', 'Issues', 'issues']] },
+    { label: 'Clients', items: [['/crm/leads', 'Leads', 'leads'], ['/crm/partners', 'Channel partners', 'partners'], ['/crm/clients', 'Client 360', 'clients'], ['/crm/payments', 'Payments', 'payments'], ['/crm/documents', 'Documents', 'documents'], ['/crm/messages', 'Messages', 'messages'], ['/crm/issues', 'Issues', 'issues']] },
     { label: 'Selling', items: [['/crm/cost-sheet', 'Cost sheet', 'costSheet'], ['/crm/inventory', 'Building and parking', 'inventory'], ['/presales', 'Private viewings', 'viewings'], ['/brochure', 'e-Brochure', 'brochure'], ['/experience', 'Accord experience', 'experience']] },
-    { label: 'Team', items: [['/people', 'Time', 'time', true], ['/people/team', 'Team', 'team'], ['/people/performance', 'Performance', 'performance'], ['/crm/analytics', 'Analytics', 'analytics'], ['/help', 'User guide', 'help']] },
+    { label: 'Team', items: [['/people', 'Time', 'time', true], ['/people/team', 'Team', 'team'], ['/people/performance', 'Performance', 'performance'], ['/crm/analytics', 'Analytics', 'analytics'], ['/reports', 'Reports', 'reports'], ['/help', 'User guide', 'help']] },
   ],
   design: [
     { label: 'Design', items: [['/', 'Overview', 'accord', true], ['/experience', 'Accord experience', 'experience'], ['/accord', 'Projects and BOQ', 'projects', true], ['/accord/residences', 'Residences', 'residences'], ['/presales/showcase', 'Design showcase', 'showcase']] },
@@ -50,7 +50,8 @@ export default function Layout() {
   useEffect(() => { setMenu(false) }, [loc.pathname])
   // the menu is a drawer now (31 Oct): hidden until the menu button is pressed; Escape or a click outside closes it
   useEffect(() => { if (!menu) return; const k = (e) => e.key === 'Escape' && setMenu(false); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [menu])
-  const gated = !punchedIn
+  const external = ['consultant', 'bank'].includes(user?.appRole) || user?.team === 'External'   // 5 Nov: outside people do not punch in
+  const gated = !punchedIn && !external
   useWatchers({ user, myDay, punch, notify, settings, logout: () => { logout(); nav('/') }, path: loc.pathname })
   let k = 0
   return (
@@ -218,7 +219,22 @@ function Bell({ db, user, markRead, nav }) {
   )
 }
 
+// 5 Nov: profile pictures. Shrunk to 160 px on this device before saving, so it fits in the sheet.
+export function Avatar({ u, size }) {
+  return u?.photo ? <img className="avatar avatar-img" src={u.photo} alt="" style={size ? { width: size, height: size } : undefined} /> : <span className="avatar" style={size ? { width: size, height: size } : undefined}>{initials(u?.name)}</span>
+}
+export const shrinkPhoto = (file) => new Promise((ok, bad) => {
+  if (!file || !/^image\//.test(file.type)) return bad(new Error('Pick a photo'))
+  const img = new Image(), url = URL.createObjectURL(file)
+  img.onload = () => { const s = 160, c = document.createElement('canvas'); c.width = s; c.height = s; const k = Math.max(s / img.width, s / img.height), w = img.width * k, h = img.height * k
+    c.getContext('2d').drawImage(img, (s - w) / 2, (s - h) / 2, w, h); URL.revokeObjectURL(url); ok(c.toDataURL('image/jpeg', 0.82)) }
+  img.onerror = () => bad(new Error('That photo could not be read'))
+  img.src = url
+})
 function UserMenu({ user, logout, demo, toggleDemo, passwords }) {
+  const { setPhoto: savePhoto, notify } = useStore()
+  const trusted = (() => { try { return !!localStorage.getItem('accord.trust') } catch (e) { return false } })()
+  const setPhoto = async (f) => { try { await savePhoto(await shrinkPhoto(f)); notify('Profile picture saved') } catch (e) { notify(e.message, 'bad') } }
   const [open, setOpen] = useState(false)
   const [pw, setPw] = useState(false)
   const box = useRef(null)
@@ -226,12 +242,14 @@ function UserMenu({ user, logout, demo, toggleDemo, passwords }) {
   return (
     <div className="rel who" ref={box}>
       <button className="icon-btn" style={{ width: 'auto', border: 0, gap: 10, display: 'inline-flex', alignItems: 'center' }} onClick={() => setOpen(!open)} aria-haspopup="menu">
-        <span className="avatar">{initials(user?.name)}</span>
+        <Avatar u={user} />
         <span className="who-txt" style={{ textAlign: 'left' }}><b>{user?.name}</b><span>{user?.designation || ROLES[user?.appRole]}</span></span>
       </button>
       {open && <div className="menu">
         <div className="menu-head">{ROLES[user?.appRole]} · @{user?.username}</div>
         <button onClick={() => { toggleDemo(!demo); setOpen(false) }}>{demo ? 'End training mode' : 'Training mode (practice, not saved)'}</button>
+        <label className="menu-file">Profile picture<input type="file" accept="image/*" hidden onChange={(e) => { setOpen(false); setPhoto(e.target.files[0]) }} /></label>
+        {trusted && <button onClick={() => { try { localStorage.removeItem('accord.trust') } catch (e) { /* */ } setOpen(false); notify('This device is no longer trusted. You will need the code next time.') }}>Stop trusting this device</button>}
         {passwords && <button onClick={() => { setOpen(false); setPw(true) }}>Change password</button>}
         <hr /><button className="danger" onClick={logout}>Sign out</button>
       </div>}

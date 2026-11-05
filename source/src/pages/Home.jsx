@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { useStore, daySums } from '../lib/store.jsx'
 import { useCrm, BOOKED } from '../lib/calc.js'
-import { canOpen, seesMoney, seesAll } from '../lib/perms.js'
+import { canOpen, canWrite, seesMoney, seesAll } from '../lib/perms.js'
 import { Card, Grid, Stat, Badge, Bar } from '../components/ui.jsx'
 import { STATE_LABEL } from '../components/Layout.jsx'
 import { sessionsFor, projectsFor } from '../lib/designLink.js'
@@ -40,7 +40,7 @@ function SalesHome() {
   const nav = useNavigate()
   const t = today()
   const money = seesMoney(user)
-  const all = seesAll(user)
+  const all = seesAll(user) || user.appRole === 'bank'
   const fups = useFollowUps()
   // Project-level figures come from the full sheet: sales value is shared with everyone (30 Oct), receivables are not.
   const proj = useMemo(() => { const c = crm.clients; const live = c.filter((x) => !['Cancelled', 'Transferred'].includes(x.status))
@@ -79,7 +79,7 @@ function SalesHome() {
           <h1 className="greet" style={{ marginTop: 10 }}>{greet()}, <em>{fups.length ? `${fups.length} follow-up${fups.length > 1 ? 's' : ''}` : user.name}</em></h1>
           {sums && <p className="sub">{STATE_LABEL[myDay.out ? 'out' : myDay.state]} · {hm(sums.work)} worked today{sums.brk ? ` · ${hm(sums.brk)} on breaks` : ''}</p>}
         </div>
-        <div className="actions"><Link className="btn btn-primary" to="/crm/interactions?log=1">Log interaction</Link></div>
+        <div className="actions">{canWrite(user, 'interactions') && <Link className="btn btn-primary" to="/crm/interactions?log=1">Log interaction</Link>}</div>
       </div>
 
       {money ? <>

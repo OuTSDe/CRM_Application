@@ -14,9 +14,11 @@ import CrmDashboard from './modules/crm/Dashboard.jsx'
 import { Leads, LeadDetail } from './modules/crm/Leads.jsx'
 import { Clients, Client360 } from './modules/crm/Clients.jsx'
 import Interactions from './modules/crm/Interactions.jsx'
-import { Payments, Receipt, BulkReceipts } from './modules/crm/Payments.jsx'
+import { Payments, Receipt, BulkReceipts, DemandLetter } from './modules/crm/Payments.jsx'
 import Analytics from './modules/crm/Analytics.jsx'
 import Help from './pages/Help.jsx'
+import Reports from './modules/reports/Reports.jsx'
+import Partners from './modules/crm/Partners.jsx'
 import CostSheet from './modules/crm/CostSheet.jsx'
 import BookingForm, { ClientApply } from './modules/crm/Booking.jsx'
 import Inventory from './modules/crm/Inventory.jsx'
@@ -67,9 +69,12 @@ function Main() {
         <Route path="crm/clients/:id" element={G('clients', <Client360 />)} />
         <Route path="crm/interactions" element={G('interactions', <Interactions />)} />
         <Route path="crm/payments" element={G('payments', <Payments />)} />
+        <Route path="crm/payments/demand/:id" element={G('payments', <DemandLetter />)} />
         <Route path="crm/payments/receipts" element={G('payments', <BulkReceipts />)} />
         <Route path="crm/analytics" element={G('analytics', <Analytics />)} />
         <Route path="help" element={G('help', <Help />)} />
+        <Route path="crm/partners" element={G('partners', <Partners />)} />
+        <Route path="reports" element={G('reports', <Reports />)} />
         <Route path="crm/payments/receipt/:id" element={G('payments', <Receipt />)} />
         <Route path="crm/clients/:id/statement" element={G('clients', <PaymentSummary />)} />
         <Route path="crm/cost-sheet" element={G('costSheet', <CostSheet />)} />

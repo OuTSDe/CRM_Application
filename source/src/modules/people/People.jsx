@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ROLES } from '../../lib/perms.js'
 import { useStore } from '../../lib/store.jsx'
 import { attendanceSummary } from '../../lib/calc.js'
@@ -8,6 +8,7 @@ import { Page, Card, Button, Badge, Grid, Stat, Seg, Modal, Bar, Confirm } from 
 import DataTable from '../../components/DataTable.jsx'
 import RecordForm from '../../components/RecordForm.jsx'
 import { d, today, addDays, nowTime } from '../../lib/format.js'
+import { Avatar } from '../../components/Layout.jsx'
 
 const hm = (m) => (m > 0 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : '–')
 const monthStart = () => today().slice(0, 8) + '01'
@@ -79,9 +80,31 @@ function OrgChart({ people }) {
   const kids = (n) => people.filter((u) => u.reportsTo === n && u.name !== n)
   const roots = people.filter((u) => !u.reportsTo || !names.has(u.reportsTo))
   const Node = ({ u, seen }) => { const k = kids(u.name).filter((x) => !seen.has(x.name)); const next = new Set([...seen, u.name])
-    return <li><div className={'org-node r-' + u.appRole}><b>{u.name}</b><span>{u.designation || ROLES[u.appRole]}</span><em>{ROLES[u.appRole]}</em></div>
+    return <li><div className={'org-node r-' + u.appRole}>{u.photo && <Avatar u={u} size={34} />}<b>{u.name}</b><span>{u.designation || ROLES[u.appRole]}</span><em>{ROLES[u.appRole]}</em></div>
       {k.length > 0 && <ul>{k.map((x) => <Node key={x.id} u={x} seen={next} />)}</ul>}</li> }
-  return <div className="org"><ul>{roots.map((u) => <Node key={u.id} u={u} seen={new Set()} />)}</ul></div>
+  // 5 Nov: the chart is shrunk to fit the card, so nobody is cut off on the left or right. Where it would have to
+  // shrink below 60% (a phone), it is shown as an indented list that always fits.
+  const box = useRef(null), inner = useRef(null)
+  const [fit, setFit] = useState({ s: 1, w: 0, h: 0, v: false })
+  const fitRef = useRef(fit); fitRef.current = fit
+  const measure = () => {
+    const b = box.current, i = inner.current, f0 = fitRef.current; if (!b) return
+    if (f0.v) { if (b.clientWidth / (f0.w || 1) >= 0.6) setFit({ s: 1, w: 0, h: 0, v: false }); return }
+    if (!i) return
+    const w = i.scrollWidth, h = i.scrollHeight, avail = b.clientWidth
+    const s = w > avail ? avail / w : 1
+    if (s < 0.6) return setFit({ s: 1, w, h: 0, v: true })   // too narrow (a phone): show it as an indented list instead
+    setFit((f) => (Math.abs(f.s - s) < 0.005 && f.w === w && f.h === h ? f : { s, w, h, v: false }))
+  }
+  useLayoutEffect(measure)
+  useEffect(() => { const ro = new ResizeObserver(measure); if (box.current) ro.observe(box.current); return () => ro.disconnect() }, []) // eslint-disable-line
+  const tree = <ul>{roots.map((u) => <Node key={u.id} u={u} seen={new Set()} />)}</ul>
+  if (fit.v) return <div className="org org-vertical" ref={box}>{tree}</div>
+  return <div className="org" ref={box}>
+    <div style={fit.w ? { width: fit.w * fit.s, height: fit.h * fit.s, margin: '0 auto' } : undefined}>
+      <div className="org-inner" ref={inner} style={{ transform: `scale(${fit.s})` }}>{tree}</div>
+    </div>
+  </div>
 }
 
 export function Team() {

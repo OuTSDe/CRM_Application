@@ -16,7 +16,7 @@ export const EXP_UNITS = 'accord.units.status'             // read by the Accord
 const Ctx = createContext(null)
 // The backend address is published with the site (accord.config.js), so every device connects to the same Drive database.
 // 4 Nov: the backend version this site needs (backend/Code.gs VERSION). An older one means Code.gs was not redeployed.
-export const NEEDS_BACKEND = '3.4.0'
+export const NEEDS_BACKEND = '3.5.0'
 const verLess = (a, b) => { const x = String(a).match(/\d+/g)?.map(Number), y = String(b).split('.').map(Number); if (!x) return true; for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0) } return false }
 const SITE_BACKEND = (typeof window !== 'undefined' && window.ACCORD_CONFIG?.backendUrl) || ''
 const uid = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
@@ -177,10 +177,15 @@ export function StoreProvider({ children }) {
   const marker = (s) => safeSet(SKEY, JSON.stringify({ userId: s.userId, at: s.at }))
   const startSession = (u, token, mustEnrol = false) => { const s = { userId: u.id, token, at: Date.now(), mustEnrol: !!mustEnrol }; setSession(s); marker(s) }
   // 1 Nov: username + authenticator code. The temporary password opens the account once, to link the app.
-  const login = useCallback(async (username, { code, password } = {}) => {
+  // 5 Nov: "trust this device" skips the code for a few days on the person's own computer or phone
+  const login = useCallback(async (username, { code, password, trust, trustToken } = {}) => {
     const uname = String(username || '').trim().toLowerCase()
+    const keepTrust = (name, t) => safeSet('accord.trust', JSON.stringify({ username: uname, name, token: t.token, until: t.until }))
     if (backend) {
-      const j = await call({ action: 'login', username: uname, code, password, deviceId: deviceId(), deviceLabel: deviceLabel(), deviceKind: deviceKind() })
+      let j
+      try { j = await call({ action: 'login', username: uname, code, password, trust, trustToken, deviceId: deviceId(), deviceLabel: deviceLabel(), deviceKind: deviceKind() }) }
+      catch (e) { if (trustToken) { try { localStorage.removeItem('accord.trust') } catch (x) { /* */ } } throw e }
+      if (j.trust) keepTrust(j.user.name, j.trust)
       const pu = { ...j.user, mustChange: j.user.mustChange ? 'Yes' : 'No', mfa: j.user.mfa ? 'Set' : 'Not set' }
       setRaw((cur) => cur.users.some((x) => x.id === pu.id) ? { ...cur, users: cur.users.map((x) => (x.id === pu.id ? { ...x, ...pu } : x)) } : { ...cur, users: [...cur.users, pu] })
       startSession(j.user, j.token, j.user.mustEnrol)
@@ -189,10 +194,14 @@ export function StoreProvider({ children }) {
     const u = raw.users.find((x) => String(x.username || '').toLowerCase() === uname && x.active !== 'No' && x.appRole !== 'none')
     if (!u) throw new Error('Unknown username or code')
     const mode = settings.authMode === 'password' ? 'password' : 'authenticator'
+    const lt = readJson('accord.trust', null)
+    if (trustToken && lt && lt.token === trustToken && lt.username === uname && new Date(lt.until) > new Date()) { startSession(u, 'local'); return {} }
     if (mode === 'authenticator' && u.totpSecret) {
       const st = await totpCheck(u.totpSecret, code, u.totpLast)
       if (st < 0) throw new Error('That code is not right. Open your authenticator app and type the 6 digits shown for Accord.')
       setRaw((cur) => ({ ...cur, users: cur.users.map((x) => (x.id === u.id ? { ...x, totpLast: st } : x)) }))
+      const days = Number(settings.trustDays ?? 3)
+      if (trust && days > 0) keepTrust(u.name, { token: Math.random().toString(36).slice(2) + Date.now().toString(36), until: new Date(Date.now() + days * 864e5).toISOString() })
       startSession(u, 'local'); return {}
     }
     if (!u.pwHash) { if (password !== TEMP_PASSWORD) throw new Error('Unknown username or temporary password') }
@@ -200,7 +209,7 @@ export function StoreProvider({ children }) {
     const mustEnrol = mode === 'authenticator'
     startSession(u, 'local', mustEnrol)
     return { mustEnrol }
-  }, [raw.users, backend, call, settings.authMode])
+  }, [raw.users, backend, call, settings.authMode, settings.trustDays])
   // Linking the authenticator app: a new secret shown as a QR code, then one code from the app to confirm.
   const enrolStart = useCallback(async () => {
     if (online) return call({ action: 'enrolStart', token: session.token })
@@ -333,6 +342,12 @@ export function StoreProvider({ children }) {
     if (j.file) setRaw((cur) => ({ ...cur, files: [j.file, ...(cur.files || []).filter((x) => x.id !== j.file.id)] }))
     return j.url
   }, [online, session, call, demo])
+  // 5 Nov: a person's own profile picture (admins can set anyone's)
+  const setPhoto = useCallback(async (photo, userId) => {
+    const id = userId || user?.id
+    if (online) await call({ action: 'setPhoto', token: session.token, photo, userId: id })
+    setRaw((cur) => ({ ...cur, users: cur.users.map((x) => (x.id === id ? { ...x, photo } : x)) }))
+  }, [online, call, session, user])
   // 4 Nov: open an uploaded file inside Accord, and delete a wrong upload (uploader or admin; the server checks too).
   const fileGet = useCallback(async (id) => {
     if (!online) throw new Error('Files are opened from the shared database. Connect it first.')
@@ -373,7 +388,7 @@ export function StoreProvider({ children }) {
   const seedBackend = useCallback(async (url = backend) => { const r = await call({ action: 'seed', token: online ? session.token : '', db: raw }, url); queue.current = []; safeSet(QKEY, '[]'); holdPull.current = false; setTimeout(() => pull(), 500); return r }, [call, session, raw, online, backend])
 
   const value = { db, raw, settings, user, session, sync, toast, notify, upsert, remove, setSettings, nextId, login, logout, changePassword, setUserPassword, approveDevice, releaseDevice,
-    enrolStart, enrolConfirm, punch, myDay, punchedIn, pushNote, markRead, replaceAll, resetToSeed, upload, fileGet, fileDelete, sendEmail, exportNow, loadStartingData, pull, flush, seedBackend,
+    enrolStart, enrolConfirm, punch, myDay, punchedIn, pushNote, markRead, replaceAll, resetToSeed, upload, fileGet, fileDelete, setPhoto, sendEmail, exportNow, loadStartingData, pull, flush, seedBackend,
     backend, serverVersion, backendOld: !!serverVersion && verLess(serverVersion, NEEDS_BACKEND), siteBackend: SITE_BACKEND, online, call, today, nowTime, demo, toggleDemo }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

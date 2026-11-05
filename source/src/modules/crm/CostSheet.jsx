@@ -37,6 +37,10 @@ export default function CostSheet() {
   const status = v.status || 'Draft'
   const save = (patch = {}) => {
     if (!unit) return notify('Pick a residence first', 'bad')
+    // 2 Nov: a cost sheet is confidential, so it is always recorded against a lead or client with name, mobile and e-mail
+    if (!lead) return notify('Pick the lead or client this cost sheet is for. Add a new lead first if they are not in Accord yet.', 'bad')
+    const gap = [!lead.name && 'name', !lead.phone && 'mobile', !lead.email && !String(v.leadId).startsWith('YSC-C') && 'e-mail'].filter(Boolean)
+    if (gap.length) return notify(`${lead.name || 'This lead'} has no ${gap.join(', ')}. Add it to the lead first, then save the cost sheet.`, 'bad')
     const rec = { ...v, id: v.id || nextId('costSheets', 'CS-', 4), date: v.date || today(), validTill: v.validTill || addDays(today(), n(rc.validityDays) || 15), rate, effDisc: Number(effDisc.toFixed(2)), total: Math.round(cs.total), av: Math.round(cs.av),
       name: lead?.name || v.name || '', owner: lead?.owner || user.name, preparedBy: v.preparedBy || user.name, status: needsApproval && !['Approved', 'Converted'].includes(status) ? 'Pending approval' : status === 'Draft' ? 'Ready' : status, ...patch }
     const r = upsert('costSheets', rec, { action: patch.status ? patch.status.toLowerCase() : 'saved' })
@@ -59,7 +63,7 @@ export default function CostSheet() {
               <Field label="Residence"><Select value={v.unit} disabled={locked} onChange={(e) => set('unit', e.target.value)}
                 options={crm.units.map((u) => ({ value: String(u.unit), label: `${u.unit} · ${u.type} · ${u.area} sft · fl ${u.floor}${taken(u.unit) ? ' · BOOKED' : ''}` }))} /></Field>
               {unit && taken(unit.unit) && <div className="note">Residence {unit.unit} is already booked by {crm.byUnit[unit.unit].name}.</div>}
-              <Field label="For (lead or client)"><RecordPicker value={v.leadId} onChange={(id) => set('leadId', id)} /></Field>
+              <Field label="For (lead or client)" hint="Needed: who receives the sheet is recorded"><RecordPicker value={v.leadId} onChange={(id) => set('leadId', id)} /></Field>
               <Field label="Funding"><Seg options={['Self', 'Bank loan']} value={v.funding} onChange={(x) => !locked && set('funding', x)} /></Field>
             </div>
           </Card>

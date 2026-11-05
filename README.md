@@ -227,6 +227,7 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
   - New views: **Missing details** and **No follow-up set**. The dashboard shows how many open leads have no follow-up.
   - **Paste an enquiry**: paste a WhatsApp or 99acres message and Accord fills in the new lead.
   - **Lead inbox**: other tools (website form, WhatsApp tool, 99acres reader, a chatbot) can post enquiries to Accord. They wait in Leads › Inbox to be accepted or rejected. The address and key are in Settings › Lead inbox.
+- **Team hierarchy fits the screen** (5 Nov). The chart shrinks to fit the card, so nobody is cut off on the left or right. On a phone it becomes an indented list.
 - **Backend version check** (4 Nov). If the Google backend is older than the site, admins see a banner at the top until the new `Code.gs` is deployed as a new version. A client someone cannot open now says why, and what to ask an admin for.
 - **Check and delete uploads** (4 Nov).
   - On a client's Documents page, a line that has uploads shows **Files (n)**. Open it to see each file, who uploaded it and when.
@@ -261,6 +262,48 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
   - **Construction** tab: each stage has a status and planned and actual dates. Finance and admin edit it.
 - **Team.** Department, employment (on roll, off roll, consultant) and company for each person, with counts on the Team page.
 - **User guide** in the menu (Team › User guide). It is written for each role.
+
+## 7b. Changes from the 2 Nov 4:25 pm meeting and the 5 Nov voice notes
+
+- **Demand letters.** Payments › Demand calls › **Raise letters** makes one letter per live booking, each with its own code (DL-001…).
+  - Each letter prints as an A4 demand letter: the instalment, GST, the amount due, the due date and the bank details.
+  - Money received before demand letters existed first covers the earlier stages. Anything left over is shown on the letter as already received.
+  - Payments › **Demand letters** lists each letter with its amount received, balance and status (Raised, Part paid, Paid, Overdue).
+- **Receipts coded to a letter.** Record payment picks the residence's open demand letter. The receipt then says either:
+  - *Part payment n against demand letter DL-041 … balance due ₹…*, or
+  - that this receipt completes the letter.
+- **Ledger entry without a receipt.** Use it for furniture, barter and other adjustments; it is chosen automatically for *Furniture adjustment*. Payment proof stays optional.
+- **Reports** (Team › Reports). One A4 report, portrait or landscape, to print or save as PDF.
+  - Covers the whole sales team or one person, for today, 7 days, 30 days or chosen dates.
+  - Shows hours worked, interactions with charts, new leads by name, bookings, collections, and pending follow-ups and tasks.
+  - Names and residences only, never contact details. Everyone can make their own report; admins, seniors and consultants can make anyone's.
+- **Consultant** user type.
+  - Can open: analytics (all three tabs), reports, Client 360, payments and building availability.
+  - Sees booking status, money paid and document progress.
+  - Never receives phone numbers, e-mails, addresses, PAN, notes, files, messages or what was said in interactions. The server strips these before sending.
+  - Changes nothing and does not punch in.
+- **Bank / DSA** user type. Smitha (SBI) is set to it.
+  - Sees only the clients funding with a bank loan, with their payments, demand letters and loan status.
+  - Is notified of every payment and demand letter on those clients.
+  - View only; does not punch in.
+- **Cancelling a booking** (Client 360, seniors and admins).
+  - Record the reason, date and any deduction. The booking stays on record as cancelled, outside the live figures.
+  - If money was received, accounts get a notification and a refund task. Finance records the refund (date, mode, UTR), and the residence is free again.
+  - Send the cancellation confirmation e-mail (new template TP-09) from the same card. Accord shows whether it was sent.
+- **Moving a booking to another residence.** The old booking closes as Transferred and a new one opens on the free residence. Payments move with the client, and each keeps the residence it was first paid for.
+- **Cost sheets need a lead.** A cost sheet cannot be saved until it is for a lead or client with name, mobile and e-mail, so everyone who received a cost sheet is on record.
+- **Channel partners** (Leads › Channel partners).
+  - Each partner has a code (CP-001…), and leads pick their partner from the list.
+  - The partner page and Analytics › Leads show leads, site visits, bookings and conversion per partner.
+  - Analytics also shows leads by city and by country.
+- **Trusted device.** At sign-in, *Trust this device for 3 days* skips the authenticator code on that computer or phone, with **Continue as …**.
+  - The number of days is set in Settings (0 turns it off).
+  - *Stop trusting this device* is in the user menu. Resetting someone's sign-in removes all their trusted devices.
+- **Profile picture.** User menu › Profile picture. The photo is shrunk on the device and shows in the top bar and on the team chart.
+
+Not built yet, as agreed:
+- WhatsApp, Meta and 99acres automation waits until the data is complete. The lead inbox is ready for it.
+- A per-client payment slab waits for the existing cost sheets from Amit.
 
 ## 8. What is missing (to fill in before go-live)
 

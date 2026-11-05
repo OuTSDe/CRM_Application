@@ -66,7 +66,7 @@ export const EXTRA_USERS = [
   { id: 'T-08', name: 'Kajal', team: 'Design', role: 'Creative Director, [INSD]e*', designation: 'Creative Director', appRole: 'design', active: 'Yes' },
 ]
 // 30 Oct: Anuradha and Medha are purely sales (no money). Cyril has higher access. Khushi assigns tasks with the admins.
-export const ROLE_OF = { Aryan: 'admin', Shruthadev: 'admin', Anuradha: 'sales', Medha: 'sales', Cyril: 'senior', Khushi: 'senior', Yakshith: 'sales', Kajal: 'design', 'Smitha (SBI)': 'none' }
+export const ROLE_OF = { Aryan: 'admin', Shruthadev: 'admin', Anuradha: 'sales', Medha: 'sales', Cyril: 'senior', Khushi: 'senior', Yakshith: 'sales', Kajal: 'design', 'Smitha (SBI)': 'bank' }
 // Chain of command for escalations: a follow-up left open goes to the person's manager, then theirs.
 export const REPORTS_TO = { Anuradha: 'Cyril', Medha: 'Cyril', Yakshith: 'Cyril', Khushi: 'Aryan', Cyril: 'Aryan', Kajal: 'Shruthadev' }
 export const DESIGNATION_OF = { Aryan: 'Director', Anuradha: 'Client Relations', Medha: 'Client Relations', Cyril: 'Senior Sales Manager', Khushi: 'Sales and CRM', Yakshith: 'Client Relations' }
