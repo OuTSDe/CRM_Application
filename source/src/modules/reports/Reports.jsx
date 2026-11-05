@@ -54,9 +54,13 @@ export default function Reports() {
     const mine = (n) => names.includes(n)
     const ints = db.interactions.filter((i) => mine(i.by) && inRange(i.date, from, to) && i.mode !== 'Note (imported)')
     const att = db.attendance.filter((a) => mine(a.name) && inRange(a.date, from, to))
-    const timeBy = names.map((n) => { const a = att.filter((x) => x.name === n); let work = 0, brk = 0, site = 0
-      a.forEach((x) => { const s = x.events?.length ? daySums(x.events) : null; work += s ? s.work : Number(x.workMin || 0); brk += s ? s.brk : Number(x.breakMin || 0); site += s ? s.site : Number(x.siteMin || 0) })
-      return { n, days: a.length, work, brk, site, ints: ints.filter((i) => i.by === n).length } })
+    const shift = (n) => (raw.users || db.users).find((u) => u.name === n)?.shiftEnd || '18:30'
+    const timeBy = names.map((n) => {
+      // one entry per calendar day: duplicate rows for the same day are merged, so a day is never counted twice
+      const byDay = {}; att.filter((x) => x.name === n).forEach((x) => { const k = String(x.date).slice(0, 10); byDay[k] = byDay[k] ? { ...byDay[k], events: [...(byDay[k].events || []), ...(x.events || [])], workMin: Math.max(Number(byDay[k].workMin || 0), Number(x.workMin || 0)) } : x })
+      const a = Object.values(byDay); let work = 0, brk = 0, site = 0, open = 0
+      a.forEach((x) => { const s = x.events?.length ? daySums(x.events, undefined, shift(n)) : null; work += Math.min(24 * 60, s ? s.work : Number(x.workMin || 0)); brk += s ? s.brk : Number(x.breakMin || 0); site += s ? s.site : Number(x.siteMin || 0); if (s?.open) open++ })
+      return { n, days: a.length, work, brk, site, open, ints: ints.filter((i) => i.by === n).length } })
     const leadsNew = db.leads.filter((l) => inRange(l.date, from, to) && (who === 'team' || mine(l.owner) || (l.coOwners || []).some(mine)))
     const leadsOpen = db.leads.filter((l) => !['Lost', 'Booked', 'Dormant'].includes(l.stage) && (who === 'team' || mine(l.owner) || (l.coOwners || []).some(mine)))
     const booked = crm.clients.filter((c) => inRange(c.bookingDate, from, to) && BOOKED.includes(c.status) && (who === 'team' || mine(c.owner) || mine(c.closedBy)))
@@ -103,7 +107,7 @@ export default function Reports() {
         </div>
         {show.time && <><div className="sec">Time</div>
           <table><thead><tr><th>Person</th><th className="right">Days in</th><th className="right">Worked</th><th className="right">Breaks</th><th className="right">Site visits</th><th className="right">Interactions</th></tr></thead>
-            <tbody>{R.timeBy.map((x) => <tr key={x.n}><td>{x.n}</td><td className="right">{x.days}</td><td className="right">{hm(x.work)}</td><td className="right">{hm(x.brk)}</td><td className="right">{hm(x.site)}</td><td className="right">{x.ints}</td></tr>)}</tbody></table></>}
+            <tbody>{R.timeBy.map((x) => <tr key={x.n}><td>{x.n}{x.open > 0 && <span className="small missing"> · {x.open} day{x.open === 1 ? '' : 's'} not punched out</span>}</td><td className="right">{x.days}</td><td className="right">{hm(x.work)}</td><td className="right">{hm(x.brk)}</td><td className="right">{hm(x.site)}</td><td className="right">{x.ints}</td></tr>)}</tbody></table></>}
         {show.work && <><div className="sec">Interactions</div>
           <div className={'rep-grid ' + orient}>
             <div><div className="small muted">Per day</div><DayChart days={R.days} /></div>

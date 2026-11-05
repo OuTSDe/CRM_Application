@@ -142,7 +142,7 @@ export function Performance() {
     const mine = db.interactions.filter((i) => i.by === u.name && i.date >= from)
     const due = db.interactions.filter((i) => (i.nextOwners?.length ? i.nextOwners : [i.nextOwner || i.by]).includes(u.name) && i.nextDate && i.nextDate >= from && i.nextDate <= t)
     const missed = due.filter((i) => i.status === 'Open')
-    const att = db.attendance.filter((a) => a.name === u.name && a.date >= from).map((a) => ({ ...a, minutes: a.workMin ?? attendanceSummary([a])[0].minutes }))
+    const att = db.attendance.filter((a) => a.name === u.name && a.date >= from).map((a) => ({ ...a, minutes: Math.min(1440, a.events?.length ? daySums(a.events, undefined, u.shiftEnd).work : a.workMin ?? attendanceSummary([a])[0].minutes) }))
     const visits = mine.filter((i) => ['Site visit', 'Office visit'].includes(i.mode)).length
     const bookings = db.clients.filter((c) => c.owner === u.name && c.bookingDate >= from).length
     const pay = mine.filter((i) => ['Payment committed', 'Payment received'].includes(i.outcome)).length

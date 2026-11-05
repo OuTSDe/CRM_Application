@@ -39,12 +39,27 @@ const safeSet = (k, v) => { try { localStorage.setItem(k, v) } catch (e) { conso
 const readJson = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || '') ?? d } catch (e) { return d } }
 
 // Minutes worked / on break / on site from a day's events (same rules as the server's sums_).
-export function daySums(events = [], until = new Date().toISOString()) {
+// 5 Nov: a day that was never punched out used to keep counting until today, so a forgotten punch-out on Monday showed
+// 100+ hours by Thursday. A past day that was left open now stops at the shift end (or the last event, if later), and
+// is flagged as not punched out. Today's open day still counts up to now.
+const localDate = (iso) => { const x = new Date(iso); return isNaN(x) ? '' : `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}` }
+export function daySums(events = [], until = new Date().toISOString(), shiftEnd = '18:30') {
+  // events in time order, and nothing counted outside the calendar day they belong to (a day can never exceed 24 hours)
+  const seen = new Set()
+  events = [...events].filter((e) => { if (!e || !e.t || isNaN(new Date(e.t))) return false; const k = e.type + e.t; if (seen.has(k)) return false; seen.add(k); return true }).sort((a, b) => new Date(a.t) - new Date(b.t))
+  const first = events[0]?.t, last = events[events.length - 1]
+  let open = false
+  if (first && last?.type !== 'out' && localDate(until) !== localDate(first)) {
+    open = true
+    const cap = new Date(`${localDate(first)}T${/^\d{1,2}:\d{2}$/.test(String(shiftEnd || '')) ? String(shiftEnd).padStart(5, '0') : '18:30'}:00`).toISOString()
+    until = cap > last.t ? cap : last.t
+  }
+  if (first) { const endOfDay = new Date(`${localDate(first)}T23:59:59`).toISOString(); if (until > endOfDay) until = endOfDay }
   let work = 0, brk = 0, site = 0, state = null, since = null, breaks = 0
   const close = (to) => { if (!state || !since) return; const m = Math.max(0, Math.round((new Date(to) - new Date(since)) / 60000)); if (state === 'break') brk += m; else { work += m; if (state === 'site') site += m } }
   events.forEach((e) => { close(e.t); since = e.t; if (e.type === 'break') breaks++; state = e.type === 'in' || e.type === 'resume' ? 'office' : e.type === 'out' ? null : e.type })
   close(until)
-  return { work, brk, site, breaks }
+  return { work, brk, site, breaks, open }
 }
 
 export function StoreProvider({ children }) {
