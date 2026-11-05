@@ -6,6 +6,7 @@ import { Page, Card, Button, Badge, Field, Input, Textarea, Select, Modal, Confi
 import DataTable from '../../components/DataTable.jsx'
 import { d, inr } from '../../lib/format.js'
 import { getLocation } from '../../lib/geo.js'
+import { deviceId } from '../../lib/crypto.js'
 import { Link } from 'react-router-dom'
 
 function BrandCard({ s, setS }) {
@@ -173,6 +174,27 @@ function AccessPicker({ u, onChange }) {
   </div>
 }
 
+// 5 Nov: one linked device. Its own component (so the Yes / No question is not lost when the page refreshes its data),
+// with a clear question, a busy state while the server answers, and the row gone as soon as it is released.
+function DevRow({ u, dv }) {
+  const { approveDevice, releaseDevice, notify } = useStore()
+  const [ask, setAsk] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const kind = dv.kind === 'phone' ? 'phone' : 'computer'
+  const mine = dv.id === deviceId()
+  const run = async (fn, done) => { setBusy(true); try { await fn(); notify(done) } catch (e) { notify('Not done: ' + e.message, 'bad') } finally { setBusy(false); setAsk(false) } }
+  return <div className="check-row dev-row">
+    <span><b>{kind === 'phone' ? 'Phone' : 'Computer'}</b> · {dv.label || dv.id}{mine && <Badge tone="info">This device</Badge>} <span className="small muted">· first {d(String(dv.at || '').slice(0, 10))}{dv.lastAt ? ' · last ' + d(String(dv.lastAt).slice(0, 10)) : ''}{dv.trustUntil && new Date(dv.trustUntil) > new Date() ? ' · trusted until ' + d(String(dv.trustUntil).slice(0, 10)) : ''}</span></span>
+    <span className="row gap-s">{!dv.approved ? <>
+        <Button size="sm" disabled={busy} onClick={() => run(() => approveDevice(u.id, dv.id, true), `${u.name}'s ${kind} approved`)}>Approve{(u.devices || []).some((x) => x.approved && (x.kind || 'computer') === kind) && u.appRole !== 'admin' ? ' (replaces the old one)' : ''}</Button>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => approveDevice(u.id, dv.id, false), 'Device refused')}>Refuse</Button></>
+      : ask ? <span className="confirm"><span>Release this {kind}{mine ? ' (the one you are using)' : ''}? {u.name} will have to link it again.</span>
+        <Button size="sm" variant="danger" disabled={busy} onClick={() => run(() => releaseDevice(u.id, dv.id), `${kind === 'phone' ? 'Phone' : 'Computer'} released. ${u.name} can now link another.`)}>{busy ? 'Releasing…' : 'Yes, release'}</Button>
+        <Button size="sm" disabled={busy} onClick={() => setAsk(false)}>No</Button></span>
+      : <><Badge tone="good">Linked</Badge><Button size="sm" variant="ghost" onClick={() => setAsk(true)}>Release</Button></>}</span>
+  </div>
+}
+
 export function AdminUsers() {
   const { raw, upsert, nextId, notify, setUserPassword, approveDevice, releaseDevice, online } = useStore()
   const [edit, setEdit] = useState(null)
@@ -199,12 +221,10 @@ export function AdminUsers() {
     if (!edit.name || !edit.username) return notify('Name and username are needed', 'bad')
     const un = edit.username.trim().toLowerCase().replace(/\s+/g, '')
     if (raw.users.some((u) => u.id !== edit.id && String(u.username).toLowerCase() === un)) return notify('That username is taken', 'bad')
-    upsert('users', { ...edit, username: un, id: edit.id || nextId('users', 'T-', 2) }); setEdit(null)
+    const live = raw.users.find((x) => x.id === edit.id)   // devices change on their own (approve / release); never save an old copy over them
+    upsert('users', { ...edit, devices: live ? live.devices || [] : edit.devices || [], username: un, id: edit.id || nextId('users', 'T-', 2) }); setEdit(null)
   }
   const temp = async () => { try { await setUserPassword(edit.id, pw); setEdit((e) => ({ ...e, mfa: 'Not set' })); notify(`Sign-in reset for ${edit.name}. Share the temporary password privately; they use it once to link their authenticator app.`); setPw('') } catch (e) { notify(e.message, 'bad') } }
-  const DevRow = ({ u, dv }) => <div className="check-row"><span><b>{dv.kind === 'phone' ? 'Phone' : 'Computer'}</b> · {dv.label || dv.id} <span className="small muted">· first {d(String(dv.at || '').slice(0, 10))}{dv.lastAt ? ' · last ' + d(String(dv.lastAt).slice(0, 10)) : ''}</span></span>
-    <span className="row gap-s">{dv.approved ? <><Badge tone="good">Linked</Badge><Confirm size="sm" label={`Release this ${dv.kind || 'device'}? ${u.name} can then link another.`} onConfirm={() => releaseDevice(u.id, dv.id)}>Release</Confirm></>
-      : <><Button size="sm" onClick={() => approveDevice(u.id, dv.id, true)}>Approve{(u.devices || []).some((x) => x.approved && (x.kind || 'computer') === (dv.kind || 'computer')) && u.appRole !== 'admin' ? ' (replaces the old one)' : ''}</Button><Button size="sm" variant="ghost" onClick={() => approveDevice(u.id, dv.id, false)}>Refuse</Button></>}</span></div>
   return (
     <Page title="Users and access" back="/" backLabel="Dashboard" subtitle="Usernames, passwords, roles, shifts and the platforms each person opens. Passwords are stored as salted hashes; nobody, including admins, can read them." actions={<Button variant="primary" onClick={() => setEdit({ appRole: 'sales', team: 'Sales', active: 'Yes', shiftStart: '09:30', shiftEnd: '18:30', workDays: 'Mon-Sat', remoteAllowed: 'No', deviceLock: 'No', mustChange: 'Yes' })}>Add a member</Button>}>
       {pending.length > 0 && <Card title="Devices waiting for approval">{pending.map(({ u, dv }) => <div key={u.id + dv.id}><div className="small" style={{ marginTop: 6 }}><b>{u.name}</b></div><DevRow u={u} dv={dv} /></div>)}
@@ -225,7 +245,8 @@ export function AdminUsers() {
           {edit.id && <div className="sheet" style={{ marginTop: 16 }}><div className="sheet-band"><span className="n">6</span><h4>Sign-in and devices</h4><span className="note2">{edit.mfa === 'Set' || edit.totpSecret ? 'Authenticator app linked' : 'Authenticator not linked yet'} · {online ? 'on the server' : 'on this device only'}</span></div>
             <div className="row" style={{ padding: 18 }}><input className="input" style={{ maxWidth: 280 }} type="text" autoComplete="off" placeholder="Temporary password" value={pw} onChange={(e) => setPw(e.target.value)} aria-label="Temporary password" />
               <Button onClick={temp} disabled={pw.length < 8}>Reset sign-in</Button><span className="small muted">New phone or lost phone: set a temporary password (8+ characters, a letter and a number). It unlinks the old app; they use the password once and link the app again.</span></div>
-            {(edit.devices || []).length > 0 && <div style={{ padding: '0 18px 18px' }}>{edit.devices.map((dv) => <DevRow key={dv.id} u={edit} dv={dv} />)}</div>}
+            {(() => { const live = raw.users.find((x) => x.id === edit.id) || edit; const list = live.devices || []
+              return list.length > 0 ? <div style={{ padding: '0 18px 18px' }}>{list.map((dv) => <DevRow key={dv.id} u={live} dv={dv} />)}</div> : <p className="small muted" style={{ padding: '0 18px 18px', margin: 0 }}>No devices linked.</p> })()}
           </div>}</>}
       </Modal>
     </Page>

@@ -250,8 +250,9 @@ export function StoreProvider({ children }) {
       return { ...x, devices: list } }) }))
   }, [online, session, call])
   const releaseDevice = useCallback(async (userId, devId) => {
-    if (online) await call({ action: 'releaseDevice', token: session.token, userId, deviceId: devId })
-    setRaw((cur) => ({ ...cur, users: cur.users.map((x) => (x.id === userId ? { ...x, devices: (x.devices || []).filter((d) => d.id !== devId) } : x)) }))
+    let list = null
+    if (online) { const j = await call({ action: 'releaseDevice', token: session.token, userId, deviceId: devId }); list = j.devices || null }   // a refusal throws, so the row stays
+    setRaw((cur) => ({ ...cur, users: cur.users.map((x) => (x.id === userId ? { ...x, devices: list || (x.devices || []).filter((d) => d.id !== devId) } : x)) }))
   }, [online, session, call])
   // Signing out ends the session on the server too, after sending anything not yet saved.
   const sessionRef = useRef(null); sessionRef.current = session
