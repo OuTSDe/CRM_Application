@@ -546,3 +546,113 @@ body { overscroll-behavior-y: none }
 
 /* 7 Nov: wide tables scroll inside their card instead of widening the page */
 .split > div, .split-r > div { min-width: 0 }
+
+/* 8 Nov: car parking plans from the architect's drawings */
+.pk-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start }
+@media (max-width: 1000px) { .pk-wrap { grid-template-columns: 1fr } }
+.pk-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line) }
+.pk-tools .search { flex: 1 1 180px; min-width: 140px } .pk-tools select.input { width: auto; max-width: 190px }
+.pk-scroll { overflow: auto; max-height: 72vh; background: var(--bg2) }
+.pk-plan { display: block; width: 100%; height: auto; user-select: none }
+.pk-plan .pk-struct { fill: none; stroke: var(--fg3); stroke-width: .12; vector-effect: non-scaling-stroke }
+.pk-plan .pk-bay { fill: none; stroke: var(--line-3); stroke-width: .06; vector-effect: non-scaling-stroke }
+.pk-plan .pk-drive { fill: none; stroke: var(--info); stroke-opacity: .35; stroke-width: .08; vector-effect: non-scaling-stroke }
+.pk-plan .pk-core { fill: none; stroke: var(--fg4); stroke-width: .05; vector-effect: non-scaling-stroke }
+.pk-plan .pk-lobby rect { fill: var(--accent-soft); stroke: var(--accent-2); stroke-width: .12 } .pk-plan .pk-lobby text { font: 700 1.1px var(--sans); fill: var(--accent-2); text-anchor: middle; letter-spacing: .1px }
+.pk-plan .pk-pairline { stroke: var(--fg3); stroke-width: .35; stroke-linecap: round; opacity: .55 }
+.pk-plan .pk-slot { cursor: pointer }
+.pk-plan .pk-slot circle, .pk-plan .pk-slot rect { fill: var(--bg3); stroke: var(--fg3); stroke-width: .12 }
+.pk-plan .pk-slot text { font: 600 .78px var(--sans); fill: var(--fg2); text-anchor: middle; pointer-events: none }
+.pk-plan .s-allotted circle { fill: var(--accent); stroke: var(--accent) } .pk-plan .s-allotted text { fill: var(--on-accent) }
+.pk-plan .s-letter-issued circle { fill: var(--good); stroke: var(--good) } .pk-plan .s-letter-issued text { fill: var(--bg) }
+.pk-plan .s-provisional circle { fill: var(--warn); stroke: var(--warn) } .pk-plan .s-provisional text { fill: var(--bg) }
+.pk-plan .s-sale-pool circle { stroke: var(--info); stroke-dasharray: .3 .2 } .pk-plan .s-sale-pool text { fill: var(--info) }
+.pk-plan .s-blocked circle { fill: var(--bad-soft); stroke: var(--bad) }
+.pk-plan .s-common rect { fill: var(--bg4); stroke: var(--fg4) }
+.pk-plan .pk-slot.dim { opacity: .22 }
+.pk-plan .pk-slot.hl circle, .pk-plan .pk-slot.hl rect { stroke: var(--info); stroke-width: .45 }
+.pk-plan .pk-slot.sel circle, .pk-plan .pk-slot.sel rect { stroke: var(--fg); stroke-width: .4 }
+.pk-plan .pk-slot:hover circle { stroke: var(--fg); stroke-width: .3 }
+.pk-plan.compact .pk-slot circle, .pk-plan.compact .pk-slot rect { stroke-width: .08; fill: var(--bg3); stroke: var(--fg4) } .pk-plan.compact .pk-slot:not(.hl) { opacity: .5 } .pk-plan.compact .pk-slot:not(.hl) text { display: none }
+.pk-plan .pk-call circle { fill: none; stroke: var(--accent-2); stroke-width: .35 } .pk-plan .pk-call text { font: 700 2.2px var(--sans); fill: var(--accent-2); paint-order: stroke; stroke: var(--bg2); stroke-width: .5px }
+.pk-plan.compact .pk-slot.hl circle { fill: var(--accent); stroke: var(--accent); stroke-width: .5 } .pk-plan.compact .pk-slot.hl text { fill: var(--on-accent); font-size: .9px }
+.pk-legend { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 12px; border-top: 1px solid var(--line); color: var(--fg2) }
+.pk-key { display: inline-flex; gap: 6px; align-items: center } .pk-key i { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--fg3); background: var(--bg3) }
+.pk-key.s-allotted i { background: var(--accent); border-color: var(--accent) } .pk-key.s-letter-issued i { background: var(--good); border-color: var(--good) }
+.pk-key.s-provisional i { background: var(--warn); border-color: var(--warn) } .pk-key.s-sale-pool i { border-style: dashed; border-color: var(--info) }
+.pk-key.s-blocked i { background: var(--bad-soft); border-color: var(--bad) } .pk-key.pair i { width: 16px; height: 3px; border: 0; border-radius: 2px; background: var(--fg3) }
+.pk-mini { margin-top: 10px; border: 1px solid var(--line); background: var(--bg2) }
+.pk-rules { padding-left: 18px; margin: 0 } .pk-rules li { margin-bottom: 8px; line-height: 1.5 }
+.sec-h { font: 400 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2); margin: 16px 0 6px }
+.doc .pk-letter-plan { margin: 8px 0 10px; border: 1px solid #ddd; padding: 6px }
+.doc .pk-plan .pk-struct { stroke: #555 } .doc .pk-plan .pk-bay { stroke: #ccc } .doc .pk-plan .pk-drive { stroke: #9ab } .doc .pk-plan .pk-core { stroke: #bbb }
+.doc .pk-plan .pk-slot circle { fill: #fff; stroke: #aaa } .doc .pk-plan.compact .pk-slot.hl circle { fill: #7A1C2E; stroke: #7A1C2E } .doc .pk-plan .pk-slot.hl text { fill: #fff }
+.doc .pk-plan .pk-call circle { stroke: #7A1C2E } .doc .pk-plan .pk-call text { fill: #7A1C2E; stroke: #fff } .doc .pk-plan.compact .pk-slot:not(.hl) circle { fill: #fff; stroke: #ccc }
+.doc .pk-plan .pk-lobby rect { fill: #f6eaec; stroke: #7A1C2E } .doc .pk-plan .pk-lobby text { fill: #7A1C2E } .doc .pk-plan .pk-pairline { stroke: #999 }
+
+/* 8 Nov (2): cars in the bays, the cost sheet parking inset, the elevation and unit plan */
+.pk-plan .pk-car { color: var(--fg4) } .pk-plan .pk-car.taken { color: var(--fg3) } .pk-plan .pk-car.hl { color: var(--accent-2) }
+.pk-plan .pk-car { --car-fill: var(--bg3) } .pk-plan .pk-car.hl { --car-fill: var(--accent-soft); --car-sw: .08 }
+.pk-plan.crop .pk-slot circle { stroke-width: .06 } .pk-plan.crop .pk-call circle { display: none } .pk-plan.crop .pk-call text { font-size: 1.2px }
+.doc .pk-plan .pk-car { color: #bbb } .doc .pk-plan .pk-car.hl { color: #7A1C2E } .doc .pk-plan .pk-car { --car-fill: #fff } .doc .pk-plan .pk-car.hl { --car-fill: #f3e3e6 }
+.cs-park { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; align-items: start } .cs-park .pk-plan { border: 1px solid var(--line); background: var(--bg2) }
+.doc .cs-park .pk-plan { border-color: #ddd; background: #fff }
+.cs-res { display: grid; grid-template-columns: 250px 1fr; gap: 14px; align-items: start }
+@media (max-width: 700px) { .cs-park, .cs-res { grid-template-columns: 1fr } }
+.elev-dia { width: 100%; height: auto; display: block }
+.elev-dia .ed-fl { fill: var(--bg4); stroke: none } .elev-dia .ed-fl.ed-pod-f { fill: var(--line-3) } .elev-dia .ed-fl.ed-up { fill: var(--line-2) }
+.elev-dia .ed-fl.ed-in { fill: var(--accent-soft) } .elev-dia .ed-fl.ed-mine { fill: var(--accent) } .elev-dia .ed-crown { fill: var(--line-2); stroke: var(--line-3); stroke-width: .6 }
+.elev-dia .ed-band path { fill: none; stroke: var(--fg4); stroke-width: .7 } .elev-dia .ed-band text { font: 400 7px var(--sans); fill: var(--fg3) }
+.elev-dia .ed-band.on path { stroke: var(--accent-2) } .elev-dia .ed-band.on text { fill: var(--accent-2); font-weight: 700 }
+.elev-dia .ed-mark path { stroke: var(--accent-2); stroke-width: 1.2 } .elev-dia .ed-mark text { font: 700 8px var(--sans); fill: var(--accent-2); text-anchor: end }
+.elev-dia .ed-pod { font: 400 6px var(--sans); fill: var(--fg3); text-anchor: middle } .elev-dia .ed-foot { font: 400 6.5px var(--sans); fill: var(--fg3); text-anchor: middle }
+.doc .elev-dia .ed-fl { fill: #e9e4e0 } .doc .elev-dia .ed-fl.ed-pod-f { fill: #d6d0cb } .doc .elev-dia .ed-fl.ed-up { fill: #f1eeeb } .doc .elev-dia .ed-fl.ed-in { fill: #ecd5da } .doc .elev-dia .ed-fl.ed-mine { fill: #7A1C2E }
+.doc .elev-dia .ed-band text, .doc .elev-dia .ed-pod, .doc .elev-dia .ed-foot { fill: #666 } .doc .elev-dia .ed-band.on text, .doc .elev-dia .ed-mark text { fill: #7A1C2E } .doc .elev-dia .ed-mark path, .doc .elev-dia .ed-band.on path { stroke: #7A1C2E }
+.doc .unit-plan .floorplan { border: 1px solid #ddd }
+.doc .cs-page { min-height: 0 } .doc .cs-page + .cs-page { margin-top: 24px; padding-top: 16px; border-top: 1px dashed #ccc }
+@media print { .doc .cs-page + .cs-page { border-top: 0; margin-top: 0; padding-top: 0 } .doc .cs-page { break-after: page } .doc .cs-page:last-child { break-after: auto } }
+
+/* 8 Nov: white-model elevation (components/WhiteModel.jsx) */
+.wm { width: 100%; height: auto; display: block; user-select: none }
+.elev-wm { max-width: 560px; margin: 0 auto }
+.wm .wm-pod { fill: var(--line-2); stroke: var(--line-3); stroke-width: .6 }
+.wm .wm-cap { font: 400 9px var(--sans); fill: var(--fg3); text-anchor: middle; letter-spacing: .04em }
+.wm .wm-slab { fill: var(--line-3) }
+.wm .wm-fl { fill: var(--bg); stroke: var(--line-3); stroke-width: .6 }
+.wm .wm-f.ns .wm-fl { fill: var(--bg4) }
+.wm .wm-f.up .wm-fl { fill-opacity: .55; stroke-dasharray: 2 1.5 }
+.wm .wm-f.inb .wm-fl { fill: var(--accent-soft) }
+.wm .wm-f.mk .wm-fl { fill: var(--accent) }
+.wm .wm-f.hov .wm-fl { stroke: var(--fg); stroke-width: 1 }
+.wm .wm-f.on .wm-fl { stroke: var(--accent-2); stroke-width: 1.8 }
+.wm g.wm-f[class] { cursor: default } .wm[role=group] .wm-f { cursor: pointer }
+.wm .wm-u { opacity: .85; pointer-events: none } .wm .wm-u.sold { fill: var(--accent) } .wm .wm-u.transfer { fill: #7e57c2 } .wm .wm-u.cancel { fill: #f6b26b } .wm .wm-u.verify { fill: #9fc5e8 }
+.wm .wm-div { stroke: var(--line-2); stroke-width: .4; pointer-events: none }
+.wm .wm-no { font: 400 10px var(--mono); fill: var(--fg3); text-anchor: end } .wm .wm-no.on { fill: var(--accent-2); font-weight: 700 }
+.wm .wm-ground { stroke: var(--fg3); stroke-width: .8 }
+.wm .wm-band path { fill: none; stroke: var(--fg4); stroke-width: .7 } .wm .wm-band text { font: 400 12px var(--sans); fill: var(--fg2) } .wm .wm-band .wm-rng { font: 400 9.5px var(--mono); fill: var(--fg3) } .wm .wm-band .wm-lead { stroke: var(--line-3); stroke-width: .5 }
+.wm .wm-band.ns text { fill: var(--fg4) } .wm .wm-band.on path { stroke: var(--accent-2); stroke-width: 1.2 } .wm .wm-band.on text { fill: var(--accent-2); font-weight: 700 }
+.wm .wm-mark path { stroke: var(--accent-2); stroke-width: 1.4 } .wm .wm-mark text { font: 700 12px var(--sans); fill: var(--accent-2); text-anchor: end }
+.wm .wm-foot { font: 400 9px var(--sans); fill: var(--fg3); text-anchor: middle }
+.doc .wm .wm-fl { fill: #fff; stroke: #b9b2ac } .doc .wm .wm-f.ns .wm-fl { fill: #f1eeeb } .doc .wm .wm-f.inb .wm-fl { fill: #ecd5da } .doc .wm .wm-f.mk .wm-fl { fill: #7A1C2E }
+.doc .wm .wm-pod { fill: #ece8e4; stroke: #c9c2bc } .doc .wm .wm-slab { fill: #c9c2bc } .doc .wm .wm-cap, .doc .wm .wm-no, .doc .wm .wm-foot, .doc .wm .wm-band text { fill: #666 }
+.doc .wm .wm-band.on text, .doc .wm .wm-mark text, .doc .wm .wm-no.on { fill: #7A1C2E } .doc .wm .wm-band.on path, .doc .wm .wm-mark path { stroke: #7A1C2E }
+.doc .wm .wm-band path { stroke: #999 } .doc .wm .wm-ground { stroke: #666 }
+
+/* 8 Nov: the tower grid laid out like the white-model elevation */
+.wmg-scroll { overflow-x: auto }
+.wmg { display: grid; grid-template-columns: 30px minmax(520px, 1fr) 140px; column-gap: 0; row-gap: 3px; font-size: 11px; user-select: none; min-width: 690px }
+.wmg-no { color: var(--fg3); text-align: right; padding-right: 8px; align-self: center; font: 400 10px var(--mono); grid-column: 1 }
+.wmg-track { grid-column: 2; position: relative; min-height: 24px }
+.wmg.with-names .wmg-track { min-height: 34px }
+.wmg-slab { position: absolute; top: 0; bottom: 0; display: flex; gap: 2px; border-top: 2px solid var(--line-3) }
+.wmg-slab .b-unit { flex: 1 1 0; min-width: 0; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden }
+.wmg-slab.ns { background: var(--bg4); align-items: center; justify-content: center }
+.wmg-slab.upper .b-unit { background-image: repeating-linear-gradient(135deg, transparent 0 5px, rgba(0,0,0,.06) 5px 7px) }
+.wmg-ns { font: 400 9.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg3) }
+.wmg-podcell { grid-column: 2; position: relative; margin-top: -16px; z-index: 0 } .wmg-track { z-index: 1 }
+.wmg-pod, .wmg-club { position: absolute; display: flex; align-items: center; justify-content: center; background: var(--line-2); border: 1px solid var(--line-3); color: var(--fg2); font: 400 9.5px var(--mono); letter-spacing: .12em; text-transform: uppercase }
+.wmg-pod { top: 16px; bottom: 0; align-items: flex-end; padding-bottom: 3px; font-size: 8.5px } .wmg-base { height: 18px } .wmg-club { top: 0; height: 15px; font-size: 8px; justify-content: flex-start; padding-left: 4px; letter-spacing: .06em }
+.wmg-band { grid-column: 3; border-left: 1px solid var(--line-3); margin-left: 10px; padding: 0 0 0 8px; display: flex; flex-direction: column; justify-content: center; font-size: 11px; color: var(--fg2); line-height: 1.2 }
+.wmg-band small { font: 400 9.5px var(--mono); color: var(--fg3) } .wmg-band.ns { color: var(--fg4) } .wmg-band.on { border-left: 2px solid var(--accent-2); color: var(--accent-2); font-weight: 600 }
+.wmg.with-names .b-unit small { display: block; font: 400 8.5px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100% }

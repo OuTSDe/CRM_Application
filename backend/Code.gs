@@ -68,6 +68,8 @@ var SCHEMA = {
   demandLetters: [['id','Demand letter No.'],['date','Letter date'],['callId','Demand call'],['stage','Stage'],['unit','Unit No.'],['bookingId','Booking ID'],['clientId','Client ID'],['name','Client'],['pct','Share of consideration'],['basis','Basis (₹)'],['gst','GST'],['amount','Amount demanded (₹)'],['credit','Received earlier, set against it (₹)'],['dueDate','Due date'],['status','Status'],['by','Raised by'],['sentAt','Sent'],['note','Note'],['updatedAt','Updated at']],
   partners: [['id','ID'],['code','Partner code'],['name','Name'],['firm','Firm'],['phone','Mobile'],['email','Email'],['city','City'],['rera','RERA agent no.'],['commission','Brokerage %'],['since','Since'],['status','Status'],['owner','Our contact'],['notes','Notes'],['updatedAt','Updated at']],
   leadInbox: [['id','Inbox ID'],['at','Received'],['source','Source'],['name','Name'],['phone','Mobile'],['email','Email'],['city','City'],['config','Interest'],['message','Message'],['status','Status'],['leadId','Lead ID'],['by','Handled by'],['handledAt','Handled at']],
+  // 8 Nov: car parking from the architect's drawings (slot = level + drawing number, e.g. L1-072A)
+  parking: [['id','Slot'],['level','Level'],['levelCode','Level code'],['no','Drawing no.'],['kind','Kind'],['pair','Tandem partner'],['walk','Walk to lobby (m)'],['type','Type'],['ev','EV'],['zone','Held for band'],['status','Status'],['allotStatus','Allotment'],['unit','Unit No.'],['bookingId','Booking ID'],['clientId','Client ID'],['name','Client'],['assignedOn','Allotted on'],['assignedBy','Allotted by'],['allotNote','Why'],['locked','Letter issued'],['letterOn','Letter date'],['letterNo','Letter No.'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   audit: [['id','ID'],['at','When'],['by','By'],['coll','Collection'],['recId','Record'],['action','Action']]
 };
 var COLLECTIONS = ['settings','users','units','clients','payments','leads','interactions','documents','issues','clpStages','demandCalls','costSheets','parking',
@@ -162,7 +164,7 @@ function sheet_(name) {
 function keys_(sh) { var w = sh.getLastColumn(); return w ? sh.getRange(2, 1, 1, w).getValues()[0].map(String) : []; }
 function cell_(v) { if (v === null || v === undefined) return ''; if (typeof v === 'object') return JSON.stringify(v); return v; }
 // Columns that hold text even when they look like numbers (Sheets turns 9845012345 into a number; Accord needs it back as text).
-var TEXT_KEYS = { nextTime: 1, kycNumber: 1, kycDob: 1, phone: 1, phone2: 1, whatsapp: 1, coPhone: 1, pan: 1, coPan: 1, aadhaar4: 1, receiptNo: 1, instrument: 1, account: 1, ifsc: 1, pincode: 1, username: 1, name: 1, title: 1, email: 1, designation: 1, shiftStart: 1, shiftEnd: 1, time: 1, in: 1, out: 1, gstin: 1 };
+var TEXT_KEYS = { no: 1, nextTime: 1, kycNumber: 1, kycDob: 1, phone: 1, phone2: 1, whatsapp: 1, coPhone: 1, pan: 1, coPan: 1, aadhaar4: 1, receiptNo: 1, instrument: 1, account: 1, ifsc: 1, pincode: 1, username: 1, name: 1, title: 1, email: 1, designation: 1, shiftStart: 1, shiftEnd: 1, time: 1, in: 1, out: 1, gstin: 1 };
 function parse_(v) {
   if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
   if (typeof v === 'string' && (v.charAt(0) === '[' || v.charAt(0) === '{')) { try { return JSON.parse(v); } catch (e) {} }

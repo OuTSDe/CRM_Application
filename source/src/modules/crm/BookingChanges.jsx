@@ -2,6 +2,7 @@
 // A cancelled booking is never deleted: it stays on record, out of the live figures, so reports still count it.
 import React, { useMemo, useState } from 'react'
 import { useStore } from '../../lib/store.jsx'
+import { RELEASE } from '../../lib/parking.js'
 import { useCrm, BOOKED, CANCELLING } from '../../lib/calc.js'
 import { cancellationCalc, lateInterest } from '../../lib/schedule.js'
 import { canRecordPayment, canAssignTasks } from '../../lib/perms.js'
@@ -146,7 +147,7 @@ export function CancellationCard({ c }) {
   const release = (force) => {
     if (!force && (refunded < refundDue - 0.5 || !docsDone)) return notify('Finish the refund and the documents first, or ask an admin to release it now', 'bad')
     upsert('clients', { ...raw, status: 'Cancelled', cancelStage: 'Closed', refundStatus: refundDue > 0 ? (refunded >= refundDue - 0.5 ? 'Refunded' : 'Part refunded') : 'Not applicable', releasedAt: today(), releasedBy: user.name, partnerClawback: c.partner ? 'To recover' : '' }, { action: 'cancelled and released' })
-    db.parking.filter((p) => String(p.unit) === String(c.unit)).forEach((p) => upsert('parking', { ...p, unit: '', clientId: '', name: '', assignedOn: '' }, { silent: true }))
+    db.parking.filter((p) => String(p.unit) === String(c.unit)).forEach((p) => upsert('parking', { ...p, ...RELEASE }, { silent: true }))
     db.tasks.filter((t) => t.link === c.bookingId && t.status === 'Open' && /^Refund/.test(t.title)).forEach((t) => upsert('tasks', { ...t, status: 'Done', doneOn: today() }, { silent: true }))
     log(`Booking closed as cancelled. Residence ${c.unit} released${force && (refunded < refundDue - 0.5 || !docsDone) ? ' by ' + user.name + ' before the refund and documents were complete' : ''}.`)
     notify('Residence ' + c.unit + ' is free again')
@@ -228,6 +229,8 @@ function TransferBooking({ c, open, onClose }) {
     upsert('clients', { ...raw, id: bookingId, bookingId, unit: u.unit, status: 'Shifted unit', transferredFrom: raw.bookingId, fromUnit: raw.unit, transferDate: today(), transferNote: why, remarks: [raw.remarks, `Moved from residence ${raw.unit} on ${d(today())}${why ? ': ' + why : ''}.`].filter(Boolean).join('\n') }, { action: 'transferred in', isNew: true })
     db.payments.filter((p) => String(p.unit) === String(raw.unit)).forEach((p) => upsert('payments', { ...p, unit: u.unit, origUnit: p.origUnit || String(raw.unit), editReason: 'Booking moved to residence ' + u.unit, editKind: 'transfer', rev: Number(p.rev || 0) + 1, lastEditedBy: user.name, lastEditedAt: new Date().toISOString() }, { silent: true }))
     const doc = db.documents.find((x) => x.bookingId === raw.bookingId); if (doc) upsert('documents', { ...doc, id: bookingId, bookingId }, { silent: true })
+    // 8 Nov: car parks belong to the residence's band, so the old residence's slots are freed; plan the new residence from Car parking
+    db.parking.filter((p) => String(p.unit) === String(raw.unit)).forEach((p) => upsert('parking', { ...p, ...RELEASE }, { silent: true }))
     upsert('interactions', { id: nextId('interactions', 'I-', 4), date: today(), time: new Date().toTimeString().slice(0, 5), by: user.name, type: 'Client', recordId: c.clientId, recordName: c.name, mode: 'Note (imported)', purpose: 'Unit change / transfer', summary: `Booking moved from residence ${raw.unit} to ${u.unit}${why ? ' (' + why + ')' : ''}. New booking ID ${bookingId}. Cost sheet and agreement to be revised.`, status: 'Done' }, { silent: true })
     notify(`Moved to residence ${u.unit} (${bookingId}). Revise the cost sheet and agreement for the new residence.`)
     onClose(); window.location.hash = '#/crm/clients/' + bookingId

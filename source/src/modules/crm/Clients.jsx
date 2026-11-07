@@ -9,6 +9,7 @@ import { META, OPS } from '../../lib/seed.js'
 import { Page, Card, Button, Badge, Modal, Grid, Stat, KV, Bar, Chips, Locked, DraftNote } from '../../components/ui.jsx'
 import { useDraftSlot } from '../../lib/drafts.js'
 import DataTable from '../../components/DataTable.jsx'
+import { ClientParking } from './Parking.jsx'
 import RecordForm from '../../components/RecordForm.jsx'
 import LogInteraction, { OutcomeBadge } from '../../components/LogInteraction.jsx'
 import PaymentForm from './PaymentForm.jsx'
@@ -127,7 +128,6 @@ function Client360Body({ c, edit, setEdit, editSlot, log, setLog, pay, setPay })
   const money = seesMoney(user)
   const team = db.users.filter((u) => ['admin', 'senior', 'sales'].includes(u.appRole) && u.active !== 'No').map((u) => u.name)
   const doc = db.documents.find((x) => x.bookingId === c.bookingId)
-  const parks = db.parking.filter((p) => String(p.unit) === String(c.unit))
   const sheets = db.costSheets.filter((s) => String(s.unit) === String(c.unit))
   const issues = db.issues.filter((i) => String(i.unit) === String(c.unit))
   const groups = {}; META.docTypes.forEach((t) => (groups[t.group] = groups[t.group] || []).push(t))
@@ -197,9 +197,7 @@ function Client360Body({ c, edit, setEdit, editSlot, log, setLog, pay, setPay })
             <KV rows={[['Occupation', c.occupation], ['Employer', c.employer], ['Income band', c.income], ['Family', c.familyProfile], ['Decision maker', c.decisionMaker], ['Source', c.source], ['Advisor', c.owner]]} />
             <div style={{ marginTop: 10 }}><Chips options={OPS.INTERESTS} value={c.interests || []} onChange={(x) => canWrite(user, 'clients') && upsert('clients', { ...raw, interests: x }, { silent: true })} /></div>
           </Card>
-          <Card title="Car parking" actions={<Link className="btn btn-sm" to="/crm/inventory?tab=parking">Inventory</Link>}>
-            {parks.length ? parks.map((p) => <div key={p.id} className="check-row"><span>{p.id} · {p.level}</span><Badge>{p.type}</Badge></div>) : <p className="muted" style={{ margin: 0 }}>No slot assigned yet.</p>}
-          </Card>
+          <ClientParking c={c} />
           <DesignCard c={c} />
           {sheets.length > 0 && <Card title="Cost sheets">{sheets.map((s) => <div key={s.id} className="check-row"><Link to={'/crm/cost-sheet?id=' + s.id}>{s.id} · {d(s.date)}</Link><span>{inr(s.total)} <Badge>{s.status}</Badge></span></div>)}</Card>}
           {issues.length > 0 && <Card title="Data issues">{issues.map((i) => <div key={i.id} style={{ padding: '6px 0', borderBottom: '1px dashed var(--line-2)' }}><Badge>{i.severity}</Badge> <Badge>{i.status}</Badge><div className="small" style={{ marginTop: 4 }}>{i.description}</div></div>)}</Card>}

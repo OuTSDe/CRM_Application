@@ -323,6 +323,58 @@ Paste the new `backend/Code.gs` into Apps Script and deploy a new version (Deplo
 - **Reset a sign-in with no admin available.** Open the Accord Database sheet as its owner: menu **Accord → Reset someone's sign-in**, type the username and a temporary password.
 - **Cyril** is now *Sales Lead* (title only; access unchanged). The backend sets it once on the first request after deploying.
 
+## 7d. Car parking from the drawings (8 November)
+
+No backend change is needed (the sheet keeps unknown fields). For readable columns in the **parking** tab, delete the empty *parking* tab in the Accord Database sheet before loading; the next save recreates it with the new headings from `backend/Code.gs`.
+
+**Source.** `YAMUNA - PARKING FLOORS - 24.07.2026.dwg` (A2-01 ground to A2-04 third floor). 4th and 5th floor sheets have no car parks. The parking statement on the drawings agrees with what Accord reads: 543 covered car parks.
+
+| Level | FFL | Single | Tandem pairs | Total |
+|---|---|---|---|---|
+| G, ground floor | +4.860 | 112 | 29 | 170 |
+| L1, first floor | +8.310 | 82 | 30 | 142 |
+| L2, second floor | +11.335 | 80 | 30 | 140 |
+| L3, third floor | +14.360 | 39 | 26 | 91 |
+| **Covered** | | **313** | **115** | **543** |
+
+On the ground there are also 3 accessible bays (G-H1 to G-H3), 36 visitor bays (V-01 to V-36; V-01 to V-20 along the EV charging wall), 26 surface bays (S-01 to S-26) and 95 two-wheeler bays (TW-01 to TW-95).
+
+**Numbering.** Level code + drawing number: `G-012`, `L1-072`, `L1-072A`. The A slot is the rear of a tandem pair and is reached only through the front slot with the same number. Use these numbers on the site signage.
+
+**Labels corrected from the drawings** (send to the architect for the next revision):
+- G: the second 76A and 77A are behind 74 and 73, so they are **74A** and **73A**.
+- L1: the rear row 96, 97, 98, 99 (bottom left) repeats the front numbers; they are **96A to 99A**.
+- L2: "721" is **72A**.
+- L3: "46A" sits behind 44, so it is **44A**; 46 is a single next to the ramp.
+
+**How car parks are allotted** (Building and parking → Car parking → Rules and drawings shows the same):
+1. *Entitlement* is what the booking bought: "Car parks entitled" on the client, otherwise the rate card's number for the type (now 1 for every type).
+2. *Tandem pairs are never split.* One car park is always a single slot. Two car parks are one tandem pair; three are a pair and a single.
+3. *Convenience score* = straight-line walk from the slot to the tower lobby on that level + 30 m for each ramp level above the ground (Edit rules).
+4. *Zones by band.* The best slots are held for the premium bands first (Crown, Signature, Panorama Terrace, Panorama, Sky Duplexes, Sky Residences, Sky Deck, Sub-Sky Deck, then Podium and typical), sized to every residence in the band, sold or not. Unsold residences keep their band's slots for later buyers.
+5. *Inside a band* the earliest booking chooses first; undated bookings come last. A household's further slots, and a client's other residences, go as near as possible.
+6. *Nothing moves.* Planning only fills gaps. **Mark as issued** on the allotment letter locks the slots.
+7. Active, shifted, registered and handed-over bookings are allotted; *To verify* bookings get **Provisional** slots. Cancelling or moving a booking frees its slots.
+8. Accessible, visitor, surface and two-wheeler bays are not auto-allotted. What is left (19 singles and 115 tandem pairs with the current entitlement of 1) is the **sale pool** for additional car parks.
+
+**Steps, once.** Car parking → **Load the inventory from the drawings** → **Plan allotment** (check the list) → **Apply**. Then print each client's **Allotment letter** from Client 360 or the Residences list, and **Print register** for the site office.
+
+**Decisions for you.** The rate card gives every type 1 car park while the building has 543. If 4 and 5 BHK residences are meant to have 2, change *Car parks for 4 BHK / 5 BHK* in Admin → Settings → Rate card (it also changes the cost sheet) before planning; they will then get tandem pairs.
+
+## 7e. Cost sheet client pack and parking commitments (8 November, later)
+
+**Cost sheet.** Follows *Yamuna_Sky_City_Cost_Sheet_Master_Template_YHD.xlsx*. The A4 preview (and print / PDF) is the client pack, three pages:
+1. **Financial summary**: unit particulars (client, date, residence, floor, band, area, car parks, client representative), Part A, Part B, grand total in words, terms, payment details, signatures.
+2. **Payment plan and schedule**: the milestone slab for the funding mode (Admin → Settings → plans) and the 31-stage construction-linked schedule (Building and parking → Construction), both on the grand total, rounding carried in the last line.
+3. **Your residence**: a diagrammatic elevation with the band and floor marked, the floor plan of that floor type with the residence marked (duplexes show both levels), and the car parks with a car drawn in each chosen bay (whole deck and a close-up).
+Founding privilege, approval status and internal notes stay on the Build screen only.
+
+**Car parks on the cost sheet.** The sheet shows the bays the residence would be allotted if booked now (same rules as Plan allotment, after every existing booking). They are saved on the sheet and allotted automatically on **Convert to booking** if still free. Sales can add up to the rate card's extra limit; admins can promise up to 8.
+
+**Cars.** The car plan blocks come from the BMW X5 and Mercedes S-Class drawings; they are drawn only in the chosen or allotted bays (cost sheet, Client 360, allotment letter, and the selected slot on the plan), facing into the bay as on the parking drawings.
+
+**Commitments of 4 or more car parks.** Building and parking → Car parking → Rules and drawings → *Commitments*. Each residence keeps its own car park, so 249 covered car parks are spare today. A promise of 4 uses 3 of them (two tandem pairs), 5 uses 4, 6 uses 5. The most the building can carry on top of today's bookings: **83** promises of 4, **62** of 5 or **49** of 6, and that leaves nothing to sell. Record each promise on the client (Client 360 → Edit → Car parks entitled), then Plan allotment.
+
 ## 8. What is missing (to fill in before go-live)
 
 1. **Your Excel formats and the logo.** The cost sheet, payment slip, payment and financial summary, booking form and lead entries use the Yamuna Sky City header now. When you share the Excel formats and the header or logo, upload the logo in Settings → Brand, and the layouts can be matched line by line.

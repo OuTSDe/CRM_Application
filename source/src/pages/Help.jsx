@@ -38,7 +38,8 @@ const ALL = [
   { id: 'money', title: 'Payments and receipts', roles: ['admin', 'finance'], items: [
     'Payments › Record payment. Each entry gets a receipt number and an A4 receipt to print or save as PDF.',
     'Print receipts in bulk: choose a date range (and a residence if needed); every receipt prints on its own page in one go.',
-    'Building and parking › Construction: keep each stage\'s status and dates up to date. Demand calls follow the completed stages.'] },
+    'Building and parking › Construction: keep each stage\'s status and dates up to date. Demand calls follow the completed stages.',
+    'Building and parking › Car parking: the slots come from the architect\'s parking drawings (G, L1, L2, L3; an A after the number is the rear of a tandem pair). Plan allotment proposes slots for every booking that has fewer than it is entitled to, premium bands first and earliest booking first; nothing already allotted moves. Print the allotment letter from Client 360 and mark it issued to lock the slots.'] },
   { id: 'letters', title: 'Demand letters, receipts and cancellations', roles: ['admin', 'finance', 'senior'], items: [
     'Payments › Demand calls › Raise letters: one demand letter per live booking, each with its own code. Print each from Payments › Demand letters.',
     'Record payment picks the open demand letter of that residence. The receipt says when it is a part payment, and what is still due on the letter.',

@@ -7,7 +7,11 @@ import { Page, Card, Button, Badge, Field, Select, Input, Textarea, Seg, Modal, 
 import { useDraft } from '../../lib/drafts.js'
 import DocHeader from '../../components/DocHeader.jsx'
 import RecordPicker from '../../components/RecordPicker.jsx'
-import { d, inr, words, today, addDays, n, waLink } from '../../lib/format.js'
+import { d, inr, words, today, addDays, n, waLink, fullName } from '../../lib/format.js'
+import { proposeForUnit, withDef, levelName, isTandem, LEVEL_ORDER } from '../../lib/parking.js'
+import { ParkingPlan } from './Parking.jsx'
+import { ElevationDiagram, UnitPlan } from '../../components/ResidenceDiagrams.jsx'
+import { ordinal } from '../../components/Tower.jsx'
 
 export default function CostSheet() {
   const { db, settings, user, upsert, nextId, notify, upload, online, sendEmail } = useStore()
@@ -32,11 +36,15 @@ export default function CostSheet() {
   const effDisc = n(rc.baseRate) ? (1 - rate / n(rc.baseRate)) * 100 : 0
   const needsApproval = effDisc > n(rc.approvalAbove) + 1e-9
   const parkDefault = rc.parkingSlots?.[unit?.type] ?? 1
-  // entitlement plus a capped number of extra car parks (Admin → rate card: parkingExtraMax, 2 by default)
-  const parkMax = parkDefault + (rc.parkingExtraMax ?? 2)
+  // entitlement plus a capped number of extra car parks (Admin → rate card: parkingExtraMax, 2 by default).
+  // 8 Nov: admins can promise more (3 and 4 BHK commitments of 4 or more); the parking check shows what is left.
+  const parkMax = parkDefault + (isAdmin(user) ? Math.max(8, n(rc.parkingExtraMax ?? 2)) : n(rc.parkingExtraMax ?? 2))
   useEffect(() => { if (unit) set('parking', parkDefault) }, [v.unit]) // eslint-disable-line
   const canRound = ['admin', 'senior'].includes(user.appRole)
   const cs = useMemo(() => unit && costSheet({ unit, rateCard: rc, rate, plc: v.plc, parking: v.parking, funding: v.funding === 'Bank loan' ? 'Bank loan' : 'Self', plans: settings.plans, roundTo: v.roundTo }), [unit, rc, rate, v.plc, v.parking, v.funding, settings.plans, v.roundTo])
+  // 8 Nov: the car parks this residence would be allotted if booked now (indicative)
+  const park = useMemo(() => unit ? proposeForUnit({ parking: db.parking, clients: crm.clients, units: crm.units, settings, unit: unit.unit, count: n(v.parking) }) : { slots: [] }, [unit, db.parking, crm.clients, crm.units, settings, v.parking])
+  const rep0 = db.users.find((x) => x.name === (lead?.owner || v.preparedBy || user.name)) || user
   const status = v.status || 'Draft'
   const save = (patch = {}) => {
     if (!unit) return notify('Pick a residence first', 'bad')
@@ -44,7 +52,7 @@ export default function CostSheet() {
     if (!lead) return notify('Pick the lead or client this cost sheet is for. Add a new lead first if they are not in Accord yet.', 'bad')
     const gap = [!lead.name && 'name', !lead.phone && 'mobile', !lead.email && !String(v.leadId).startsWith('YSC-C') && 'e-mail'].filter(Boolean)
     if (gap.length) return notify(`${lead.name || 'This lead'} has no ${gap.join(', ')}. Add it to the lead first, then save the cost sheet.`, 'bad')
-    const rec = { ...v, id: v.id || nextId('costSheets', 'CS-', 4), date: v.date || today(), validTill: v.validTill || addDays(today(), n(rc.validityDays) || 15), rate, effDisc: Number(effDisc.toFixed(2)), total: Math.round(cs.total), av: Math.round(cs.av),
+    const rec = { ...v, proposedParking: park.slots.map((p) => p.id), id: v.id || nextId('costSheets', 'CS-', 4), date: v.date || today(), validTill: v.validTill || addDays(today(), n(rc.validityDays) || 15), rate, effDisc: Number(effDisc.toFixed(2)), total: Math.round(cs.total), av: Math.round(cs.av),
       name: lead?.name || v.name || '', owner: lead?.owner || user.name, preparedBy: v.preparedBy || user.name, status: needsApproval && !['Approved', 'Converted'].includes(status) ? 'Pending approval' : status === 'Draft' ? 'Ready' : status, ...patch }
     const r = upsert('costSheets', rec, { action: patch.status ? patch.status.toLowerCase() : 'saved' })
     if (r) cdraft.clear()
@@ -78,10 +86,14 @@ export default function CostSheet() {
               onClick={() => setV((x) => ({ ...x, discountPct: s, finalRate: '' }))}>{s ? `${s}% · ${inr(rc.baseRate * (1 - s / 100))}` : 'Standard'}{s > rc.approvalAbove ? ' *' : ''}</button>)}</div>
             <div className="form fc2">
               <Field label="Final rate (₹/sft)" hint="Only change for a negotiated rate; it is checked against the approval limit"><Input type="number" value={v.finalRate} disabled={locked} placeholder={String(listRate)} onChange={(e) => set('finalRate', e.target.value === '' ? '' : Number(e.target.value))} /></Field>
-              <Field label="Car parks" hint={unit ? `${parkDefault} with a ${unit.type}, up to ${parkMax - parkDefault} more can be bought` : ''}><Input type="number" min={0} max={parkMax} value={v.parking} disabled={locked} onChange={(e) => set('parking', Math.max(0, Math.min(parkMax, Number(e.target.value))))} /></Field>
+              <Field label="Car parks" hint={unit ? `${parkDefault} with a ${unit.type}, up to ${parkMax - parkDefault} more${isAdmin(user) ? '' : ' (an admin can promise more)'}` : ''}><Input type="number" min={0} max={parkMax} value={v.parking} disabled={locked} onChange={(e) => set('parking', Math.max(0, Math.min(parkMax, Number(e.target.value))))} /></Field>
             </div>
             <p className="small" style={{ margin: '10px 0 0' }}>Effective founding privilege: <b>{effDisc.toFixed(2)}%</b> {needsApproval ? <Badge tone="warn">Needs approval (above {rc.approvalAbove}%)</Badge> : <Badge tone="good">Within limit</Badge>}</p>
           </Card>
+          {unit && <Card title="Car parking we will allot" actions={<span className="small muted">{park.note}</span>}>
+            {park.slots.length ? <ParkInset slots={park.slots} parking={db.parking} /> : <p className="muted small" style={{ margin: 0 }}>No car park on this sheet.</p>}
+            {park.short > 0 && <div className="note" style={{ marginTop: 10 }}>Only {park.slots.length} of {n(v.parking)} can be found. Check Building and parking → Car parking → Rules and drawings → Commitments.</div>}
+          </Card>}
           {(canRound || n(v.roundTo)) > 0 && <Card title="Round figure" actions={!canRound && <span className="locked">Set by Cyril or an admin</span>}>
             <div className="chips">{[[0, 'Exact'], [1000, 'Nearest ₹1,000'], [10000, 'Nearest ₹10,000'], [100000, 'Nearest ₹1 lakh']].map(([x, l]) => <button key={x} type="button" className={'chip' + (n(v.roundTo) === x ? ' on' : '')} disabled={!canRound || locked} onClick={() => set('roundTo', x)}>{l}</button>)}</div>
             {canRound && <Field label="Or a round total (₹)" hint="Typed figure for the total; the difference shows as a rounding adjustment"><Input type="number" value={n(v.roundTo) > 1000000 ? v.roundTo : ''} disabled={locked} placeholder="e.g. 25000000" onChange={(e) => set('roundTo', e.target.value === '' ? 0 : Number(e.target.value))} /></Field>}
@@ -107,10 +119,10 @@ export default function CostSheet() {
               <Button variant="primary" onClick={() => setConvert({ name: lead?.name || '', phone: lead?.phone || '', owner: lead?.owner || user.name, bookingDate: today(), coapp: '', email: lead?.email || '' })}>Convert to booking →</Button>}
           </div>
         </div>
-        <div>{cs ? <SheetView cs={cs} v={{ ...v, rate, name: lead?.name || v.name }} unit={unit} settings={settings} /> : <Card><div className="empty">Pick a residence to see the cost sheet.</div></Card>}</div>
+        <div>{cs ? <SheetView cs={cs} v={{ ...v, rate, name: lead ? fullName(lead) : v.name }} unit={unit} settings={settings} park={park} stages={db.clpStages} rep={rep0} parking={db.parking} /> : <Card><div className="empty">Pick a residence to see the cost sheet.</div></Card>}</div>
       </div>}
       {view === 'print' && cs && <div><div className="doc-tools no-print"><Button onClick={() => setView('build')}>← Edit</Button><Button variant="primary" onClick={() => window.print()}>Print or save as PDF</Button></div>
-        <div className="doc"><SheetView cs={cs} v={{ ...v, rate, name: lead?.name || v.name }} unit={unit} settings={settings} doc /></div></div>}
+        <div className="doc"><SheetView cs={cs} v={{ ...v, rate, name: lead ? fullName(lead) : v.name }} unit={unit} settings={settings} park={park} stages={db.clpStages} rep={rep0} parking={db.parking} doc /></div></div>}
       <Modal open={!!convert} onClose={() => setConvert(null)} title={`Convert to booking · residence ${unit?.unit}`} footer={<><Button onClick={() => setConvert(null)}>Cancel</Button><Button variant="primary" onClick={() => {
         if (!convert.name) return notify('Name is required', 'bad')
         if (taken(unit.unit)) return notify(`Residence ${unit.unit} was just booked by ${crm.byUnit[unit.unit].name}. Pick another residence.`, 'bad')
@@ -123,6 +135,8 @@ export default function CostSheet() {
         const prior = db.interactions.filter((i) => i.recordId === lead?.id)
         prior.forEach((i) => i.status === 'Open' && upsert('interactions', { ...i, status: 'Done' }, { silent: true }))
         upsert('interactions', { id: nextId('interactions', 'I-', 4), date: today(), time: new Date().toTimeString().slice(0, 5), recordId: clientId, type: 'Client', mode: 'Office visit', purpose: 'Booking', outcome: 'Positive', by: user.name, summary: `Reservation of residence ${unit.unit} at ${inr(rate)}/sft (cost sheet ${v.id}). Converted from ${lead?.id || 'walk-in'}.`, nextAction: 'Collect KYC and booking amount', nextDate: addDays(today(), 2), nextOwner: convert.owner, status: 'Open' }, { silent: true })
+        // 8 Nov: the car parks quoted on this sheet are allotted to the new booking if they are still free
+        park.slots.forEach((p) => { const r = db.parking.find((x) => x.id === p.id); if (r && !r.unit && r.status !== 'Blocked') upsert('parking', { ...r, unit: unit.unit, clientId, bookingId, name: convert.name, status: 'Allotted', allotStatus: 'Allotted', assignedOn: today(), assignedBy: user.name, allotNote: 'Quoted on cost sheet ' + v.id }, { silent: true }) })
         save({ status: 'Converted', bookingId })
         setConvert(null); nav('/crm/booking/' + bookingId)
       }}>Create booking</Button></>}>
@@ -140,36 +154,92 @@ export default function CostSheet() {
   )
 }
 
-function SheetView({ cs, v, unit, settings, doc }) {
+// 8 Nov: the car parks on a sheet, drawn with cars in their bays: the whole level and a close-up
+export function ParkInset({ slots, parking, doc }) {
+  const recs = (parking?.length ? parking.map(withDef) : []).filter((p) => p.x !== undefined)
+  const all = recs.length ? recs : slots
+  const levels = [...new Set(slots.map((p) => p.levelCode))].sort((a, b) => LEVEL_ORDER.indexOf(a) - LEVEL_ORDER.indexOf(b))
+  const hl = new Set(slots.map((p) => p.id))
+  const pool = all.some((p) => p.id === slots[0]?.id) ? all : [...all, ...slots]
+  return <div>
+    {levels.map((lv) => <div key={lv} className="cs-park" style={{ marginBottom: 8 }}>
+      <div><ParkingPlan level={lv} recs={pool} highlight={hl} compact cars="mine" /><div className="small muted">{levelName(lv)}: the whole deck, your bays marked</div></div>
+      <div><ParkingPlan level={lv} recs={pool} highlight={hl} compact cars="mine" crop={[34, 24]} /><div className="small muted">Close-up</div></div>
+    </div>)}
+    <table className={doc ? '' : 'table dense'}><thead><tr><th>Car park</th><th>Level</th><th>Type</th><th>Walk to lobby</th></tr></thead>
+      <tbody>{slots.map((p) => <tr key={p.id}><td><b>{p.id}</b></td><td>{levelName(p.levelCode)}</td><td>{p.kind === 'Single' ? 'Covered, independent' : isTandem(p) ? `Covered, tandem ${p.kind === 'Tandem rear' ? 'rear' : 'front'}` : p.kind}</td><td>about {p.walk} m</td></tr>)}</tbody></table>
+  </div>
+}
+
+// The client pack (8 Nov, from Yamuna_Sky_City_Cost_Sheet_Master_Template_YHD.xlsx). Only these three go to the client:
+// 1 financial summary, 2 payment plan and payment schedule, 3 the residence (elevation, floor plan, car parking).
+// Founding privilege, approval and internal notes stay on the Build screen.
+function SheetView({ cs, v, unit, settings, doc, park, stages, rep, parking }) {
   const co = settings.company || {}
   const rc = settings.rateCard || {}
-  const body = <>
-    <DocHeader title="COST SHEET · FINANCIAL SUMMARY" sub={v.id ? `${v.id} · ${d(v.date || today())}` : 'Draft'} />
-    <table><tbody>
-      <tr><th style={{ width: '22%' }}>Prepared for</th><td>{v.name || '–'}</td><th style={{ width: '18%' }}>Residence</th><td><b>{unit.unit}</b> · {unit.type}</td></tr>
-      <tr><th>Floor</th><td>{unit.floor} · {unit.band}</td><th>Saleable area</th><td>{unit.area} sft{unit.terrace ? ` + ${unit.terrace} sft terrace` : ''}</td></tr>
-      <tr><th>Funding</th><td>{v.funding}</td><th>Valid till</th><td>{d(v.validTill || addDays(today(), n(rc.validityDays) || 15))}</td></tr>
-    </tbody></table>
-    <div className="sec">Part A · Agreement value</div>
-    <table><thead><tr><th>Item</th><th className="right">Qty</th><th className="right">Rate</th><th className="right">Amount</th></tr></thead>
+  const gst = (n(rc.gst) * 100).toFixed(0)
+  const sub = v.id ? `${v.id} · ${d(v.date || today())}` : 'Draft'
+  const slots = park?.slots || []
+  const clp = (stages || []).filter((s) => n(s.pct) > 0)
+  const clpSum = clp.reduce((a, s) => a + n(s.pct), 0)
+  let clpRun = 0
+  const clpRows = clp.map((s, i) => { const amt = i === clp.length - 1 ? Math.round(cs.total) - clpRun : Math.round(cs.total * n(s.pct)); clpRun += amt; return { ...s, amt } })
+  let planRun = 0
+  const planRows = cs.plan.map((p, i) => { const amt = i === cs.plan.length - 1 ? Math.round(cs.total) - planRun : p.amount; planRun += amt; return { ...p, amt } })
+  const particulars = <table><tbody>
+    <tr><th style={{ width: '22%' }}>Client name</th><td>{v.name || '–'}</td><th style={{ width: '20%' }}>Date</th><td>{d(v.date || today())}</td></tr>
+    <tr><th>Residence</th><td><b>{unit.unit}</b> · {unit.type} · position {unit.pos}</td><th>Floor</th><td>{ordinal(unit.floor)}{n(unit.floor) === 43 ? ' and 44th (duplex)' : ''}</td></tr>
+    <tr><th>Floor band</th><td>{unit.band}</td><th>Saleable area</th><td>{n(unit.area).toLocaleString('en-IN')} sft{unit.terrace ? ` + ${unit.terrace} sft terrace` : ''}</td></tr>
+    <tr><th>Car parks</th><td>{slots.length ? slots.map((p) => p.id).join(', ') : n(v.parking) || 'None'}{slots.length && park?.note !== 'Already allotted' ? ' (indicative)' : ''}</td><th>Valid till</th><td>{d(v.validTill || addDays(today(), n(rc.validityDays) || 15))}</td></tr>
+    <tr><th>Client representative</th><td colSpan={3}>{rep?.name || v.preparedBy || ''}{rep?.designation ? ', ' + rep.designation : ''}{rep?.phone ? ' · ' + rep.phone : ''}</td></tr>
+  </tbody></table>
+  const page1 = <div className="cs-page">
+    <DocHeader title="FINANCIAL SUMMARY" sub={sub} />
+    <div className="sec">Unit particulars</div>
+    {particulars}
+    <div className="sec">Part A · Dimensions and rate</div>
+    <table><thead><tr><th>Particulars</th><th className="right">Qty / area</th><th className="right">Rate</th><th className="right">Amount (₹)</th></tr></thead>
       <tbody>{cs.lines.filter((l) => l.amount).map((l) => <tr key={l.label}><td>{l.label}</td><td className="right">{n(l.qty).toLocaleString('en-IN')}</td><td className="right">{inr(l.rate)}</td><td className="right">{inr(l.amount)}</td></tr>)}
-        <tr><td colSpan={3}>Agreement value</td><td className="right"><b>{inr(cs.av)}</b></td></tr>
-        <tr><td colSpan={3}>GST @ {(n(rc.gst) * 100).toFixed(0)}%</td><td className="right">{inr(cs.gstA)}</td></tr>
-        <tr className="total"><td colSpan={3}>Total Part A</td><td className="right">{inr(cs.partA)}</td></tr></tbody></table>
+        <tr><td colSpan={3}><b>Total agreement value</b></td><td className="right"><b>{inr(cs.av)}</b></td></tr>
+        <tr><td colSpan={3}>GST @ {gst}% on agreement value</td><td className="right">{inr(cs.gstA)}</td></tr>
+        <tr className="total"><td colSpan={3}>Total cost of agreement (Part A)</td><td className="right">{inr(cs.partA)}</td></tr></tbody></table>
     <div className="sec">Part B · Other charges</div>
     <table><tbody>{cs.other.map((l) => <tr key={l.label}><td>{l.label}</td><td className="right">{l.qty > 1 ? n(l.qty).toLocaleString('en-IN') + ' × ' + inr(l.rate) : ''}</td><td className="right">{inr(l.amount)}</td></tr>)}
-      <tr><td colSpan={2}>GST @ {(n(rc.gst) * 100).toFixed(0)}%</td><td className="right">{inr(cs.gstB)}</td></tr>
-      <tr className="total"><td colSpan={2}>Total Part B</td><td className="right">{inr(cs.partB)}</td></tr></tbody></table>
-    {cs.roundAdj ? <table><tbody><tr><td>Total (A + B), exact</td><td className="right">{inr(cs.exact)}</td></tr><tr><td>Rounding adjustment</td><td className="right">{cs.roundAdj > 0 ? '' : '− '}{inr(Math.abs(cs.roundAdj))}</td></tr></tbody></table> : null}
-    <div className="words">Total (A + B): {inr(cs.total)} · Rupees {words(Math.round(cs.total))} only</div>
-    <div className="sec">Payment schedule · {v.funding}</div>
-    <table><thead><tr><th>Stage</th><th className="right">%</th><th className="right">Amount</th></tr></thead><tbody>{cs.plan.map((p) => <tr key={p.stage}><td>{p.stage}</td><td className="right">{(p.pct * 100).toFixed(0)}%</td><td className="right">{inr(p.amount)}</td></tr>)}</tbody></table>
-    <div className="sec">Terms</div>
+      <tr><td colSpan={2}>GST @ {gst}%</td><td className="right">{inr(cs.gstB)}</td></tr>
+      <tr className="total"><td colSpan={2}>Total other charges (Part B)</td><td className="right">{inr(cs.partB)}</td></tr></tbody></table>
+    {cs.roundAdj ? <table><tbody><tr><td>Grand total, exact</td><td className="right">{inr(cs.exact)}</td></tr><tr><td>Rounding adjustment</td><td className="right">{cs.roundAdj > 0 ? '' : '− '}{inr(Math.abs(cs.roundAdj))}</td></tr></tbody></table> : null}
+    <div className="words">Grand total · Part A + Part B: {inr(cs.total)} · Rupees {words(Math.round(cs.total))} only</div>
+    <div className="sec">Terms and notes</div>
     <ol>{(settings.terms || []).map((t, i) => <li key={i}>{t}</li>)}{v.notes && <li><b>{v.notes}</b></li>}</ol>
-    <p className="small">Account: {co.name} · {co.bank} · A/c {co.account} · IFSC {co.ifsc}</p>
-    {doc && <div className="sign"><div>Prepared by {v.preparedBy || ''}</div><div style={{ textAlign: 'right' }}>Accepted by buyer</div></div>}
-  </>
-  return doc ? body : <Card title={`Total ${inr(cs.total)}`} actions={<span className="small muted">Rate {inr(v.rate)}/sft · floor rise {inr(cs.riseRate)}/sft</span>}><div className="doc" style={{ width: '100%', minHeight: 0, boxShadow: 'none', padding: 0 }}>{body}</div></Card>
+    <div className="sec">Payment details</div>
+    <table><tbody><tr><th style={{ width: '22%' }}>Developer entity</th><td>{co.name}</td><th style={{ width: '14%' }}>Bank</th><td>{co.bank}</td></tr>
+      <tr><th>Account number</th><td>{co.account}</td><th>IFSC</th><td>{co.ifsc}{co.branch ? ' · ' + co.branch : ''}</td></tr></tbody></table>
+    {doc && <div className="sign"><div>For {co.name || 'Yamuna Homes and Design Pvt. Ltd.'}</div><div style={{ textAlign: 'right' }}>Client signature</div></div>}
+  </div>
+  const page2 = <div className="cs-page">
+    <DocHeader title="PAYMENT PLAN AND SCHEDULE" sub={sub} />
+    <p className="small" style={{ margin: '0 0 6px' }}>Residence {unit.unit} · {unit.type} · {ordinal(unit.floor)} floor · grand total {inr(cs.total)} · {v.funding}</p>
+    <div className="sec">Payment plan · milestone slab</div>
+    <table><thead><tr><th>Stage</th><th className="right">% of total</th><th className="right">Amount payable (₹)</th></tr></thead>
+      <tbody>{planRows.map((p) => <tr key={p.stage}><td>{p.stage}</td><td className="right">{(n(p.pct) * 100).toFixed(0)}%</td><td className="right">{inr(p.amt)}</td></tr>)}
+        <tr className="total"><td>Grand total</td><td className="right">{(cs.plan.reduce((a, p) => a + n(p.pct), 0) * 100).toFixed(0)}%</td><td className="right">{inr(planRun)}</td></tr></tbody></table>
+    {clpRows.length > 0 && <>
+      <div className="sec">Payment schedule · construction-linked, slab by slab</div>
+      <table><thead><tr><th>#</th><th>Completion stage</th><th className="right">% of completion</th><th className="right">Amount payable (₹)</th></tr></thead>
+        <tbody>{clpRows.map((s, i) => <tr key={s.id || i}><td>{i + 1}</td><td>{s.stage}</td><td className="right">{(n(s.pct) * 100).toFixed(0)}%</td><td className="right">{inr(s.amt)}</td></tr>)}
+          <tr className="total"><td /><td>Total</td><td className="right">{(clpSum * 100).toFixed(0)}%</td><td className="right">{inr(clpRun)}</td></tr></tbody></table></>}
+    <p className="small" style={{ color: '#666' }}>Construction milestone dates are indicative and subject to change. Each instalment is payable within 15 days of the demand letter for that stage. Rounding is carried in the last line.</p>
+  </div>
+  const page3 = <div className="cs-page">
+    <DocHeader title="YOUR RESIDENCE" sub={`${unit.unit} · ${unit.type} · ${ordinal(unit.floor)} floor`} />
+    <div className="cs-res">
+      <div><div className="sec" style={{ marginTop: 0 }}>Elevation</div><ElevationDiagram unit={unit} /></div>
+      <div><div className="sec" style={{ marginTop: 0 }}>Floor plan</div><UnitPlan unit={unit} /></div>
+    </div>
+    {slots.length > 0 && <><div className="sec">Car parking{park?.note !== 'Already allotted' ? ' · indicative, confirmed on allotment' : ''}</div><ParkInset slots={slots} parking={parking} doc={doc} /></>}
+  </div>
+  const body = <>{page1}{page2}{page3}</>
+  return doc ? body : <Card title={`Total ${inr(cs.total)}`} actions={<span className="small muted">Client pack: financial summary, payment plan and schedule, residence</span>}><div className="doc" style={{ width: '100%', minHeight: 0, boxShadow: 'none', padding: 0 }}>{body}</div></Card>
 }
 
 // 2 Nov: send the cost sheet in one go. E-mail goes out with the Yamuna Sky City header; WhatsApp opens with the summary.

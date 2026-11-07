@@ -9,6 +9,9 @@ import { Page, Card, Button, Badge, Grid, Stat, Seg, Modal, Field, Input, Select
 import DataTable from '../../components/DataTable.jsx'
 import { inr, lakh, pct, d } from '../../lib/format.js'
 import { stageReady, stageTrigger } from '../../lib/schedule.js'
+import Parking from './Parking.jsx'
+import { WMElevation, WM_FLOORS, WM_BANDS, bandName, floorLabel, sideX } from '../../components/WhiteModel.jsx'
+import { WM } from '../../lib/whiteModel.js'
 
 const cls = (c) => !c ? '' : BOOKED.includes(c.status) ? 'sold' : c.status === 'Transferred' ? 'transfer' : ['Under cancellation', 'Cancelled'].includes(c.status) ? 'cancel' : c.status === 'To verify' ? 'verify' : ''
 
@@ -16,7 +19,7 @@ export default function Inventory() {
   const [qs] = useSearchParams()
   const [tab, setTab] = useState(qs.get('tab') || 'building')
   return (
-    <Page back={true} title="Building and parking" subtitle="Live availability for every residence, and car parks assigned by entitlement."
+    <Page back={true} title="Building and parking" subtitle="Live availability for every residence, and car parks allotted from the architect's parking drawings."
       actions={<Seg options={[{ value: 'building', label: 'Building' }, { value: 'list', label: 'Unit list' }, { value: 'parking', label: 'Car parking' }, { value: 'construction', label: 'Construction' }]} value={tab} onChange={setTab} />}>
       {tab === 'building' && <Building />}{tab === 'list' && <UnitList />}{tab === 'parking' && <Parking />}{tab === 'construction' && <Construction />}
     </Page>
@@ -30,7 +33,7 @@ function Building() {
   return (
     <>
       <div className="row between" style={{ marginBottom: 12 }}>
-        <span className="small muted">{view === 'tower' ? 'The tower and plates from the Accord experience, coloured live from the Client Master.' : 'Every residence as a grid, floor by floor.'}</span>
+        <span className="small muted">{view === 'tower' ? 'The tower and plates from the Accord experience, coloured live from the Client Master.' : view === 'elevation' ? 'The exterior white model, coloured live from the Client Master.' : 'Every residence, floor by floor, laid out like the elevation.'}</span>
         <Seg options={[{ value: 'grid', label: 'Grid' }, { value: 'elevation', label: 'Elevation' }, { value: 'tower', label: 'Tower and plans' }]} value={view} onChange={setView} />
       </div>
       {view === 'tower' ? <TowerView /> : view === 'elevation' ? <Elevation /> : <GridView />}
@@ -38,40 +41,34 @@ function Building() {
   )
 }
 
-// 2 Nov: a plain white-model elevation that is easy to read and click. Each floor shows how much of it is booked;
-// click a floor to see its residences. A rendered white model can replace the drawing later without changing this.
+// 8 Nov: the elevation is now the exterior white model (YSC_WhiteModel_Exterior.3dm): each floor at its real width and
+// level, its residences coloured from the Client Master. Click a floor to see its residences.
+const wmStatus = (crm) => (no) => { const c = crm.byUnit[no]; return cls(c) }
+const useBuiltTo = (db) => useMemo(() => { const done = (db.clpStages || []).filter((s) => s.status === 'Completed').map((s) => (String(s.stage).match(/(\d+)(?:st|nd|rd|th)\s+floor/i) || [])[1]).filter(Boolean).map(Number); return done.length ? Math.max(...done) : null }, [db.clpStages])
 function Elevation() {
   const crm = useCrm()
   const { db } = useStore()
   const [sel, setSel] = useState(null)
-  const floors = useMemo(() => { const m = {}; crm.units.forEach((u) => (m[u.floor] = m[u.floor] || []).push(u)); return Object.keys(m).map(Number).sort((a, b) => b - a).map((f) => ({ f, units: m[f].sort((a, b) => String(a.pos).localeCompare(String(b.pos))) })) }, [crm.units])
-  const done = (db.clpStages || []).filter((s) => s.status === 'Completed').map((s) => (String(s.stage).match(/(\d+)(?:st|nd|rd|th)\s+floor/i) || [])[1]).filter(Boolean).map(Number)
-  const builtTo = done.length ? Math.max(...done) : 0
-  const H = 9, W = 220, top = 40, pod = 2
-  const h = top + floors.length * H + pod * 18 + 20
-  const st = (u) => { const c = crm.byUnit[u.unit]; return !c ? 'free' : BOOKED.includes(c.status) ? 'sold' : 'hold' }
-  const cur = floors.find((x) => x.f === sel)
+  const [hov, setHov] = useState(null)
+  const [side, setSide] = useState('S')
+  const builtTo = useBuiltTo(db)
+  const byFloor = useMemo(() => { const m = {}; crm.units.forEach((u) => (m[u.floor] = m[u.floor] || []).push(u)); Object.values(m).forEach((l) => l.sort((a, b) => String(a.pos).localeCompare(String(b.pos), undefined, { numeric: true }))); return m }, [crm.units])
+  const unitsOf = (f) => (byFloor[f === 44 ? 43 : f] || []).map((u) => u.unit)
+  const f = sel != null ? WM_FLOORS.find((x) => x.floor === sel) : null
+  const list = sel != null ? byFloor[sel === 44 ? 43 : sel] || [] : []
   return <div className="split">
-    <Card title="Elevation" actions={<span className="small muted">{builtTo ? `Structure done to floor ${builtTo}` : 'Construction stages under the Construction tab'}</span>}>
-      <svg className="elev" viewBox={`0 0 ${W + 160} ${h}`} role="img" aria-label="Tower elevation, click a floor">
-        <rect x={60} y={8} width={W} height={top - 8} fill="#f4f4f2" stroke="#999" />
-        <text x={60 + W / 2} y={28} textAnchor="middle" fontSize="11" fill="#666">Crown</text>
-        {floors.map(({ f, units }, i) => { const y = top + i * H, sold = units.filter((u) => st(u) === 'sold').length, hold = units.filter((u) => st(u) === 'hold').length, w = W / units.length
-          return <g key={f} onClick={() => setSel(f)}>
-            <rect className="fl" x={60} y={y} width={W} height={H - 1} fill={f <= builtTo ? '#ffffff' : '#f3f3f3'} stroke={sel === f ? 'var(--accent, #b8860b)' : '#bbb'} strokeWidth={sel === f ? 2 : 0.6} />
-            {units.map((u, k) => st(u) !== 'free' && <rect key={u.unit} x={60 + k * w + 1} y={y + 1.5} width={w - 2} height={H - 4} fill={st(u) === 'sold' ? 'var(--accent, #b8860b)' : '#f6b26b'} opacity={0.75} pointerEvents="none" />)}
-            {(f % 5 === 0 || sel === f) && <text x={52} y={y + H - 1.5} textAnchor="end" fontSize="8" fill="#555">{f}</text>}
-            {sel === f && <text x={66 + W} y={y + H - 1.5} fontSize="8" fill="#333">{sold} booked · {units.length - sold - hold} free</text>}
-          </g> })}
-        {Array.from({ length: pod }).map((_, k) => <rect key={k} x={40} y={top + floors.length * H + k * 18} width={W + 40} height={17} fill="#e9e9e6" stroke="#aaa" />)}
-        <text x={60 + W / 2} y={top + floors.length * H + 22} textAnchor="middle" fontSize="10" fill="#666">Podium and parking</text>
-      </svg>
-      <div className="legend" style={{ marginTop: 8 }}><span><i style={{ background: 'var(--accent)' }} />Booked</span><span><i style={{ background: '#f6b26b' }} />On hold / to verify</span><span><i style={{ background: '#fff', border: '1px solid #bbb' }} />Available</span></div>
+    <Card title="Elevation · white model" actions={<Seg options={[{ value: 'S', label: 'South · podium side' }, { value: 'N', label: 'North' }]} value={side} onChange={setSide} />}>
+      <WMElevation className="elev-wm" side={side} statusOf={wmStatus(crm)} unitsOf={unitsOf} selected={sel} hovered={hov} onSelect={setSel} onHover={setHov} builtTo={builtTo} />
+      <div className="legend" style={{ marginTop: 8 }}><span><i style={{ background: 'var(--accent)' }} />Booked</span><span><i style={{ background: '#7e57c2' }} />Transferred</span><span><i style={{ background: '#f6b26b' }} />Cancellation</span><span><i style={{ background: '#9fc5e8' }} />To verify</span><span><i style={{ background: 'var(--bg)', border: '1px solid var(--line-3)' }} />Available</span>{builtTo ? <span className="muted">Structure done to floor {builtTo}; floors above are lighter</span> : null}</div>
+      <p className="small muted" style={{ margin: '6px 0 0' }}>From the exterior white model: floor widths and levels are to scale (1 px = 250 mm), the residences on a floor are shown as equal parts of it. Floors 5 to 60 assume a 3.075 m floor-to-floor until Architechnics confirms.</p>
     </Card>
-    <Card title={cur ? `Floor ${cur.f}` : 'Pick a floor'}>
-      {!cur ? <p className="muted" style={{ margin: 0 }}>Click a floor on the elevation to see its residences.</p> :
+    <Card title={f ? `${f.floor === 0 ? 'Ground' : ordinal(f.floor)} floor · ${bandName(f.band)}` : 'Pick a floor'}>
+      {!f ? <p className="muted" style={{ margin: 0 }}>Click a floor on the elevation to see its residences.</p> : <>
+        <p className="small muted" style={{ marginTop: 0 }}>FFL +{f.ffl.toFixed(3)} m{f.floor === 44 ? ' · upper level of the 43rd-floor duplexes' : ''}</p>
+        {!list.length ? <p className="muted" style={{ margin: 0 }}>No residences on this floor.</p> :
         <table className="table dense"><thead><tr><th>Residence</th><th>Type</th><th className="right">Area</th><th>Status</th></tr></thead>
-          <tbody>{cur.units.map((u) => { const c = crm.byUnit[u.unit]; return <tr key={u.unit}><td className="mono">{u.unit}</td><td>{u.type}</td><td className="right">{u.area}</td><td>{!c ? <Badge tone="good">Available</Badge> : <Badge tone={BOOKED.includes(c.status) ? 'accent' : 'warn'}>{c.status}</Badge>}</td></tr> })}</tbody></table>}
+          <tbody>{list.map((u) => { const c = crm.byUnit[u.unit]; return <tr key={u.unit}><td className="mono">{c ? <Link to={'/crm/clients/' + c.id}>{u.unit}</Link> : u.unit}</td><td>{u.type}</td><td className="right">{u.area}</td><td>{!c ? <Link to={'/crm/cost-sheet?unit=' + u.unit}><Badge tone="good">Available</Badge></Link> : <Badge tone={BOOKED.includes(c.status) ? 'accent' : 'warn'}>{c.status}</Badge>}</td></tr> })}</tbody></table>}
+      </>}
     </Card>
   </div>
 }
@@ -249,40 +246,65 @@ function Sec({ title, actions, children }) {
   return <section className="inv-sec"><div className="inv-sec-head"><h3>{title}</h3>{actions}</div>{children}</section>
 }
 
+// 8 Nov: the grid follows the white-model elevation. Each floor is a row at the floor's real width and position
+// (south, podium side, or north), its residences side by side in it; the bands run down the right as on the elevation.
+const SPAN = (() => { const xs = [WM.podium[0], WM.clubhouse[0], ...WM_FLOORS.map((f) => f.x)], xe = [WM.podium[0] + WM.podium[2], WM.clubhouse[0] + WM.clubhouse[2], ...WM_FLOORS.map((f) => f.x + f.w)]; return { a: Math.min(...xs), b: Math.max(...xe) } })()
+const spanX = (x, w, side) => { const xx = sideX(x, w, side), mirrorA = side === 'N' ? WM.viewW - SPAN.b : SPAN.a, len = SPAN.b - SPAN.a; return { left: ((xx - mirrorA) / len) * 100 + '%', width: (w / len) * 100 + '%' } }
 function GridView() {
   const crm = useCrm()
   const { user } = useStore()
   const [sel, setSel] = useState(null)
   const [type, setType] = useState('')
+  const [side, setSide] = useState(() => { try { return localStorage.getItem('accord.gridSide') || 'S' } catch (e) { return 'S' } })
+  const pickSide = (v) => { setSide(v); try { localStorage.setItem('accord.gridSide', v) } catch (e) { /* */ } }
   const [names, setNames] = useState(() => { try { return localStorage.getItem('accord.gridNames') === '1' } catch (e) { return false } })
   const toggleNames = (v) => { setNames(v); try { localStorage.setItem('accord.gridNames', v ? '1' : '0') } catch (e) { /* */ } }
-  const floors = useMemo(() => { const m = {}; crm.units.forEach((u) => (m[u.floor] = m[u.floor] || []).push(u)); return Object.keys(m).map(Number).sort((a, b) => b - a).map((f) => ({ f, units: m[f].sort((a, b) => a.pos.localeCompare(b.pos)) })) }, [crm.units])
+  const byFloor = useMemo(() => { const m = {}; crm.units.forEach((u) => (m[u.floor] = m[u.floor] || []).push(u)); Object.values(m).forEach((l) => l.sort((a, b) => String(a.pos).localeCompare(String(b.pos), undefined, { numeric: true }))); return m }, [crm.units])
+  const rows = useMemo(() => [...WM_FLOORS].sort((a, b) => b.floor - a.floor), [])
   const sold = crm.units.filter((u) => crm.byUnit[u.unit] && BOOKED.includes(crm.byUnit[u.unit].status)).length
+  const held = crm.clients.filter((x) => ['Under cancellation', 'To verify'].includes(x.status)).length
   const u = crm.units.find((x) => x.unit === sel)
   const c = sel && crm.byUnit[sel]
-  let lastBand = ''
+  const rowOf = (fl) => rows.findIndex((r) => r.floor === fl) + 1
+  const pod = spanX(WM.podium[0], WM.podium[2], side), club = spanX(WM.clubhouse[0], WM.clubhouse[2], side)
   return (
     <>
       <Grid cols={4}>
         <Stat label="Residences" value={crm.units.length} sub="3rd to 58th floor" />
         <Stat label="Booked" value={sold} sub={pct(sold / crm.units.length)} tone="accent" />
-        <Stat label="Available" value={crm.units.length - sold - crm.clients.filter((x) => ['Under cancellation', 'To verify'].includes(x.status)).length} tone="good" />
-        <Stat label="On hold / to verify" value={crm.clients.filter((x) => ['Under cancellation', 'To verify'].includes(x.status)).length} tone="warn" />
+        <Stat label="Available" value={crm.units.length - sold - held} tone="good" />
+        <Stat label="On hold / to verify" value={held} tone="warn" />
       </Grid>
       <div className="split">
-        <Card title="Tower" actions={<div className="row gap-s"><Seg options={[{ value: 'n', label: 'Numbers' }, { value: 'y', label: 'Names' }]} value={names ? 'y' : 'n'} onChange={(v) => toggleNames(v === 'y')} /><Seg options={[{ value: '', label: 'All' }, '2 BHK', '3 BHK', '4 BHK', '5 BHK']} value={type} onChange={setType} /></div>}>
+        <Card title="Tower" actions={<div className="row gap-s" style={{ flexWrap: 'wrap' }}><Seg options={[{ value: 'S', label: 'South' }, { value: 'N', label: 'North' }]} value={side} onChange={pickSide} /><Seg options={[{ value: 'n', label: 'Numbers' }, { value: 'y', label: 'Names' }]} value={names ? 'y' : 'n'} onChange={(v) => toggleNames(v === 'y')} /><Seg options={[{ value: '', label: 'All' }, '2 BHK', '3 BHK', '4 BHK', '5 BHK']} value={type} onChange={setType} /></div>}>
           <div className="legend" style={{ marginBottom: 10 }}><span><i style={{ background: 'var(--accent)' }} />Booked</span><span><i style={{ background: '#7e57c2' }} />Transferred</span><span><i style={{ background: '#f6b26b' }} />Cancellation</span><span><i style={{ background: '#9fc5e8' }} />To verify</span><span><i style={{ background: '#efece6' }} />Available</span></div>
-          <div className={'building' + (names ? ' with-names' : '')}>
-            {floors.map(({ f, units }) => { const band = units[0].band; const show = band !== lastBand; lastBand = band
-              return <React.Fragment key={f}>
-                <div className="b-floor">{f}</div>
-                {Array.from({ length: 8 }).map((_, i) => { const x = units.find((uu) => uu.pos === 'F' + (i + 1)); if (!x) return <span key={i} />
-                  const cc = crm.byUnit[x.unit]; const dim = type && x.type !== type
-                  return <button key={i} className={'b-unit ' + cls(cc) + (sel === x.unit ? ' hl' : '')} style={dim ? { opacity: 0.2 } : null} title={`${x.unit} · ${x.type} · ${x.area} sft${cc ? ' · ' + cc.name : ''}`} onClick={() => setSel(x.unit)}>{x.unit}{names && cc?.name && <small>{cc.name.split(' ').slice(0, 2).join(' ')}</small>}</button> })}
-                <div className="b-band">{show ? band.split('|')[1]?.trim() || band : ''}</div>
-              </React.Fragment> })}
-            <div className="b-floor">G</div><div className="b-cap">Ground · Arrival · Podium parking</div><div />
+          <div className="wmg-scroll">
+            <div className={'wmg' + (names ? ' with-names' : '')}>
+              {rows.map((f, i) => {
+                const list = f.saleable ? byFloor[f.floor === 44 ? 43 : f.floor] || [] : []
+                const order = side === 'N' ? [...list].reverse() : list
+                return <React.Fragment key={f.id}>
+                  <div className="wmg-no" style={{ gridRow: i + 1 }}>{floorLabel(f.floor)}</div>
+                  <div className="wmg-track" style={{ gridRow: i + 1, gridColumn: 2 }}>
+                    <div className={'wmg-slab' + (f.saleable ? '' : ' ns') + (f.floor === 44 ? ' upper' : '')} style={spanX(f.x, f.w, side)} title={`${f.floor === 0 ? 'Ground' : ordinal(f.floor)} floor · ${bandName(f.band)} · FFL +${f.ffl.toFixed(3)} m`}>
+                      {!f.saleable ? <span className="wmg-ns">{f.floor === 0 ? 'Tower lobby' : bandName(f.band)}</span> : order.map((x) => {
+                        const cc = crm.byUnit[x.unit]; const dim = type && x.type !== type
+                        return <button key={x.unit} className={'b-unit ' + cls(cc) + (sel === x.unit ? ' hl' : '')} style={dim ? { opacity: 0.2 } : null} title={`${x.unit} · ${x.type} · ${x.area} sft${cc ? ' · ' + cc.name : ''}${f.floor === 44 ? ' · duplex upper level' : ''}`} onClick={() => setSel(x.unit)}>{x.unit}{names && cc?.name && <small>{cc.name.split(' ').slice(0, 2).join(' ')}</small>}</button>
+                      })}
+                    </div>
+                  </div>
+                </React.Fragment>
+              })}
+              <div className="wmg-no wmg-base" style={{ gridRow: rows.length + 1 }} />
+              <div className="wmg-podcell" style={{ gridRow: `${rowOf(2)} / ${rows.length + 2}` }} aria-hidden="true">
+                <div className="wmg-pod" style={pod}>Podium · car parking G to P3</div>
+                <div className="wmg-club" style={club}>Clubhouse</div>
+              </div>
+              {WM_BANDS.map((b) => <div key={b.name} className={'wmg-band' + (b.saleable ? '' : ' ns') + (u && WM_FLOORS.find((x) => x.floor === u.floor)?.band === b.name ? ' on' : '')} style={{ gridRow: `${rowOf(b.to)} / ${rowOf(b.from) + 1}` }}>
+                <span>{bandName(b.name)}</span>{b.to > b.from && <small>{floorLabel(b.from)}–{b.to}</small>}</div>)}
+            </div>
           </div>
+          <p className="small muted" style={{ margin: '8px 0 0' }}>Laid out like the white-model elevation: each floor at its real width and position. Floor 44 repeats the 43rd-floor duplexes (their upper level).</p>
         </Card>
         <div style={{ position: 'sticky', top: 70 }}>
           <Card title={u ? `Residence ${u.unit}` : 'Select a residence'}>
@@ -309,52 +331,3 @@ function UnitList() {
       { key: 'terrace', label: 'Terrace', align: 'right' }, { key: 'band', label: 'Band' }, { key: 'status', label: 'Status', render: (u) => <Badge tone={u.status === 'Available' ? 'muted' : undefined}>{u.status}</Badge> }, { key: 'client', label: 'Client' }]} />
 }
 
-function Parking() {
-  const { db, user, upsert, remove, notify, settings } = useStore()
-  const crm = useCrm()
-  const [gen, setGen] = useState(null)
-  const [assign, setAssign] = useState(null)
-  const can = canWrite(user, 'parking')
-  const ent = (c) => Number(c.parkingEntitlement || settings.rateCard?.parkingSlots?.[c.config] || 1)
-  const booked = crm.clients.filter((c) => BOOKED.includes(c.status))
-  const has = (c) => db.parking.filter((p) => String(p.unit) === String(c.unit)).length
-  const short = booked.filter((c) => has(c) < ent(c))
-  const free = db.parking.filter((p) => !p.unit && p.status !== 'Blocked')
-  const auto = () => {
-    let pool = [...free].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
-    let k = 0
-    // higher floors first, then booking date: premium residences get the nearest slots
-    ;[...short].sort((a, b) => b.floor - a.floor || String(a.bookingDate || '').localeCompare(String(b.bookingDate || ''))).forEach((c) => {
-      for (let i = has(c); i < ent(c) && pool.length; i++) { const p = pool.shift(); upsert('parking', { ...p, unit: c.unit, clientId: c.clientId, name: c.name, assignedOn: new Date().toISOString().slice(0, 10) }, { silent: true }); k++ }
-    })
-    notify(k ? `${k} slots assigned` : 'No free slots to assign. Generate more slots first.', k ? 'ok' : 'bad')
-  }
-  return (
-    <>
-      <Grid cols={4}>
-        <Stat label="Slots" value={db.parking.length} sub={`${free.length} free`} />
-        <Stat label="Assigned" value={db.parking.filter((p) => p.unit).length} tone="accent" />
-        <Stat label="Entitled (booked)" value={booked.reduce((s, c) => s + ent(c), 0)} sub={`${booked.length} bookings`} tone="info" />
-        <Stat label="Still to assign" value={short.reduce((s, c) => s + ent(c) - has(c), 0)} sub={`${short.length} residences`} tone={short.length ? 'warn' : 'good'} />
-      </Grid>
-      {can && <div className="row" style={{ marginBottom: 12 }}><Button onClick={() => setGen({ level: 'Basement 1', prefix: 'B1', count: 50, type: 'Covered', start: db.parking.filter((p) => p.id.startsWith('B1-')).length + 1 })}>Generate slots</Button>
-        <Button variant="primary" onClick={auto} disabled={!short.length}>Auto-assign by entitlement</Button><span className="small muted">Assigns free slots in order to every booked residence that has fewer than it is entitled to (default from the rate card: {Object.entries(settings.rateCard?.parkingSlots || {}).map(([k, v]) => `${k} ${v}`).join(', ')}).</span></div>}
-      {!db.parking.length ? <Card><div className="empty"><p>No parking slots yet. Generate the inventory level by level, then auto-assign.</p></div></Card> :
-        <DataTable rows={db.parking} searchKeys={['id', 'name', (p) => String(p.unit || '')]} filters={[{ key: 'level', label: 'Level' }, { key: 'type', label: 'Type' }, { key: 'st', label: 'State', get: (p) => p.unit ? 'Assigned' : p.status === 'Blocked' ? 'Blocked' : 'Free' }]}
-          columns={[{ key: 'id', label: 'Slot', render: (p) => <b>{p.id}</b> }, { key: 'level', label: 'Level' }, { key: 'type', label: 'Type' }, { key: 'unit', label: 'Residence' }, { key: 'name', label: 'Client' }, { key: 'assignedOn', label: 'Assigned', render: (p) => d(p.assignedOn) },
-            { key: 'act', label: '', sort: false, render: (p) => can && <div className="row gap-s">{p.unit ? <Button size="sm" variant="ghost" onClick={() => upsert('parking', { ...p, unit: '', clientId: '', name: '', assignedOn: '' }, { action: 'released' })}>Release</Button> : <Button size="sm" onClick={() => setAssign({ slot: p, unit: '' })}>Assign</Button>}
-              <Confirm size="sm" label="Delete slot?" onConfirm={() => remove('parking', p.id)}>Delete</Confirm></div> }]} />}
-      {short.length > 0 && <Card title="Residences still short of car parks">{short.map((c) => <div key={c.id} className="check-row"><span>{c.unit} · {c.name}</span><span>{has(c)} of {ent(c)}</span></div>)}</Card>}
-      <Modal open={!!gen} onClose={() => setGen(null)} title="Generate parking slots" footer={<><Button onClick={() => setGen(null)}>Cancel</Button><Button variant="primary" onClick={() => {
-        for (let i = 0; i < gen.count; i++) { const id = `${gen.prefix}-${String(Number(gen.start) + i).padStart(3, '0')}`; if (!db.parking.find((p) => p.id === id)) upsert('parking', { id, level: gen.level, type: gen.type, unit: '', status: 'Free' }, { silent: true }) }
-        notify(`${gen.count} slots added on ${gen.level}`); setGen(null) }}>Generate</Button></>}>
-        {gen && <div className="form fc2"><Field label="Level"><Input value={gen.level} onChange={(e) => setGen({ ...gen, level: e.target.value })} /></Field><Field label="Slot prefix"><Input value={gen.prefix} onChange={(e) => setGen({ ...gen, prefix: e.target.value })} /></Field>
-          <Field label="How many"><Input type="number" value={gen.count} onChange={(e) => setGen({ ...gen, count: Number(e.target.value) })} /></Field><Field label="Start number"><Input type="number" value={gen.start} onChange={(e) => setGen({ ...gen, start: Number(e.target.value) })} /></Field>
-          <Field label="Type"><Select options={['Covered', 'Stack', 'Open', 'EV', 'Visitor']} value={gen.type} onChange={(e) => setGen({ ...gen, type: e.target.value })} /></Field></div>}
-      </Modal>
-      <Modal open={!!assign} onClose={() => setAssign(null)} title={`Assign ${assign?.slot.id}`} footer={<><Button onClick={() => setAssign(null)}>Cancel</Button><Button variant="primary" onClick={() => { const c = crm.byUnit[assign.unit]; if (!c) return notify('Pick a booked residence', 'bad'); upsert('parking', { ...assign.slot, unit: c.unit, clientId: c.clientId, name: c.name, assignedOn: new Date().toISOString().slice(0, 10) }, { action: 'assigned' }); setAssign(null) }}>Assign</Button></>}>
-        {assign && <Field label="Residence"><Select options={booked.map((c) => ({ value: String(c.unit), label: `${c.unit} · ${c.name} (${has(c)}/${ent(c)})` }))} value={assign.unit} onChange={(e) => setAssign({ ...assign, unit: e.target.value })} /></Field>}
-      </Modal>
-    </>
-  )
-}

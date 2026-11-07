@@ -22,6 +22,7 @@ import Partners from './modules/crm/Partners.jsx'
 import CostSheet from './modules/crm/CostSheet.jsx'
 import BookingForm, { ClientApply } from './modules/crm/Booking.jsx'
 import Inventory from './modules/crm/Inventory.jsx'
+import { ParkingLetter, ParkingRegister } from './modules/crm/Parking.jsx'
 import Documents from './modules/crm/Documents.jsx'
 import Messages from './modules/crm/Messages.jsx'
 import Issues from './modules/crm/Issues.jsx'
@@ -82,6 +83,8 @@ function Main() {
         <Route path="crm/cost-sheet" element={G('costSheet', <CostSheet />)} />
         <Route path="crm/booking/:id" element={G('clients', <BookingForm />)} />
         <Route path="crm/inventory" element={G('inventory', <Inventory />)} />
+        <Route path="crm/parking/letter/:id" element={G('inventory', <ParkingLetter />)} />
+        <Route path="crm/parking/register" element={G('inventory', <ParkingRegister />)} />
         <Route path="crm/documents" element={G('documents', <Documents />)} />
         <Route path="crm/messages" element={G('messages', <Messages />)} />
         <Route path="crm/issues" element={G('issues', <Issues />)} />
