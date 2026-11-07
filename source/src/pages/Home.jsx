@@ -138,6 +138,12 @@ function SalesHome() {
               <span className="small muted">{i.owner}{i.level > 1 ? ' · level ' + i.level : ''}</span></Link>)}
         </Card>
       </div>
+      {user.appRole === 'admin' && (() => { const wk = new Date(Date.now() - 7 * 864e5).toISOString(); const pe = (db.paymentEdits || []).filter((x) => String(x.at) >= wk).sort((a, b) => String(b.at).localeCompare(String(a.at)))
+        return pe.length > 0 && <Card title={`Payment edits in the last 7 days · ${pe.length}`} pad={false} actions={<Link className="small" to="/crm/payments?tab=edits">Change log</Link>}>
+          {pe.slice(0, 8).map((x) => <Link key={x.id} to={'/crm/payments/receipt/' + x.paymentId} className="fup" style={{ color: 'inherit' }}><span className={'t' + (x.high === 'Yes' ? ' over' : '')}>{x.high === 'Yes' ? 'High' : 'Edit'}</span>
+            <span style={{ minWidth: 0 }}><span>{x.receiptNo || x.paymentId} · flat {x.unit}{x.client ? ' · ' + x.client : ''}</span><div className="small muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.by}: {x.reason}</div></span>
+            <span className="small muted">{d(String(x.at).slice(0, 10))}</span></Link>)}
+        </Card> })()}
 
       <div className="grid g2" style={{ gap: 16 }}>
         <Card title="Lead pipeline">

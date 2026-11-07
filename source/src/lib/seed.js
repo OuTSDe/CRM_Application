@@ -7,9 +7,13 @@ import * as ops from '../seed/ops.js'
 // Each collection is an array of records with a string `id`.
 export const COLLECTIONS = ['settings', 'users', 'units', 'clients', 'payments', 'leads', 'interactions', 'documents', 'issues', 'clpStages', 'demandCalls',
   'costSheets', 'parking', 'messages', 'templates', 'attendance', 'tasks', 'viewings', 'brochure', 'vendors', 'trips', 'stops', 'quotes', 'samples',
-  'projects', 'rooms', 'packages', 'boq', 'audit', 'timeEvents', 'notifications', 'accordSessions', 'clientForms', 'files', 'leadInbox', 'demandLetters', 'partners']
+  'projects', 'rooms', 'packages', 'boq', 'audit', 'timeEvents', 'notifications', 'accordSessions', 'clientForms', 'files', 'leadInbox', 'demandLetters', 'partners', 'paymentEdits']
 
 export const META = { lists: crm.lists, docTypes: crm.docTypes }
+// 7 Nov: the cancellation protocol's statuses and the interest line on receipts
+;(() => { const add = (k, xs, after) => { const l = META.lists[k] = META.lists[k] || []; xs.forEach((x) => { if (!l.includes(x)) { const i = after ? l.indexOf(after) : -1; if (i >= 0) l.splice(i, 0, x); else l.push(x) } }) }
+  add('Booking status', ['Cancellation requested', 'Retention', 'Cancellation approved'], 'Under cancellation')
+  add('Payment towards', ['Interest on delayed payment'], 'Other') })()
 
 export const DEFAULT_TEMPLATES = [
   { id: 'TP-01', name: 'Thank you for visiting', channel: 'WhatsApp', body: 'Dear {name}, thank you for visiting Yamuna Sky City today. It was a pleasure hosting your private viewing. I will share the residence details and payment schedule shortly. \n\nWarm regards,\n{signature}' },

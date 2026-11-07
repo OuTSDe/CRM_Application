@@ -2,16 +2,22 @@ import { useMemo } from 'react'
 import { n, today, daysBetween, addDays } from './format.js'
 import { useStore } from './store.jsx'
 import { META } from './seed.js'
+import { rulesOf, clientSchedule, scheduleSummary } from './schedule.js'
 
 const PROFILE_FIELDS = ['name', 'coapp', 'buyerType', 'phone', 'whatsapp', 'email', 'address', 'city', 'country', 'residency', 'pan', 'aadhaar4', 'dob',
   'language', 'contactPref', 'purpose', 'occupant', 'funding', 'occupation', 'employer', 'income', 'marital', 'familyProfile', 'decisionMaker', 'source', 'owner']
-export const NON_BILLED = ['To verify', 'Cancelled', 'Under cancellation']
+export const NON_BILLED = ['To verify', 'Cancelled', 'Under cancellation', 'Cancellation approved']
+// 7 Nov: a booking going through the cancellation protocol
+export const CANCELLING = ['Cancellation requested', 'Retention', 'Cancellation approved', 'Under cancellation']
 export const BOOKED = ['Active', 'Shifted unit', 'Registered', 'Possession handed over']
 
 // Everything the CRM screens compute from raw records, in one place.
 export function deriveCrm(db) {
   const s = db.settings[0] || {}
   const gst = n(s.gstDemand ?? 0.05), dueDays = n(s.dueDays ?? 15), rera = n(s.rera ?? 0.1), contactRed = n(s.contactRed ?? 30)
+  // 7 Nov: each client's own schedule; 'client' mode makes it drive demand, outstanding and ageing
+  const rules = rulesOf(s), perClient = rules.scheduleMode === 'client'
+  const clpStages = db.clpStages || [], rawLetters = db.demandLetters || []
   const units = {}; db.units.forEach((u) => (units[u.unit] = u))
   const recvByUnit = {}, payByUnit = {}, tdsByUnit = {}
   db.payments.forEach((p) => {
@@ -44,10 +50,15 @@ export function deriveCrm(db) {
     const received = recvByUnit[c.unit] || 0
     const tc = n(c.tc), basis = tc - n(c.adjustment)
     const billed = NON_BILLED.includes(c.status) ? 0 : billedPct
-    const demand = basis * billed * (1 + gst)
-    const outstanding = demand - received
+    const schedule = clientSchedule(c, { rules, gst, clpStages, letters: rawLetters, calls: db.demandCalls, payments: payByUnit[c.unit] || [] })
+    const sched = scheduleSummary(schedule)
+    const legacyDemand = basis * billed * (1 + gst)
+    const demand = perClient ? (NON_BILLED.includes(c.status) ? 0 : sched.demanded) : legacyDemand
+    const outstanding = perClient ? (NON_BILLED.includes(c.status) ? 0 : demand - Math.min(demand, received + (tdsByUnit[c.unit] || 0))) : demand - received
     let firstUnpaid = null, due = null, overdue = 0, age = 'Paid up'
-    if (outstanding > 0) {
+    if (perClient) {
+      if (!NON_BILLED.includes(c.status)) { firstUnpaid = sched.firstUnpaid ? { id: sched.firstUnpaid.letter || sched.firstUnpaid.key, description: sched.firstUnpaid.stage, due: sched.firstUnpaid.due } : null; due = sched.due; overdue = sched.overdue; age = sched.age }
+    } else if (outstanding > 0) {
       const covered = cum.filter((k) => basis * k.cum * (1 + gst) <= received).length
       firstUnpaid = cum[covered] || null; due = firstUnpaid?.due || null
       overdue = due ? Math.max(0, daysBetween(due)) : 0
@@ -65,16 +76,18 @@ export function deriveCrm(db) {
     const red = [], amber = []
     if (overdue > 60) red.push('Overdue 60+ days')
     if (reraFlag === 'Yes') red.push('Over 10% paid without agreement')
-    if (c.status === 'Under cancellation') red.push('Under cancellation')
+    if (CANCELLING.includes(c.status)) red.push(c.status === 'Under cancellation' ? 'Under cancellation' : c.status)
+    if (c.status === 'Under cancellation' && c.refundDueDate && c.refundDueDate < today() && c.refundStatus !== 'Refunded') red.push('Refund overdue')
     if (ct.days !== null && ct.days > contactRed) red.push(`No contact in ${contactRed}+ days`)
     if (overdue > 0 && overdue <= 60) amber.push('Overdue')
+    if (perClient && !NON_BILLED.includes(c.status) && sched.pendingLetter.length) amber.push('Stage complete, demand letter not sent')
     if (reraFlag === 'Check registration') amber.push('Agreement registration to verify')
     if (docPct < 0.5) amber.push('Documents under 50%')
     if (openIssues[c.unit]) amber.push('Open data issues')
     if (profilePct < 0.5) amber.push('Profile under 50%')
     if (ct.days === null) amber.push('No contact logged yet')
     const health = red.length ? 'Red' : amber.length ? 'Amber' : 'Green'
-    return { ...c, u, config: u.type, floor: u.floor, band: u.band, area: u.area, received, basis, demand, outstanding, firstUnpaid, due, overdue, age, pct,
+    return { ...c, u, config: u.type, floor: u.floor, band: u.band, area: u.area, received, basis, demand, outstanding, schedule, sched, legacyDemand, firstUnpaid, due, overdue, age, pct,
       contact: ct, docPct, docsDone: done, docsApplicable: applicable.length, profilePct, reraFlag, red, amber, health, payments: payByUnit[c.unit] || [],
       tds: tdsByUnit[c.unit] || 0, issues: openIssues[c.unit] || 0, variance: c.receivedPerCollections !== undefined ? received - n(c.receivedPerCollections) : null }
   })
@@ -84,7 +97,7 @@ export function deriveCrm(db) {
   const paidOn = {}; db.payments.forEach((p) => { if (p.demandLetter && p.counted === 'Yes') paidOn[p.demandLetter] = (paidOn[p.demandLetter] || 0) + n(p.amount) + n(p.tds) })
   const letters = (db.demandLetters || []).map((x) => { const paid = paidOn[x.id] || 0, bal = Math.max(0, n(x.amount) - n(x.credit) - paid)
     return { ...x, paid, balance: bal, state: x.status === 'Withdrawn' ? 'Withdrawn' : bal <= 0.5 ? 'Paid' : paid <= 0 ? (x.dueDate && x.dueDate < today() ? 'Overdue' : 'Raised') : bal > 0.5 ? 'Part paid' : 'Paid' } })
-  return { clients, byUnit, leads, units: db.units, cum, billedPct, gst, contact, recvByUnit, letters }
+  return { clients, byUnit, leads, units: db.units, cum, billedPct, gst, contact, recvByUnit, letters, rules, perClient }
 }
 export function useCrm() {
   const { db } = useStore()

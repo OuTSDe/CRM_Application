@@ -5,6 +5,8 @@ import { canOpen, canPage, ROLES, WORKSPACES, workspacesOf } from '../lib/perms.
 import { setTheme } from '../lib/theme.js'
 import { initials, d } from '../lib/format.js'
 import { getLocation, geoCheck } from '../lib/geo.js'
+import { notificationTarget } from '../lib/links.js'
+import { listDrafts, clearDraft, clearAllDrafts, draftTime, DRAFT_EVENT } from '../lib/drafts.js'
 import { cx, Button, Modal } from './ui.jsx'
 
 // Navigation per platform. [path, label, module, exact]
@@ -84,10 +86,13 @@ export default function Layout() {
       <div className="main">
         <header className="top">
           <button className="icon-btn hamb" onClick={() => setMenu(!menu)} aria-label="Menu" aria-expanded={menu}><svg width="16" height="16" viewBox="0 0 16 16" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" /></svg></button>
+          {loc.pathname !== '/' && <button type="button" className="icon-btn go-back" onClick={() => ((window.history.state?.idx ?? 0) > 0 ? nav(-1) : nav('/'))} aria-label="Go back" title="Go back (anything you typed is kept as a draft)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="M10 3L5 8l5 5" /></svg></button>}
           <button type="button" className="top-brand" onClick={() => nav('/')} aria-label="Accord, home"><span className="mark">A</span><span>Accord</span></button>
           <div className="crumb">{WORKSPACES[ws]?.label}</div>
           <div className="top-right">
             {myDay && <PunchStatus day={myDay} punch={punch} notify={notify} />}
+            <Drafts user={user} nav={nav} path={loc.pathname + loc.search} notify={notify} />
             <Bell db={db} user={user} markRead={markRead} nav={nav} />
             <button className="icon-btn theme-toggle" onClick={toggleTheme} aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} title="Light or dark">
               {theme === 'light'
@@ -200,7 +205,8 @@ function Bell({ db, user, markRead, nav }) {
   const mine = (db.notifications || []).filter((n) => n.to === user?.name && (!n.dueAt || n.dueAt <= now)).sort((a, b) => String(b.dueAt || b.createdAt).localeCompare(String(a.dueAt || a.createdAt))).slice(0, 30)
   const unread = mine.filter((n) => !n.readAt)
   const perm = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
-  const openN = (n) => { markRead([n.id]); setOpen(false); if (n.link?.startsWith('#')) nav(n.link.slice(1)); else nav('/crm/interactions') }
+  // 7 Nov: open the exact lead or client the notification is about, not just the section
+  const openN = (n) => { markRead([n.id]); setOpen(false); nav(notificationTarget(db, n)) }
   return (
     <div className="rel" ref={box}>
       <button className="icon-btn" onClick={() => setOpen(!open)} aria-label={`Notifications, ${unread.length} unread`}>
@@ -213,6 +219,33 @@ function Bell({ db, user, markRead, nav }) {
         <div style={{ maxHeight: 380, overflow: 'auto' }}>
           {!mine.length && <div className="empty small">Nothing yet. Follow-ups and tasks assigned to you appear here on their due date.</div>}
           {mine.map((n) => <a key={n.id} href="#" className={cx('notif-item', !n.readAt && 'unread')} onClick={(e) => { e.preventDefault(); openN(n) }}>{n.title}<small>{n.body} · {d(String(n.dueAt || n.createdAt).slice(0, 10))}</small></a>)}
+        </div>
+      </div>}
+    </div>
+  )
+}
+
+// 7 Nov: drafts menu. Lists what each person has typed and not saved, on this device, to reopen or discard.
+function Drafts({ user, nav, path, notify }) {
+  const [open, setOpen] = useState(false)
+  const [list, setList] = useState(() => listDrafts(user?.id))
+  const box = useRef(null)
+  useEffect(() => { const r = () => setList(listDrafts(user?.id)); r(); window.addEventListener(DRAFT_EVENT, r); window.addEventListener('storage', r); return () => { window.removeEventListener(DRAFT_EVENT, r); window.removeEventListener('storage', r) } }, [user?.id, path])
+  useEffect(() => { const h = (e) => box.current && !box.current.contains(e.target) && setOpen(false); document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h) }, [])
+  if (!list.length) return null
+  return (
+    <div className="rel" ref={box}>
+      <button className="icon-btn" onClick={() => setOpen(!open)} aria-label={`Drafts, ${list.length} saved`} title="Drafts you have not saved yet">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><path d="M4 2h5.5L12 4.5V14H4zM9.5 2v2.5H12M6 8h4M6 10.5h4" /></svg>
+        <span className="count draft-count">{list.length}</span>
+      </button>
+      {open && <div className="menu" style={{ width: 320 }}>
+        <div className="menu-head row between"><span>Drafts on this device</span><button className="btn btn-ghost btn-sm" style={{ minHeight: 28, width: 'auto' }} onClick={() => { clearAllDrafts(user?.id); setOpen(false); notify('Drafts cleared from this device') }}>Clear all</button></div>
+        <div style={{ maxHeight: 360, overflow: 'auto' }}>
+          {list.map((dr) => <div key={dr.key} className="notif-item draft-item">
+            <a href="#" onClick={(e) => { e.preventDefault(); setOpen(false); nav(dr.route || '/') }}>{dr.label}<small>Saved {draftTime(dr.at)}</small></a>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => clearDraft(user?.id, dr.key)} aria-label={'Discard draft ' + dr.label}>Discard</button>
+          </div>)}
         </div>
       </div>}
     </div>
@@ -251,6 +284,7 @@ function UserMenu({ user, logout, demo, toggleDemo, passwords }) {
         <label className="menu-file">Profile picture<input type="file" accept="image/*" hidden onChange={(e) => { setOpen(false); setPhoto(e.target.files[0]) }} /></label>
         {trusted && <button onClick={() => { try { localStorage.removeItem('accord.trust') } catch (e) { /* */ } setOpen(false); notify('This device is no longer trusted. You will need the code next time.') }}>Stop trusting this device</button>}
         {passwords && <button onClick={() => { setOpen(false); setPw(true) }}>Change password</button>}
+        <button onClick={() => { clearAllDrafts(user?.id); setOpen(false); notify('Your drafts on this device are cleared') }}>Clear my drafts on this device</button>
         <hr /><button className="danger" onClick={logout}>Sign out</button>
       </div>}
       {pw && <ChangePassword onDone={() => setPw(false)} />}

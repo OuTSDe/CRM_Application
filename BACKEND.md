@@ -95,7 +95,7 @@ The interaction log works out from the ID whether a record is a lead or a client
 
 **The server enforces this.** The browser never receives what a role may not see.
 
-| | Admin | Senior sales (Cyril, Khushi) | Client advisor (Anuradha, Medha, Yakshith) | Finance | Design (Kajal) |
+| | Admin | Senior sales (Cyril, Sales Lead; Khushi) | Client advisor (Anuradha, Medha, Yakshith) | Finance | Design (Kajal) |
 |---|---|---|---|---|---|
 | Rupee figures | All | Read | **None.** Payment status only (Overdue, Due this week, Paid up) and last payment date | All | – |
 | Clients and Client 360 | All | All | Own clients in full; "All clients" as a directory (name, flat, status, owner) | All | Directory only, to link projects to bookings |

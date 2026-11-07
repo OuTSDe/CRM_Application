@@ -39,11 +39,11 @@
  *  - Records made in demo mode carry _test = Yes: they send no reminders and are listed for clean-up.
  */
 
-var VERSION = '3.5.0';   // 4 Nov: the site warns admins when the deployed backend is older than this
+var VERSION = '3.6.0';   // 4 Nov: the site warns admins when the deployed backend is older than this
 var DATA_PATH = 'Accord_CRM_Application/Accord_Data';   // inside My Drive of the account that runs this script
 var TEMP_PASSWORD = 'Accord2026';                        // first sign-in only, to link the authenticator
 // The team, created by setup() when the Users tab is empty, so the first admin can sign in (temporary password, then the authenticator).
-var DEFAULT_USERS = [{"id": "T-01", "name": "Anuradha", "username": "anuradha", "team": "Sales", "designation": "Client Relations", "role": "Channel partners; CRM health and updates", "appRole": "sales", "reportsTo": "Cyril", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-02", "name": "Medha", "username": "medha", "team": "Sales", "designation": "Client Relations", "role": "Follow-up calls; client relations", "appRole": "sales", "reportsTo": "Cyril", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-03", "name": "Cyril", "username": "cyril", "team": "Sales", "designation": "Senior Sales Manager", "role": "Closing; client relations", "appRole": "senior", "reportsTo": "Aryan", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-04", "name": "Khushi", "username": "khushi", "team": "Sales", "designation": "Sales and CRM", "role": "Generalist; updates", "appRole": "senior", "reportsTo": "Aryan", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-05", "name": "Aryan", "username": "aryan", "team": "Management", "designation": "Director", "role": "Director; client relations", "appRole": "admin", "reportsTo": "", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "Yes", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-06", "name": "Yakshith", "username": "yakshith", "team": "Sales", "designation": "Client Relations", "role": "To confirm (named in CRM remarks for 2503)", "appRole": "sales", "reportsTo": "Cyril", "active": "To verify", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "X-01", "name": "Smitha (SBI)", "username": "smithasbi", "team": "External", "designation": "Bank contact, State Bank of India", "role": "Bank contact, State Bank of India", "appRole": "bank", "reportsTo": "", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-07", "name": "Shruthadev", "username": "shruthadev", "team": "Management", "designation": "Research Director", "role": "Research Director, OuTSDe", "appRole": "admin", "reportsTo": "", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "Yes", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-08", "name": "Kajal", "username": "kajal", "team": "Design", "designation": "Creative Director", "role": "Creative Director, [INSD]e*", "appRole": "design", "reportsTo": "Shruthadev", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}];
+var DEFAULT_USERS = [{"id": "T-01", "name": "Anuradha", "username": "anuradha", "team": "Sales", "designation": "Client Relations", "role": "Channel partners; CRM health and updates", "appRole": "sales", "reportsTo": "Cyril", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-02", "name": "Medha", "username": "medha", "team": "Sales", "designation": "Client Relations", "role": "Follow-up calls; client relations", "appRole": "sales", "reportsTo": "Cyril", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-03", "name": "Cyril", "username": "cyril", "team": "Sales", "designation": "Sales Lead", "role": "Closing; client relations", "appRole": "senior", "reportsTo": "Aryan", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-04", "name": "Khushi", "username": "khushi", "team": "Sales", "designation": "Sales and CRM", "role": "Generalist; updates", "appRole": "senior", "reportsTo": "Aryan", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-05", "name": "Aryan", "username": "aryan", "team": "Management", "designation": "Director", "role": "Director; client relations", "appRole": "admin", "reportsTo": "", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "Yes", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-06", "name": "Yakshith", "username": "yakshith", "team": "Sales", "designation": "Client Relations", "role": "To confirm (named in CRM remarks for 2503)", "appRole": "sales", "reportsTo": "Cyril", "active": "To verify", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "X-01", "name": "Smitha (SBI)", "username": "smithasbi", "team": "External", "designation": "Bank contact, State Bank of India", "role": "Bank contact, State Bank of India", "appRole": "bank", "reportsTo": "", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-07", "name": "Shruthadev", "username": "shruthadev", "team": "Management", "designation": "Research Director", "role": "Research Director, OuTSDe", "appRole": "admin", "reportsTo": "", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "Yes", "deviceLock": "No", "mustChange": "Yes"}, {"id": "T-08", "name": "Kajal", "username": "kajal", "team": "Design", "designation": "Creative Director", "role": "Creative Director, [INSD]e*", "appRole": "design", "reportsTo": "Shruthadev", "active": "Yes", "shiftStart": "09:30", "shiftEnd": "18:30", "workDays": "Mon-Sat", "remoteAllowed": "No", "deviceLock": "No", "mustChange": "Yes"}];
 var FOLDERS = ['Clients', 'Leads', 'Project documents/Legal', 'Project documents/Approvals', 'Project documents/Forms and templates', 'Project documents/Marketing', 'Project documents/Site progress', 'Team', 'Vendors', 'Brand', 'Exports', 'Backups', 'Starting data'];
 var CLIENT_SUB = ['01 KYC', '02 Booking', '03 Agreement and legal', '04 Home loan', '05 Receipts', '06 Cost sheets', '07 Changes', '08 Possession', '09 Accord sessions', '10 Correspondence'];
 var TZ = 'Asia/Kolkata';
@@ -59,11 +59,12 @@ var SCHEMA = {
   attendance: [['id','Entry'],['userId','Member ID'],['name','Name'],['date','Date'],['in','Punch in'],['out','Punch out'],['mode','Started as'],['state','Current state'],['workMin','Worked (min)'],['breakMin','Breaks (min)'],['siteMin','Site visits (min)'],['status','Status'],['where','Location check'],['events','Events'],['note','Note'],['updatedAt','Updated at']],
   timeEvents: [['id','Event'],['at','Server time'],['date','Date'],['time','Time'],['userId','Member ID'],['name','Name'],['type','Type'],['note','Note'],['device','Device'],['where','Location check'],['lat','Latitude'],['lng','Longitude'],['acc','Accuracy (m)'],['dist','Distance to Sky City (m)']],
   tasks: [['id','Task ID'],['title','Task'],['owner','Owner'],['by','Assigned by'],['due','Due'],['priority','Priority'],['module','Area'],['link','Related ID'],['status','Status'],['doneOn','Done on'],['notes','Notes'],['updatedAt','Updated at']],
-  notifications: [['id','ID'],['to','To'],['kind','Kind'],['title','Title'],['body','Body'],['link','Link'],['dueAt','Due at'],['createdBy','Created by'],['createdAt','Created at'],['readAt','Read at'],['emailedAt','E-mailed at']],
+  notifications: [['id','ID'],['to','To'],['kind','Kind'],['title','Title'],['body','Body'],['link','Link'],['dueAt','Due at'],['createdBy','Created by'],['createdAt','Created at'],['readAt','Read at'],['emailedAt','E-mailed at'],['target','Opens']],
   issues: [['id','Issue ID'],['date','Date raised'],['category','Category'],['severity','Severity'],['unit','Unit'],['description','Description'],['source','Source'],['action','Suggested action'],['owner','Owner'],['status','Status'],['resolution','Resolution notes'],['resolvedOn','Resolved on'],['updatedAt','Updated at']],
   accordSessions: [['id','Session ID'],['startedAt','Started'],['buyer','Buyer'],['unitRef','Unit reference'],['recordId','Client or Lead ID'],['residence','Residence'],['persona','Persona'],['palette','Chosen palette'],['register','Register'],['configId','Configuration ID'],['total','Indicative total'],['by','Hosted by'],['fileUrl','Workbook (Drive)'],['updatedAt','Updated at']],
   clientForms: [['id','Response ID'],['bookingId','Booking ID'],['clientId','Client ID'],['unit','Unit No.'],['name','Client'],['submittedAt','Submitted at'],['status','Status'],['data','Answers'],['appliedBy','Applied by'],['appliedAt','Applied at']],
   files: [['id','File ID'],['at','Uploaded'],['by','By'],['kind','For'],['recordId','Record'],['label','Record name'],['category','Category'],['doc','Document'],['name','File name'],['url','Open (Drive)'],['folder','Folder'],['driveId','Drive ID'],['kyc','Card check'],['kycNumber','PAN / Aadhaar (last 4)'],['kycName','Name on card'],['kycDob','Date of birth on card'],['_test','Test entry']],
+  paymentEdits: [['id','Edit ID'],['at','When'],['by','Changed by'],['paymentId','Entry No.'],['receiptNo','Receipt No.'],['unit','Unit No.'],['client','Client'],['reason','Reason'],['changes','Changes'],['high','High?']],
   demandLetters: [['id','Demand letter No.'],['date','Letter date'],['callId','Demand call'],['stage','Stage'],['unit','Unit No.'],['bookingId','Booking ID'],['clientId','Client ID'],['name','Client'],['pct','Share of consideration'],['basis','Basis (₹)'],['gst','GST'],['amount','Amount demanded (₹)'],['credit','Received earlier, set against it (₹)'],['dueDate','Due date'],['status','Status'],['by','Raised by'],['sentAt','Sent'],['note','Note'],['updatedAt','Updated at']],
   partners: [['id','ID'],['code','Partner code'],['name','Name'],['firm','Firm'],['phone','Mobile'],['email','Email'],['city','City'],['rera','RERA agent no.'],['commission','Brokerage %'],['since','Since'],['status','Status'],['owner','Our contact'],['notes','Notes'],['updatedAt','Updated at']],
   leadInbox: [['id','Inbox ID'],['at','Received'],['source','Source'],['name','Name'],['phone','Mobile'],['email','Email'],['city','City'],['config','Interest'],['message','Message'],['status','Status'],['leadId','Lead ID'],['by','Handled by'],['handledAt','Handled at']],
@@ -71,20 +72,20 @@ var SCHEMA = {
 };
 var COLLECTIONS = ['settings','users','units','clients','payments','leads','interactions','documents','issues','clpStages','demandCalls','costSheets','parking',
   'messages','templates','attendance','timeEvents','tasks','notifications','viewings','brochure','vendors','trips','stops','quotes','samples','projects','rooms',
-  'packages','boq','accordSessions','clientForms','files','leadInbox','demandLetters','partners','audit'];
+  'packages','boq','accordSessions','clientForms','files','leadInbox','demandLetters','partners','paymentEdits','audit'];
 
 /* ───────────────────────── roles ───────────────────────── */
 var ALL = ['admin','senior','sales','finance','design','sourcing','viewer','consultant','bank'];
 var WRITE = {
   leads:['admin','senior','sales'], interactions:['admin','senior','sales','finance'], clients:['admin','senior','sales','finance'], payments:['admin','finance'],
   documents:['admin','senior','sales'], issues:['admin','senior','sales'], costSheets:['admin','senior','sales'], parking:['admin','senior'],
-  demandCalls:['admin','finance'], clpStages:['admin','finance'], settings:['admin'], users:['admin'], units:['admin'], templates:['admin','senior'],
+  demandCalls:['admin','finance'], clpStages:['admin','finance'], paymentEdits:['admin'], settings:['admin'], users:['admin'], units:['admin'], templates:['admin','senior'],
   messages:['admin','senior','sales','finance'], viewings:['admin','senior','sales','design'], brochure:['admin','senior','design'],
   vendors:['admin','design','sourcing'], trips:['admin','design','sourcing'], stops:['admin','design','sourcing'], quotes:['admin','design','sourcing'],
   samples:['admin','design','sourcing'], projects:['admin','design'], rooms:['admin','design'], packages:['admin','design','sourcing'], boq:['admin','design','sourcing'],
   clientForms:['admin','senior','sales'], files:['admin','senior','sales','finance','design','sourcing'], leadInbox:['admin','senior','sales'], demandLetters:['admin','finance'], partners:['admin','senior'], tasks:['*'], notifications:['*'], accordSessions:['*'], attendance:['admin'], timeEvents:[], audit:[]
 };
-var MONEY_FIELDS = ['tc','adjustment','adjType','adjReason','receivedPerCollections','outstandingPerCollections','loanAmount','rate','total'];
+var MONEY_FIELDS = ['tc','adjustment','adjType','adjReason','receivedPerCollections','outstandingPerCollections','loanAmount','rate','total','customPlan','cancelCalc','waivers','refunds'];
 // 4 Nov: extra access an admin ticks for one person (Users and access › Pages and permissions). Same list as perms.js.
 var GRANTS = { leads: ['leads','leadInbox','interactions'], clients: [], interactions: ['interactions'], payments: [], documents: ['documents','files'], messages: ['messages'],
   issues: ['issues'], costSheet: ['costSheets'], inventory: [], viewings: ['viewings'], brochure: [], experience: [], time: [], tasks: [], team: [], performance: [],
@@ -95,13 +96,27 @@ var seesMoney_ = function (u) { var x = extras_(u); return ['admin','senior','fi
 var seesAll_ = function (u) { return ['admin','senior','finance','viewer'].indexOf(u.appRole) >= 0 || extras_(u).indexOf('seeAll') >= 0; };
 
 /* ───────────────────────── entry ───────────────────────── */
+// 7 Nov (3.6.0): one-time data changes that came with this version. Runs once, on the first request after deploying.
+function migrate36_() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('migrated36') === 'yes') return;
+  var lock = LockService.getScriptLock(); if (!lock.tryLock(10000)) return;
+  try {
+    if (props.getProperty('migrated36') === 'yes') return;
+    var cy = read_('users').filter(function (x) { return String(x.username || '').toLowerCase() === 'cyril'; })[0];
+    if (cy && cy.designation !== 'Sales Lead') { cy.designation = 'Sales Lead'; upsert_('users', cy); audit_({ name: 'Accord 3.6.0' }, 'users', cy.id, 'designation set to Sales Lead'); }
+    props.setProperty('migrated36', 'yes');
+  } finally { lock.releaseLock(); }
+}
 function doGet() { return out_({ ok: true, app: 'Accord', version: VERSION, hint: 'POST JSON to use the API' }); }
 function doPost(e) {
   try {
     var req = JSON.parse(e.postData.contents);
+    migrate36_();
     switch (req.action) {
       case 'ping': return out_({ ok: true, version: VERSION, sheet: SpreadsheetApp.getActive().getName(), users: read_('users').length, folder: DATA_PATH, folderUrl: root_().getUrl(), serverTime: now_() });
       case 'login': return out_(login_(req));
+      case 'emailCode': return out_(emailCode_(req));
       case 'logout': return out_(logout_(req));
       case 'enrolStart': return out_(enrolStart_(auth_(req.token, true)));
       case 'enrolConfirm': return out_(enrolConfirm_(auth_(req.token, true), req));
@@ -262,7 +277,14 @@ function login_(req) {
     if (td && td.trustHash && td.trustHash === sha_(String(req.trustToken)) && new Date(td.trustUntil) > new Date()) trusted = true;
     else if (!req.code) throw new Error('This device is no longer trusted. Enter the 6-digit code from your authenticator app.');
   }
-  if (trusted) { /* code not needed */ }
+  // 7 Nov: no phone to hand: a 6-digit code e-mailed to the address on the user's record (Settings: allowEmailCode)
+  var byEmail = false;
+  if (!trusted && req.emailCode) {
+    var cc = CacheService.getScriptCache(), h = cc.get('ec:' + u.id);
+    if (!h || h !== sha_(String(req.emailCode).replace(/\D/g, ''))) fail('That e-mail code is not right or has expired. Ask for a new one.');
+    cc.remove('ec:' + u.id); byEmail = true;
+  }
+  if (trusted || byEmail) { /* code not needed */ }
   else if (mode === 'authenticator' && enrolled) {
     var st = totpCheck_(u.totpSecret, req.code, u.totpLast);
     if (st < 0) fail('That code is not right. Open your authenticator app and type the 6 digits shown for Accord.');
@@ -274,7 +296,7 @@ function login_(req) {
   }
   checkDevice_(u, req);
   var trust = null, days = Number((read_('settings')[0] || {}).trustDays); if (isNaN(days)) days = 3;
-  if (req.trust && days > 0 && enrolled && !trusted) {
+  if (req.trust && days > 0 && enrolled && !trusted && !byEmail) {
     var me = (u.devices || []).filter(function (d) { return d.id === String(req.deviceId || ''); })[0];
     if (me) { var tok = Utilities.getUuid() + Utilities.getUuid(); me.trustHash = sha_(tok); me.trustUntil = new Date(Date.now() + days * 864e5).toISOString(); trust = { token: tok, until: me.trustUntil }; }
   }
@@ -282,9 +304,51 @@ function login_(req) {
   var token = Utilities.getUuid();
   CacheService.getScriptCache().put('t:' + token, u.id, 21600);
   PropertiesService.getScriptProperties().setProperty('t:' + token, u.id + '|' + Date.now());
-  audit_(u, 'users', u.id, 'signed in on ' + devKind_(req) + ' · ' + (req.deviceLabel || ''));
-  var pu = publicUser_(u); pu.mustEnrol = mode === 'authenticator' && !enrolled;
+  audit_(u, 'users', u.id, 'signed in' + (byEmail ? ' with an e-mailed code' : '') + ' on ' + devKind_(req) + ' · ' + (req.deviceLabel || ''));
+  if (byEmail) notifyAdmins_('signin', u.name + ' signed in with an e-mailed code', 'On ' + devKind_(req) + ' (' + (req.deviceLabel || 'unnamed device') + '). If this was not them, reset their sign-in in Users and access.');
+  var pu = publicUser_(u); pu.mustEnrol = mode === 'authenticator' && !enrolled && !byEmail;
   return { token: token, user: pu, serverTime: now_(), trust: trust, trusted: trusted };
+}
+// 7 Nov: send a sign-in code by e-mail. The same answer whether or not the username exists, so it reveals nothing.
+function emailCode_(req) {
+  var s = read_('settings')[0] || {};
+  if (s.allowEmailCode === 'No') throw new Error('Sign-in by e-mail code is switched off. Ask an admin.');
+  var uname = String(req.username || '').trim().toLowerCase();
+  var u = read_('users').filter(function (x) { return String(x.username || '').toLowerCase() === uname; })[0];
+  if (!u || u.active === 'No' || u.appRole === 'none' || !u.email) return { ok: true };
+  if (s.emailCodeOnly === 'Yes' && (u.extraAccess || []).indexOf('emailSignIn') < 0 && u.appRole !== 'admin') return { ok: true };
+  var c = CacheService.getScriptCache(), k = 'ecn:' + u.id, sent = Number(c.get(k) || 0);
+  if (sent >= 3) throw new Error('Too many codes asked for. Try again in 15 minutes.');
+  var code = String(Math.floor(100000 + Math.random() * 900000));
+  c.put('ec:' + u.id, sha_(code), 600); c.put(k, String(sent + 1), 900);
+  mail_({ to: u.email, subject: 'Accord sign-in code: ' + code, title: 'Your Accord sign-in code', text: 'Your code is ' + code + '.\n\nIt works once, for 10 minutes. If you did not ask for it, tell an admin straight away.', fromName: 'Accord', footer: 'Accord by OuTSDe' });
+  audit_(u, 'users', u.id, 'e-mail sign-in code sent');
+  return { ok: true };
+}
+// 7 Nov: when no admin can sign in (for example a lost phone and no other admin present), the owner of the Accord
+// Database sheet resets a sign-in from the sheet: Extensions are not needed, use the menu Accord → Reset someone's sign-in.
+// Only people who can edit this spreadsheet see the menu. It works like Users and access → Reset sign-in.
+function onOpen() {
+  try { SpreadsheetApp.getUi().createMenu('Accord').addItem("Reset someone's sign-in", 'ownerResetSignIn').addToUi(); } catch (e) { }
+}
+function ownerResetSignIn() {
+  var ui = SpreadsheetApp.getUi();
+  var a = ui.prompt('Reset sign-in', 'Username of the person (for example shruthadev):', ui.ButtonSet.OK_CANCEL);
+  if (a.getSelectedButton() !== ui.Button.OK) return;
+  var uname = String(a.getResponseText() || '').trim().toLowerCase();
+  var u = read_('users').filter(function (x) { return String(x.username || '').toLowerCase() === uname; })[0];
+  if (!u) { ui.alert('No user with the username "' + uname + '".'); return; }
+  var b = ui.prompt('Temporary password for ' + u.name, 'At least 8 characters, with a letter and a number. They use it once to link the authenticator app again.', ui.ButtonSet.OK_CANCEL);
+  if (b.getSelectedButton() !== ui.Button.OK) return;
+  var pw = String(b.getResponseText() || '');
+  if (pw.length < 8 || !/[a-z]/i.test(pw) || !/\d/.test(pw)) { ui.alert('Not reset: the password needs at least 8 characters, with a letter and a number.'); return; }
+  u.pwSalt = salt_(); u.pwHash = hash_(u.pwSalt, pw); u.mustChange = 'Yes'; u.failed = 0; u.lockedUntil = '';
+  u.totpSecret = ''; u.totpPending = ''; u.totpLast = ''; u.mfa = 'Not set';
+  (u.devices || []).forEach(function (d) { delete d.trustHash; delete d.trustUntil; });
+  upsert_('users', u);
+  var who = ''; try { who = Session.getActiveUser().getEmail(); } catch (e) { }
+  audit_({ name: 'Sheet owner' + (who ? ' (' + who + ')' : '') }, 'users', u.id, 'sign-in reset from the spreadsheet menu');
+  ui.alert('Done. ' + u.name + ' can now sign in with username "' + u.username + '" and the temporary password ("First sign-in, or a new phone?"), then link the authenticator app again.');
 }
 /** Sign-out (button, closed tab, refresh): saves anything still waiting, then ends the session. Never fails loudly. */
 function logout_(req) {
@@ -394,6 +458,7 @@ function pull_(u) {
   });
   db.payments = db.payments.filter(function (p) { return mineUnits[String(p.unit)]; }).map(function (p) { return seesMoney_(u) ? p : { id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, towards: p.towards, counted: p.counted }; });
   db.demandLetters = (db.demandLetters || []).filter(function (x) { return mineUnits[String(x.unit)]; }).map(function (x) { return seesMoney_(u) ? x : { id: x.id, unit: x.unit, callId: x.callId, date: x.date, dueDate: x.dueDate, status: x.status }; });
+  db.paymentEdits = seesMoney_(u) ? (db.paymentEdits || []).filter(function (x) { return mineUnits[String(x.unit)]; }) : [];
   var mineL = {}; db.leads = db.leads.filter(function (l) { if (mine_(l)) { mineL[l.id] = 1; return true; } return false; });
   db.interactions = db.interactions.filter(function (i) { return i.by === me || (i.nextOwners || []).indexOf(me) >= 0 || i.nextOwner === me; });
   db.documents = db.documents.filter(function (d) { return mineB[d.bookingId] || mineB[d.id]; });
@@ -423,6 +488,7 @@ function consultantView_(db, u) {
   db.users = db.users.map(function (x) { return strip_(x, ['phone','email','devices']); });
   db.interactions = db.interactions.map(function (i) { return strip_(i, ['summary','nextAction']); });
   db.payments = db.payments.map(function (p) { return strip_(p, ['instrument','bank','proofUrl','thirdParty']); });
+  db.paymentEdits = [];
   db.documents = db.documents.map(function (d) { return { id: d.id, bookingId: d.bookingId, items: d.items }; });
   db.timeEvents = db.timeEvents.map(function (t) { return strip_(t, ['lat','lng','device']); });
   ['costSheets','files','messages','leadInbox','clientForms','audit'].forEach(function (k) { db[k] = []; });
@@ -438,6 +504,7 @@ function bankView_(db, u) {
   db.clients = loan.map(function (c) { var o = {}; KEEP.forEach(function (k) { if (c[k] !== undefined) o[k] = c[k]; }); return o; });
   db.payments = db.payments.filter(function (p) { return units[String(p.unit)]; }).map(function (p) { return { id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, amount: p.amount, tds: p.tds, towards: p.towards, mode: p.mode, counted: p.counted, demandLetter: p.demandLetter, ledgerOnly: p.ledgerOnly }; });
   db.demandLetters = (db.demandLetters || []).filter(function (x) { return units[String(x.unit)]; });
+  db.paymentEdits = [];
   ['leads','interactions','documents','issues','costSheets','messages','files','leadInbox','clientForms','viewings','accordSessions','audit','attendance','timeEvents','partners'].forEach(function (k) { db[k] = []; });
   db.users = db.users.map(function (x) { return { id: x.id, name: x.name, designation: x.designation, appRole: x.appRole, team: x.team, active: x.active }; });
   db.notifications = db.notifications.filter(function (n) { return n.to === u.name; });
@@ -471,6 +538,12 @@ function push_(u, ops) {
         var clash = read_('clients').filter(function (x) { return String(x.unit) === String(rec.unit) && ['Cancelled', 'Transferred'].indexOf(x.status) < 0; })[0];
         if (clash) { refused.push('booking (residence ' + rec.unit + ' is already booked by ' + clash.name + ')'); return; }
       }
+      // 7 Nov: editing a payment entry needs a reason; the receipt number and entry number never change
+      if (c === 'payments' && before && paymentChanges_(before, rec).length) {
+        if (!String(rec.editReason || '').trim()) { refused.push('payments (a reason is needed to edit a payment entry)'); return; }
+        rec.id = before.id; rec.receiptNo = before.receiptNo; rec.ledgerOnly = before.ledgerOnly;
+        rec.rev = Number(before.rev || 0) + 1; rec.lastEditedBy = u.name; rec.lastEditedAt = now_();
+      }
       upsert_(c, rec);
       if (rec._test !== 'Yes') afterSave_(u, c, rec, before);
       var isTest = rec._test === 'Yes';
@@ -484,7 +557,34 @@ function push_(u, ops) {
 }
 /* 2 Nov: who needs to know about a change. New people responsible for a lead or client, everyone when the rate card or
    settings change (with what changed), and the advisor's manager plus admins for a client complaint. */
+// 7 Nov: payment edits. Fields compared, their labels, and the ones that make an edit HIGH.
+var PAY_EDIT_FIELDS = { date: 'Date', amount: 'Amount', tds: 'TDS', unit: 'Residence', payer: 'Received from', towards: 'Towards', mode: 'Mode', instrument: 'Reference', instrumentDate: 'Instrument date', bank: 'Bank', counted: 'Counted in totals', demandLetter: 'Demand letter', thirdParty: 'Paid by', realisation: 'Realisation', note: 'Note' };
+var PAY_HIGH = ['amount', 'tds', 'unit', 'counted', 'demandLetter'];
+function paymentChanges_(before, rec) {
+  return Object.keys(PAY_EDIT_FIELDS).filter(function (k) { return String(before[k] == null ? '' : before[k]) !== String(rec[k] == null ? '' : rec[k]); })
+    .map(function (k) { return { field: k, label: PAY_EDIT_FIELDS[k], from: before[k] == null ? '' : before[k], to: rec[k] == null ? '' : rec[k] }; });
+}
+function payEditLogged_(u, rec, before, reason, high) {
+  var ch = paymentChanges_(before, rec); if (!ch.length) return;
+  var isHigh = high === undefined ? ch.some(function (x) { return PAY_HIGH.indexOf(x.field) >= 0; }) : high;
+  var cli = read_('clients').filter(function (x) { return String(x.unit) === String(rec.unit); })[0] || {};
+  upsert_('paymentEdits', { id: 'PE-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: now_(), by: u.name, paymentId: rec.id, receiptNo: rec.receiptNo || '', unit: rec.unit, client: cli.name || '', reason: reason || '', changes: JSON.stringify(ch), high: isHigh ? 'Yes' : 'No' });
+  if (high === false) return;   // moves between residences are recorded, not alerted
+  var money = function (k, v) { return (k === 'amount' || k === 'tds') && v !== '' ? '₹' + Math.round(Number(v || 0)).toLocaleString('en-IN') : (v === '' ? '(blank)' : String(v)); };
+  var txt = ch.map(function (x) { return x.label + ': ' + money(x.field, x.from) + ' → ' + money(x.field, x.to); }).join(' · ');
+  var title = (isHigh ? 'HIGH · ' : '') + 'Payment edited · ' + (rec.receiptNo || rec.id) + ' · residence ' + rec.unit;
+  var body = u.name + ' changed ' + txt + '. Reason: ' + (reason || '');
+  var users = read_('users'), to = {};
+  users.filter(function (x) { return x.appRole === 'admin' && x.active !== 'No'; }).forEach(function (x) { to[x.name] = x; });
+  if (u.reportsTo) users.filter(function (x) { return x.name === u.reportsTo && x.active !== 'No'; }).forEach(function (x) { to[x.name] = x; });
+  delete to[u.name];
+  Object.keys(to).forEach(function (nm) {
+    notify_(nm, 'paymentEdit', title, body, '#/crm/payments/receipt/' + rec.id, now_(), u.name, '#/crm/payments/receipt/' + rec.id);
+    if (to[nm].email) { try { mail_({ to: to[nm].email, subject: 'Accord · ' + title, title: title, text: body + '\n\nClient: ' + (cli.name || '') + '\nOpen Accord → Payments → Change log for the full history.', fromName: 'Accord', footer: 'Accord by OuTSDe · payment change alert' }); } catch (e) { } }
+  });
+}
 function afterSave_(u, c, rec, before) {
+  if (c === 'payments' && before && rec.editReason !== undefined && Number(rec.rev || 0) > Number(before.rev || 0)) payEditLogged_(u, rec, before, rec.editReason, rec.editKind === 'transfer' ? false : undefined);
   if (c === 'leads' || c === 'clients') {
     var was = before ? [before.owner].concat(before.coOwners || []) : [], now = [rec.owner].concat(rec.coOwners || []);
     now.filter(function (x) { return x && x !== u.name && was.indexOf(x) < 0; }).forEach(function (x) {
@@ -507,7 +607,7 @@ function afterSave_(u, c, rec, before) {
     var users = read_('users'), boss = {}; users.forEach(function (x) { boss[x.name] = x.reportsTo; });
     var cl = rec.unit ? read_('clients').filter(function (x) { return String(x.unit) === String(rec.unit); })[0] : null, adv = cl ? cl.owner : '';
     var to = {}; if (adv && boss[adv]) to[boss[adv]] = 1; users.filter(function (x) { return x.appRole === 'admin'; }).forEach(function (x) { to[x.name] = 1; });
-    Object.keys(to).forEach(function (n) { notify_(n, 'complaint', 'Client complaint' + (rec.unit ? ' · residence ' + rec.unit : ''), (rec.description || '').slice(0, 160) + (adv ? ' · advisor ' + adv : ''), '#/crm/issues', now_(), u.name); });
+    Object.keys(to).forEach(function (n) { notify_(n, 'complaint', 'Client complaint' + (rec.unit ? ' · residence ' + rec.unit : ''), (rec.description || '').slice(0, 160) + (adv ? ' · advisor ' + adv : ''), '#/crm/issues' + (rec.id ? '?id=' + encodeURIComponent(rec.id) : ''), now_(), u.name); });
     rec.notifiedAt = now_(); upsert_('issues', rec);
   }
 }
@@ -544,8 +644,16 @@ function inboundLead_(req) {
   if (done.length) read_('users').filter(function (x) { return ['admin', 'senior'].indexOf(x.appRole) >= 0 && x.active !== 'No'; }).forEach(function (x) { notify_(x.name, 'inbox', done.length + ' new enquir' + (done.length > 1 ? 'ies' : 'y') + ' in the lead inbox', 'Check and accept them in Leads › Inbox', '#/crm/leads?view=inbox', now_(), 'Lead inbox'); });
   return { ok: true, received: done.length, ids: done };
 }
-function notify_(to, kind, title, body, link, dueAt, by) {
-  upsert_('notifications', { id: 'N-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to: to, kind: kind, title: title, body: body, link: link, dueAt: dueAt || now_(), createdBy: by, createdAt: now_(), readAt: '', emailedAt: '' });
+function notify_(to, kind, title, body, link, dueAt, by, target) {
+  upsert_('notifications', { id: 'N-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to: to, kind: kind, title: title, body: body, link: link, dueAt: dueAt || now_(), createdBy: by, createdAt: now_(), readAt: '', emailedAt: '', target: target || '' });
+}
+// 7 Nov: the exact page a lead or client notification should open (bell → that record, not the section)
+function recordTarget_(recordId, focus) {
+  var id = String(recordId || ''), q = focus ? '?focus=' + focus : '';
+  if (!id) return '';
+  if (/^YSC-L-/i.test(id)) return '#/crm/leads/' + id + q;
+  var c = read_('clients').filter(function (x) { return x.clientId === id || x.bookingId === id || x.id === id; })[0];
+  return c ? '#/crm/clients/' + (c.bookingId || c.id) + q : '';
 }
 // 4 Nov: follow-ups carry a time. Due moments are stored as real instants (UTC ISO), read as India time.
 function dueIso_(date, time) { var t = /^\d{1,2}:\d{2}$/.test(String(time || '')) ? String(time) : '10:00'; if (t.length === 4) t = '0' + t; return new Date(date + 'T' + t + ':00+05:30').toISOString(); }
@@ -553,7 +661,7 @@ function notifyFollowUp_(u, i) {
   if (!i.nextDate || i.status !== 'Open') return;
   var owners = i.nextOwners && i.nextOwners.length ? i.nextOwners : [i.nextOwner || u.name];
   var existing = read_('notifications').filter(function (n) { return n.kind === 'followup' && n.link === 'i:' + i.id; }).map(function (n) { return n.to; });
-  owners.forEach(function (o) { if (existing.indexOf(o) < 0) notify_(o, 'followup', 'Follow up: ' + (i.recordName || i.recordId), (i.nextAction || 'Follow up') + ' · logged by ' + u.name, 'i:' + i.id, dueIso_(i.nextDate, i.nextTime), u.name); });
+  owners.forEach(function (o) { if (existing.indexOf(o) < 0) notify_(o, 'followup', 'Follow up: ' + (i.recordName || i.recordId), (i.nextAction || 'Follow up') + ' · logged by ' + u.name, 'i:' + i.id, dueIso_(i.nextDate, i.nextTime), u.name, recordTarget_(i.recordId, i.id)); });
 }
 
 /* ───────────────────────── time: server-stamped punch ───────────────────────── */
@@ -791,7 +899,7 @@ function clientForm_(req) {
     var id = 'CF-' + Date.now().toString(36).toUpperCase();
     upsert_('clientForms', { id: id, bookingId: c.bookingId, clientId: c.clientId, unit: c.unit, name: c.name, submittedAt: now_(), status: 'New', data: clean });
     var to = c.owner || 'Aryan';
-    notify_(to, 'clientform', 'Client form received: ' + c.name, 'Residence ' + c.unit + ' · review and apply it from the booking form', 'b:' + c.bookingId, now_(), 'Client (public form)');
+    notify_(to, 'clientform', 'Client form received: ' + c.name, 'Residence ' + c.unit + ' · review and apply it from the booking form', 'b:' + c.bookingId, now_(), 'Client (public form)', '#/crm/booking/' + c.bookingId);
     return { ok: true, id: id };
   } finally { lock.releaseLock(); }
 }
@@ -812,7 +920,7 @@ function escalateOverdue() {
       var to = o;
       for (var k = 1; k <= level && boss[to]; k++) {
         to = boss[to]; if (to === o || done[to]) continue;
-        notify_(to, 'escalation', 'Escalated: ' + (i.recordName || i.recordId), o + ' has not followed up for ' + late + ' working days (' + (i.nextAction || 'follow up') + ', due ' + i.nextDate + ')', 'i:' + i.id, now_(), 'Accord');
+        notify_(to, 'escalation', 'Escalated: ' + (i.recordName || i.recordId), o + ' has not followed up for ' + late + ' working days (' + (i.nextAction || 'follow up') + ', due ' + i.nextDate + ')', 'i:' + i.id, now_(), 'Accord', recordTarget_(i.recordId, i.id));
         done[to] = d; changed = true;
       }
     });

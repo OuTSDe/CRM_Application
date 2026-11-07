@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
 import { useCrm } from '../../lib/calc.js'
 import { canWrite } from '../../lib/perms.js'
-import { Page, Card, Button, Seg, Modal, Input } from '../../components/ui.jsx'
+import { Page, Card, Button, Seg, Modal, Input, DraftNote } from '../../components/ui.jsx'
+import { useDraft } from '../../lib/drafts.js'
 import DocHeader from '../../components/DocHeader.jsx'
 import RecordForm from '../../components/RecordForm.jsx'
 import { d, inr, words, today, waLink, salute, fullName, TITLES, CITIES } from '../../lib/format.js'
@@ -30,7 +31,8 @@ export default function BookingForm() {
   const crm = useCrm()
   const c = crm.clients.find((x) => x.bookingId === id)
   const raw = db.clients.find((x) => x.bookingId === id)
-  const [v, setV] = useState(raw ? { ...raw } : {})
+  // 7 Nov: the booking form keeps a draft until it is saved to the client
+  const [v, setV, bdraft] = useDraft('booking:' + id, raw ? { ...raw } : {}, { uid: user?.id, label: 'Booking form · ' + (raw?.name || id), route: '/crm/booking/' + id, enabled: !!raw })
   const [mode, setMode] = useState('fill')
   if (!c) return <Page back={true} title="Booking not found" />
   const co = settings.company || {}
@@ -39,9 +41,10 @@ export default function BookingForm() {
   const can = canWrite(user, 'clients') || c.owner === user.name
   return (
     <Page title={`Booking form · ${c.bookingId}`} back={'/crm/clients/' + c.id} backLabel={c.name} subtitle="Fill the soft copy with the client, then print the A4 form for signatures. Details save to the client record."
-      actions={<><Seg options={[{ value: 'fill', label: 'Fill' }, { value: 'print', label: 'A4 form' }]} value={mode} onChange={setMode} />{can && <Button onClick={() => setShare(true)}>Send to client to fill</Button>}{mode === 'fill' && can && <Button variant="primary" onClick={() => upsert('clients', v, { system: true, action: 'booking form saved' })}>Save to client</Button>}</>}>
+      actions={<><Seg options={[{ value: 'fill', label: 'Fill' }, { value: 'print', label: 'A4 form' }]} value={mode} onChange={setMode} />{can && <Button onClick={() => setShare(true)}>Send to client to fill</Button>}{mode === 'fill' && can && <Button variant="primary" onClick={() => { if (upsert('clients', v, { system: true, action: 'booking form saved' })) { bdraft.clear(); notify('Saved to the client') } }}>Save to client</Button>}</>}>
       {mode === 'fill' && <Responses c={c} can={can} onApply={(data) => { setV((x) => ({ ...x, ...data })); notify('Client answers copied into the form. Check them, then Save to client.') }} />}
       {share && <SendForm c={c} raw={raw} onClose={() => setShare(false)} />}
+      {mode === 'fill' && <DraftNote at={bdraft.restoredAt} onDiscard={() => bdraft.reset()} />}
       {mode === 'fill' ? <Card><RecordForm fields={FIELDS} value={v} onChange={setV} readOnly={!can} /></Card> : <>
         <div className="doc-tools no-print"><Button variant="primary" onClick={() => window.print()}>Print or save as PDF</Button></div>
         <div className="doc">

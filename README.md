@@ -96,7 +96,7 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
   - their open leads and follow-ups;
   - client health;
   - payments coming due (names only).
-- **Cyril** (senior sales) sees all leads, clients, cold calls and interactions. He also edits templates, sees performance and assigns tasks.
+- **Cyril** (Sales Lead; senior sales access) sees all leads, clients, cold calls and interactions. He also edits templates, sees performance and assigns tasks.
 - **Client 360** has two tabs:
   - **My clients:** full detail;
   - **All clients:** a directory of who owns which residence and who looks after them.
@@ -305,6 +305,24 @@ Not built yet, as agreed:
 - WhatsApp, Meta and 99acres automation waits until the data is complete. The lead inbox is ready for it.
 - A per-client payment slab waits for the existing cost sheets from Amit.
 
+## 7c. Changes of 7 November (backend 3.6.0)
+
+Paste the new `backend/Code.gs` into Apps Script and deploy a new version (Deploy → Manage deployments → Edit → New version). Until then admins see the "backend needs updating" band.
+
+- **Demand letters in the house style** (from *Demand_Letter_Draft_-_Proposed.docx*, corrected). The letter asks for the instalment due, not the whole balance. It prints a fixed due date (letter date + 15 days), the stage certificate, earlier unpaid demands with interest, receipts to date, TDS and RERA clauses, and the bank details. One client's flats can share one **Combined letter**. Letters can be printed in bulk by date, e-mailed or sent on WhatsApp, and each send is logged. The wording is in **Admin → Settings → Demand letter wording**; CIN, registered office, CRM e-mail and the account name are in **Company**.
+- **Per-client payment schedules.** Each client's own instalments come from the construction stages (Building and parking → Construction), their booking and registered agreement dates, and their demand letters. A stage counts once it is **Completed** and its **completion certificate** is attached (or marked "on file" for stages billed before Accord). Payment is due 15 days from the demand letter. Stages finished before a booking are demanded at the registered agreement, because RERA section 13 caps collection at 10% before it. A negotiated plan is set per client under Client 360 → Payment schedule → Custom plan.
+  - **Payments → Schedule check** compares old and new demand for every client. Switch to per-client schedules there (or in Admin → Settings → Payment schedule) once finance agrees. Until then the old project-wide demand calls stay in force.
+  - **Payments → Raise demand letters** (per-client mode) raises one letter per client for every demandable instalment.
+  - **Payments → Collections forecast** shows money expected by month, from letters and planned stage dates.
+  - **Interest on late payment** (SBI highest MCLR + 2%) uses the rates entered by date in Admin → Settings → Payment schedule. With no rate entered, no interest is shown.
+- **Editing payment entries.** Admin and finance can edit an entry from the receipt or Client 360. A reason is required; the receipt number never changes; the receipt shows "Revised · rev N". Every change is stored in **Payments → Change log** and goes to all admins and the editor's manager in Accord and by e-mail; changes to amount, TDS, flat, counted or demand letter are marked HIGH.
+- **Cancellation protocol.** Request (with the client's written request) → retention call → calculation within the Karnataka RERA caps → admin approval (two admins above the threshold) → documents and refund in parts (lender first for bank-loan clients) → release of the residence and parking. Deduction caps: before agreement, by days after the allotment letter (nil, 1%, 1.5%, 2%); after agreement, the booking amount (max 5%); developer at fault, nil. Developer-side cancellation needs the notice of default and a termination notice at least 30 days earlier. All figures are in Admin → Settings → Cancellation rules; confirm them against your Agreement for Sale.
+- **Drafts and Go back.** Every form keeps what was typed as a draft on that device: new and edited leads, clients, interactions, payments, cost sheets, booking forms, cancellations and new tasks. A **Go back** arrow is in the top bar, and the **Drafts** button next to the bell reopens or discards them.
+- **Notifications open the exact record.** Follow-ups and escalations open the lead or client (and highlight the interaction), client forms open the booking form, payment edits open the receipt.
+- **Sign-in by e-mailed code.** "Don't have your phone? E-mail me a code" on the sign-in page sends a 6-digit code (10 minutes, one use) to the e-mail on the person's record. Admins are told each time. Switch it off in Admin → Settings → Sign-in. Make sure everyone has an e-mail in Users and access.
+- **Reset a sign-in with no admin available.** Open the Accord Database sheet as its owner: menu **Accord → Reset someone's sign-in**, type the username and a temporary password.
+- **Cyril** is now *Sales Lead* (title only; access unchanged). The backend sets it once on the first request after deploying.
+
 ## 8. What is missing (to fill in before go-live)
 
 1. **Your Excel formats and the logo.** The cost sheet, payment slip, payment and financial summary, booking form and lead entries use the Yamuna Sky City header now. When you share the Excel formats and the header or logo, upload the logo in Settings → Brand, and the layouts can be matched line by line.
@@ -329,7 +347,7 @@ Not built yet, as agreed:
    - final copy from the marketing pillar.
 13. **Push to phones while Accord is closed** needs phase 2 (see BACKEND.md). WhatsApp automation needs the WhatsApp Business API.
 14. **Leave and weekly off.** The time log has shifts and working days. Leave and weekly-off requests wait for the HR structure.
-15. **Designations.** Cyril's "Senior Sales Manager" and the other designations were assumed. Correct them in Users and access, because they print under the name in every message.
+15. **Designations.** Cyril is the Sales Lead (7 Nov). The other designations were assumed. Correct them in Users and access, because they print under the name in every message.
 16. **Dashboard figures.** Accord counts 39 live bookings from the CRM statuses; the master sheet's Dashboard tab shows 42. The difference is bookings marked *To verify*, which Accord leaves out until they are confirmed.
 17. **From the 2 and 3 November meetings, still waiting.**
    - The AI chatbot and AI analytics (Grok or another model) need a hosted model. The lead inbox is ready for a bot to post into.

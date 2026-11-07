@@ -5,6 +5,7 @@ import RecordForm from '../../components/RecordForm.jsx'
 import { Page, Card, Button, Badge, Field, Input, Textarea, Select, Modal, Confirm, Chips, Seg } from '../../components/ui.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import { d, inr } from '../../lib/format.js'
+import { DEFAULT_RULES, rulesOf } from '../../lib/schedule.js'
 import { getLocation } from '../../lib/geo.js'
 import { deviceId } from '../../lib/crypto.js'
 import { Link } from 'react-router-dom'
@@ -45,6 +46,7 @@ function SignInCard({ s, setS }) {
     <div className="form fc2">
       <Field label="Sign-in" hint="Authenticator: a 6-digit code from an app on the phone. Password: the old way."><Select options={[{ value: 'authenticator', label: 'Authenticator app (recommended)' }, { value: 'password', label: 'Password' }]} value={s.authMode || 'authenticator'} onChange={(e) => setS({ ...s, authMode: e.target.value })} /></Field>
       <Field label="Devices per person" hint="Admins have no limit"><Input value="One computer and one phone" disabled /></Field>
+      <Field label="No phone to hand: sign in with an e-mailed code" hint="A 6-digit code to the e-mail on the person's record, valid 10 minutes. Admins are told each time."><Select options={[{ value: 'Yes', label: 'Allowed' }, { value: 'No', label: 'Off' }]} value={s.allowEmailCode === 'No' ? 'No' : 'Yes'} onChange={(e) => setS({ ...s, allowEmailCode: e.target.value })} /></Field>
       <Field label="Location check at punch-in" hint="Office and Site count only at Sky City; elsewhere it is logged as remote"><Select options={['On', 'Off']} value={s.geofence || 'On'} onChange={(e) => setS({ ...s, geofence: e.target.value })} /></Field>
       <Field label="Trusted device: skip the code for (days)" hint="0 turns it off. Each person ticks it on their own device at sign-in."><Input type="number" min={0} max={30} value={s.trustDays ?? 3} onChange={(e) => setS({ ...s, trustDays: Number(e.target.value) })} /></Field>
       <Field label="Sign out after no activity (minutes)" hint="0 turns it off. The e-brochure never signs out by itself."><Input type="number" min={0} value={s.idleMinutes ?? 30} onChange={(e) => setS({ ...s, idleMinutes: Number(e.target.value) })} /></Field>
@@ -92,8 +94,8 @@ export function AdminSettings() {
   return (
     <Page title="Settings" back="/" backLabel="Dashboard" subtitle="Company details, the rate card and payment plans that drive cost sheets and receipts, and the workday for the time tracker." actions={<Button variant="primary" onClick={save}>Save settings</Button>}>
       <div className="grid g2">
-        <Card title="Company (receipts and cost sheets)"><div className="form fc2">{[['name', 'Company'], ['project', 'Project'], ['location', 'Location'], ['address', 'Address'], ['gstin', 'GSTIN'], ['rera', 'RERA number'], ['bank', 'Bank'], ['account', 'Account no.'], ['ifsc', 'IFSC'], ['branch', 'Branch'], ['contact', 'Contact number']].map(([k, l]) =>
-          <Field key={k} label={l} span={k === 'address' || k === 'rera' ? 'all' : undefined}><Input value={s.company[k]} onChange={(e) => co(k, e.target.value)} /></Field>)}</div></Card>
+        <Card title="Company (receipts and cost sheets)"><div className="form fc2">{[['name', 'Company'], ['project', 'Project'], ['location', 'Location'], ['address', 'Address'], ['gstin', 'GSTIN'], ['rera', 'RERA number'], ['bank', 'Bank'], ['account', 'Account no.'], ['ifsc', 'IFSC'], ['branch', 'Branch'], ['contact', 'Contact number'], ['cin', 'CIN'], ['regOffice', 'Registered office'], ['crmEmail', 'CRM e-mail (on demand letters)'], ['beneficiary', 'Account name (beneficiary)']].map(([k, l]) =>
+          <Field key={k} label={l} span={k === 'address' || k === 'rera' || k === 'regOffice' ? 'all' : undefined}><Input value={s.company[k]} onChange={(e) => co(k, e.target.value)} /></Field>)}</div></Card>
         <Card title="Rate card"><div className="form fc2">
           {[['baseRate', 'Base rate (₹/sft)'], ['floorRiseStart', 'Floor rise starts above floor'], ['floorRisePerFloor', 'Floor rise per floor (₹/sft)'], ['approvalAbove', 'Approval needed above (% off)'], ['terraceRate', 'Terrace rate (₹/sft)'], ['parkingRate', 'Car park included with the type (₹ each)'], ['parkingExtraRate', 'Additional car park (₹ each)'], ['parkingExtraMax', 'Additional car parks allowed'], ['gst', 'GST (0.05 = 5%)'], ['mwssb', 'MWSSB / MESCOM (₹/sft)'], ['clubhouse', 'Clubhouse (₹)'], ['maintenance', 'Advance maintenance (₹/sft)'], ['sinking', 'Sinking fund (₹/sft)'], ['minBooking', 'Minimum booking (₹)'], ['validityDays', 'Cost sheet validity (days)']].map(([k, l]) =>
             <Field key={k} label={l}><Input type="number" value={s.rateCard[k]} onChange={(e) => rc(k, Number(e.target.value))} /></Field>)}
@@ -103,6 +105,7 @@ export function AdminSettings() {
       </div>
       <div className="grid g2"><SignInCard s={s} setS={setS} /><BrandCard s={s} setS={setS} /></div>
       <DriveCard s={s} setS={setS} />
+      <ScheduleRulesCard s={s} setS={setS} />
       <InboxCard s={s} setS={setS} />
       <div className="grid g2">{Object.keys(s.plans).map((p) => <Card key={p} title={`Payment plan · ${p}`} actions={<Badge tone={Math.abs(planSum(p) - 1) < 0.001 ? 'good' : 'bad'}>{(planSum(p) * 100).toFixed(1)}%</Badge>}>
         {s.plans[p].map((x, k) => <div key={k} className="row gap-s" style={{ marginBottom: 6 }}><input className="input" style={{ flex: 1 }} value={x.stage} onChange={(e) => setS({ ...s, plans: { ...s.plans, [p]: s.plans[p].map((y, j) => (j === k ? { ...y, stage: e.target.value } : y)) } })} />
@@ -245,6 +248,7 @@ export function AdminUsers() {
           {edit.id && <div className="sheet" style={{ marginTop: 16 }}><div className="sheet-band"><span className="n">6</span><h4>Sign-in and devices</h4><span className="note2">{edit.mfa === 'Set' || edit.totpSecret ? 'Authenticator app linked' : 'Authenticator not linked yet'} · {online ? 'on the server' : 'on this device only'}</span></div>
             <div className="row" style={{ padding: 18 }}><input className="input" style={{ maxWidth: 280 }} type="text" autoComplete="off" placeholder="Temporary password" value={pw} onChange={(e) => setPw(e.target.value)} aria-label="Temporary password" />
               <Button onClick={temp} disabled={pw.length < 8}>Reset sign-in</Button><span className="small muted">New phone or lost phone: set a temporary password (8+ characters, a letter and a number). It unlinks the old app; they use the password once and link the app again.</span></div>
+            <p className="small" style={{ padding: '0 18px', margin: '0 0 12px' }}>{edit.email ? <>No phone to hand? They can sign in with a code e-mailed to <b>{edit.email}</b>.</> : <span className="missing">No e-mail on file, so e-mailed sign-in codes will not work for this person. Add one in the details above.</span>}</p>
             {(() => { const live = raw.users.find((x) => x.id === edit.id) || edit; const list = live.devices || []
               return list.length > 0 ? <div style={{ padding: '0 18px 18px' }}>{list.map((dv) => <DevRow key={dv.id} u={live} dv={dv} />)}</div> : <p className="small muted" style={{ padding: '0 18px 18px', margin: 0 }}>No devices linked.</p> })()}
           </div>}</>}
@@ -300,4 +304,67 @@ export function AdminData() {
           columns={[{ key: 'at', label: 'When', render: (a) => `${d(a.at)} ${new Date(a.at).toTimeString().slice(0, 5)}` }, { key: 'by', label: 'Who' }, { key: 'coll', label: 'Collection' }, { key: 'recId', label: 'Record' }, { key: 'action', label: 'Action' }]} /></div></Card>
     </Page>
   )
+}
+
+// 7 Nov: per-client payment schedules, interest, reminders and notices (Karnataka RERA), demand letter wording and
+// cancellation rules. Every figure is a setting; your registered Agreement for Sale and allotment letter decide them.
+function ScheduleRulesCard({ s, setS }) {
+  const R = rulesOf(s)
+  const put = (k, v) => setS({ ...s, [k]: v })
+  const can = (k, v) => setS({ ...s, cancellation: { ...R.cancellation, ...(s.cancellation || {}), [k]: v } })
+  const dl = (k, v) => setS({ ...s, demandLetter: { ...R.demandLetter, ...(s.demandLetter || {}), [k]: v } })
+  const rates = R.interestRates || []
+  const num = (k, l, hint) => <Field key={k} label={l} hint={hint}><Input type="number" value={R[k]} onChange={(e) => put(k, e.target.value === '' ? '' : Number(e.target.value))} /></Field>
+  return <>
+    <div className="grid g2">
+      <Card title="Payment schedule and interest">
+        <div className="form fc2">
+          <Field label="Demand worked out from" span="all" hint="Check the Payments → Schedule check tab before switching"><Select options={[{ value: 'calls', label: 'Project-wide demand calls (as before)' }, { value: 'client', label: "Each client's own schedule (construction-linked)" }]} value={R.scheduleMode} onChange={(e) => put('scheduleMode', e.target.value)} /></Field>
+          {num('dueDays', 'Days to pay after a demand letter', 'K-RERA model allotment letter: 15-day notice')}
+          {num('interestGraceDays', 'Interest-free days after the due date', 'A business choice; 0 = from the next day')}
+          {num('reminderDaysBefore', 'Reminder this many days before the due date')}
+          {num('noticeAfterDays', 'Notice of default this many days after the due date')}
+          {num('noticePeriodDays', 'The notice gives this many days to pay')}
+          {num('defaultDemands', 'Consecutive unpaid demands that make a default', 'AFS clause 9.3: from your agreement')}
+          {num('defaultMonths', 'Months the default continues before termination', 'AFS clause 9.3: blank in the template, from your agreement')}
+          {num('terminationNoticeDays', "Days' notice before cancelling for default", 'AFS clause 9.3: at least 30')}
+          {num('agreementWithinDays', 'Agreement to be executed within (days of the allotment letter)')}
+        </div>
+        <div className="form-section">Interest rate (SBI highest MCLR + 2%, a year)</div>
+        {rates.map((r, i) => <div key={i} className="row gap-s" style={{ marginBottom: 6 }}><span className="small">From</span><Input type="date" value={r.from} onChange={(e) => put('interestRates', rates.map((x, j) => (j === i ? { ...x, from: e.target.value } : x)))} />
+          <Input type="number" step="0.05" style={{ width: 90 }} value={r.rate} onChange={(e) => put('interestRates', rates.map((x, j) => (j === i ? { ...x, rate: Number(e.target.value) } : x)))} /><span className="small">%</span>
+          <Button size="sm" variant="ghost" onClick={() => put('interestRates', rates.filter((_, j) => j !== i))}>×</Button></div>)}
+        <Button size="sm" onClick={() => put('interestRates', [...rates, { from: new Date().toISOString().slice(0, 10), rate: '' }])}>+ Rate from a date</Button>
+        <p className="small muted">Add a new line whenever SBI changes its MCLR; interest uses the rate in force on each day. No rate entered means no interest is shown.</p>
+      </Card>
+      <Card title="Cancellation rules">
+        <div className="form fc2">
+          <Field label="Before the agreement: charge by days after the allotment letter" span="all" hint="K-RERA model allotment letter clause 8: Nil to 15 days, 1% to 30, 1.5% to 60, 2% after">
+            <div>{(R.cancellation.allotmentSlabs || []).map((x, i) => <div key={i} className="row gap-s" style={{ marginBottom: 4 }}><span className="small">up to day</span><Input type="number" style={{ width: 90 }} value={x.upTo} onChange={(e) => can('allotmentSlabs', R.cancellation.allotmentSlabs.map((y, j) => (j === i ? { ...y, upTo: Number(e.target.value) } : y)))} />
+              <Input type="number" step="0.1" style={{ width: 80 }} value={Math.round(x.pct * 1000) / 10} onChange={(e) => can('allotmentSlabs', R.cancellation.allotmentSlabs.map((y, j) => (j === i ? { ...y, pct: Number(e.target.value) / 100 } : y)))} /><span className="small">% of unit cost</span></div>)}</div></Field>
+          <Field label="Refund within (days), before agreement"><Input type="number" value={R.cancellation.allotmentRefundDays} onChange={(e) => can('allotmentRefundDays', Number(e.target.value))} /></Field>
+          <Field label="Refund within (days), after agreement" hint="AFS clause 7.5: 60"><Input type="number" value={R.cancellation.afterAgreementRefundDays} onChange={(e) => can('afterAgreementRefundDays', Number(e.target.value))} /></Field>
+          <Field label="Booking amount forfeited after agreement (%)" hint="No more than 5% (AFS Schedule C)"><Input type="number" step="0.1" value={Math.round(R.cancellation.bookingAmountPct * 1000) / 10} onChange={(e) => can('bookingAmountPct', Math.min(5, Number(e.target.value)) / 100)} /></Field>
+          <Field label="Refund within (days), developer cancels for default"><Input type="number" value={R.cancellation.defaultRefundDays} onChange={(e) => can('defaultRefundDays', Number(e.target.value))} /></Field>
+          <Field label="GST on cancellation"><Select options={['Credit note', 'Buyer to claim']} value={R.cancellation.gstRefundMode} onChange={(e) => can('gstRefundMode', e.target.value)} /></Field>
+          <Field label="Deduct channel-partner brokerage" hint="Default No: the Karnataka formats allow only the booking amount and interest"><Select options={['No', 'Yes']} value={R.cancellation.brokerageDeducted} onChange={(e) => can('brokerageDeducted', e.target.value)} /></Field>
+          <Field label="Days for the retention call"><Input type="number" value={R.cancellation.coolingDays} onChange={(e) => can('coolingDays', Number(e.target.value))} /></Field>
+          <Field label="Second admin needed above (₹ refund or waiver)"><Input type="number" value={R.cancellation.approvalAbove} onChange={(e) => can('approvalAbove', Number(e.target.value))} /></Field>
+        </div>
+      </Card>
+    </div>
+    <Card title="Demand letter wording">
+      <p className="small muted" style={{ marginTop: 0 }}>Placeholders: {'{units} {project} {location} {company} {stage} {cert} {dueDate} {dueDays} {letterNo} {rate}'}. The amounts, bank details and the client block come from the records.</p>
+      <div className="form fc2">
+        <Field label="Subject" span="all"><Input value={R.demandLetter.subject} onChange={(e) => dl('subject', e.target.value)} /></Field>
+        {[['body', 'Opening paragraph'], ['payNote', 'How to pay'], ['tdsNote', 'TDS note (consideration ₹50 lakh or more)'], ['complianceNote', 'RERA and interest clause'], ['disregardNote', 'Already paid note']].map(([k, l]) =>
+          <Field key={k} label={l} span="all"><Textarea rows={3} value={R.demandLetter[k]} onChange={(e) => dl(k, e.target.value)} /></Field>)}
+        <Field label="Contact person"><Input value={R.demandLetter.contactName} onChange={(e) => dl('contactName', e.target.value)} /></Field>
+        <Field label="Contact phone"><Input value={R.demandLetter.contactPhone} onChange={(e) => dl('contactPhone', e.target.value)} /></Field>
+        <Field label="Signatory name"><Input value={R.demandLetter.signatoryName} onChange={(e) => dl('signatoryName', e.target.value)} /></Field>
+        <Field label="Signatory designation"><Input value={R.demandLetter.signatoryDesignation} onChange={(e) => dl('signatoryDesignation', e.target.value)} /></Field>
+      </div>
+      <Button size="sm" variant="ghost" onClick={() => setS({ ...s, demandLetter: { ...DEFAULT_RULES.demandLetter, contactName: R.demandLetter.contactName, contactPhone: R.demandLetter.contactPhone, signatoryName: R.demandLetter.signatoryName, signatoryDesignation: R.demandLetter.signatoryDesignation } })}>Restore the standard wording</Button>
+    </Card>
+  </>
 }

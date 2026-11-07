@@ -16,7 +16,7 @@ export const EXP_UNITS = 'accord.units.status'             // read by the Accord
 const Ctx = createContext(null)
 // The backend address is published with the site (accord.config.js), so every device connects to the same Drive database.
 // 4 Nov: the backend version this site needs (backend/Code.gs VERSION). An older one means Code.gs was not redeployed.
-export const NEEDS_BACKEND = '3.5.0'
+export const NEEDS_BACKEND = '3.6.0'
 const verLess = (a, b) => { const x = String(a).match(/\d+/g)?.map(Number), y = String(b).split('.').map(Number); if (!x) return true; for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0) } return false }
 const SITE_BACKEND = (typeof window !== 'undefined' && window.ACCORD_CONFIG?.backendUrl) || ''
 const uid = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
@@ -193,12 +193,12 @@ export function StoreProvider({ children }) {
   const startSession = (u, token, mustEnrol = false) => { const s = { userId: u.id, token, at: Date.now(), mustEnrol: !!mustEnrol }; setSession(s); marker(s) }
   // 1 Nov: username + authenticator code. The temporary password opens the account once, to link the app.
   // 5 Nov: "trust this device" skips the code for a few days on the person's own computer or phone
-  const login = useCallback(async (username, { code, password, trust, trustToken } = {}) => {
+  const login = useCallback(async (username, { code, password, trust, trustToken, emailCode } = {}) => {
     const uname = String(username || '').trim().toLowerCase()
     const keepTrust = (name, t) => safeSet('accord.trust', JSON.stringify({ username: uname, name, token: t.token, until: t.until }))
     if (backend) {
       let j
-      try { j = await call({ action: 'login', username: uname, code, password, trust, trustToken, deviceId: deviceId(), deviceLabel: deviceLabel(), deviceKind: deviceKind() }) }
+      try { j = await call({ action: 'login', username: uname, code, password, trust, trustToken, emailCode, deviceId: deviceId(), deviceLabel: deviceLabel(), deviceKind: deviceKind() }) }
       catch (e) { if (trustToken) { try { localStorage.removeItem('accord.trust') } catch (x) { /* */ } } throw e }
       if (j.trust) keepTrust(j.user.name, j.trust)
       const pu = { ...j.user, mustChange: j.user.mustChange ? 'Yes' : 'No', mfa: j.user.mfa ? 'Set' : 'Not set' }
@@ -206,6 +206,7 @@ export function StoreProvider({ children }) {
       startSession(j.user, j.token, j.user.mustEnrol)
       return { mustEnrol: j.user.mustEnrol }
     }
+    if (emailCode) throw new Error('E-mailed codes need the shared database. Connect it under Admin, Data and sync.')
     const u = raw.users.find((x) => String(x.username || '').toLowerCase() === uname && x.active !== 'No' && x.appRole !== 'none')
     if (!u) throw new Error('Unknown username or code')
     const mode = settings.authMode === 'password' ? 'password' : 'authenticator'
@@ -280,6 +281,11 @@ export function StoreProvider({ children }) {
     else { fetch(backend, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body, keepalive: true }).catch(() => {}); sent = true }
     if (sent && queue.current.length) { queue.current = []; safeSet(QKEY, '[]') }
   }, [backend])
+  // 7 Nov: no phone to hand: ask for a sign-in code by e-mail
+  const requestEmailCode = useCallback(async (username) => {
+    if (!backend) throw new Error('E-mailed codes need the shared database. Connect it under Admin, Data and sync.')
+    return call({ action: 'emailCode', username: String(username || '').trim().toLowerCase() })
+  }, [backend, call])
   const logout = useCallback(() => { endServerSession(false); setSession(null); try { localStorage.removeItem(SKEY) } catch (e) { /* */ } }, [endServerSession])
   // closing the tab or the browser, or refreshing: sign out
   useEffect(() => {
@@ -403,7 +409,7 @@ export function StoreProvider({ children }) {
   const resetToSeed = useCallback(() => { const s = buildSeed(); s.users = raw.users; s.settings = raw.settings; setRaw(s); notify('Cleared this device back to the empty start') }, [raw.users, raw.settings, notify])
   const seedBackend = useCallback(async (url = backend) => { const r = await call({ action: 'seed', token: online ? session.token : '', db: raw }, url); queue.current = []; safeSet(QKEY, '[]'); holdPull.current = false; setTimeout(() => pull(), 500); return r }, [call, session, raw, online, backend])
 
-  const value = { db, raw, settings, user, session, sync, toast, notify, upsert, remove, setSettings, nextId, login, logout, changePassword, setUserPassword, approveDevice, releaseDevice,
+  const value = { db, raw, settings, user, session, sync, toast, notify, upsert, remove, setSettings, nextId, login, requestEmailCode, logout, changePassword, setUserPassword, approveDevice, releaseDevice,
     enrolStart, enrolConfirm, punch, myDay, punchedIn, pushNote, markRead, replaceAll, resetToSeed, upload, fileGet, fileDelete, setPhoto, sendEmail, exportNow, loadStartingData, pull, flush, seedBackend,
     backend, serverVersion, backendOld: !!serverVersion && verLess(serverVersion, NEEDS_BACKEND), siteBackend: SITE_BACKEND, online, call, today, nowTime, demo, toggleDemo }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

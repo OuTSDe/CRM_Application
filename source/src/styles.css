@@ -520,3 +520,29 @@ body { overscroll-behavior-y: none }
 .avatar-img { object-fit: cover; border-radius: 50%; display: inline-block; }
 .menu-file { display: block; padding: 8px 14px; cursor: pointer; font-size: 13.5px; } .menu-file:hover { background: var(--bg3); }
 .org-node .avatar { margin: 0 auto 4px; }
+
+/* 7 Nov: go back and drafts */
+.go-back { margin-right: 2px }
+.draft-item { display: flex; align-items: center; gap: 8px; justify-content: space-between }
+.draft-item a { color: var(--fg); flex: 1; min-width: 0 }
+.draft-item .btn { width: auto; min-height: 28px; flex: none }
+.icon-btn .draft-count { background: var(--fg3) }
+.draft-note { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 8px 12px; margin: 0 0 12px; border: 1px dashed var(--line); border-radius: 8px; font-size: 13px; color: var(--fg2) }
+.draft-note button { background: none; border: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; padding: 0 }
+.focus-row { outline: 2px solid var(--accent); outline-offset: -2px; animation: focusfade 3s ease 1 }
+@keyframes focusfade { from { background: color-mix(in srgb, var(--accent) 18%, transparent) } to { background: transparent } }
+
+/* 7 Nov: revised receipts, demand letter */
+.doc .revised { margin: -4px 0 10px; font: 600 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: #8a1c2b }
+.row-warn td { background: color-mix(in srgb, var(--warn) 10%, transparent) }
+.sched-table td, .sched-table th { white-space: nowrap }
+.sched-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--line); margin: 10px 0 4px }
+.sched-bar i { display: block; height: 100% }
+.sched-bar .p { background: var(--good) } .sched-bar .o { background: var(--bad) } .sched-bar .d { background: var(--warn) } .sched-bar .u { background: transparent }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px }
+.steps span { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; color: var(--fg3) }
+.steps span.on { border-color: var(--accent); color: var(--fg); font-weight: 600 }
+.steps span.done { color: var(--good); border-color: var(--good) }
+
+/* 7 Nov: wide tables scroll inside their card instead of widening the page */
+.split > div, .split-r > div { min-width: 0 }

@@ -4,7 +4,9 @@ import { useStore } from '../../lib/store.jsx'
 import { attendanceSummary } from '../../lib/calc.js'
 import { seesAll, canAssignTasks } from '../../lib/perms.js'
 import { daySums } from '../../lib/store.jsx'
-import { Page, Card, Button, Badge, Grid, Stat, Seg, Modal, Bar, Confirm } from '../../components/ui.jsx'
+import { Page, Card, Button, Badge, Grid, Stat, Seg, Modal, Bar, Confirm, DraftNote } from '../../components/ui.jsx'
+import { useDraftSlot } from '../../lib/drafts.js'
+import { useSearchParams } from 'react-router-dom'
 import DataTable from '../../components/DataTable.jsx'
 import RecordForm from '../../components/RecordForm.jsx'
 import { d, today, addDays, nowTime } from '../../lib/format.js'
@@ -178,21 +180,29 @@ export function Performance() {
 export function Tasks() {
   const { db, user, upsert, remove, nextId, pushNote } = useStore()
   const assign = canAssignTasks(user)
-  const [edit, setEdit] = useState(null)
+  // 7 Nov: a new task being written is kept as a draft
+  const [nt, setNt, tslot] = useDraftSlot('task:new', { uid: user?.id, label: 'New task', route: '/people/tasks?draft=task:new' })
+  const [old, setOld] = useState(null)   // an existing task being changed is not a draft
+  const edit = old || nt
+  const setEdit = (x) => { if (old || (x && x.id)) { setOld(x); if (x && nt) tslot.close() } else setNt(x) }
+  const [qs0] = useSearchParams()
+  useEffect(() => { if (qs0.get('draft') === 'task:new') tslot.open({ owner: user.name, by: user.name, priority: 'Medium', status: 'Open', due: addDays(today(), 2), module: 'CRM' }) }, []) // eslint-disable-line
+  const closeT = () => { if (old) setOld(null); else tslot.close() }
   const [view, setView] = useState('mine')
   const t = today()
   const rows = db.tasks
   const F = [{ k: 'title', l: 'Task', span: 'all' }, assign ? { k: 'owner', l: 'Owner', t: 'select', o: team(db).map((u) => u.name) } : { k: 'owner', l: 'Owner', auto: true }, { k: 'due', l: 'Due', t: 'date' }, { k: 'priority', l: 'Priority', t: 'select', o: ['High', 'Medium', 'Low'] },
     { k: 'module', l: 'Area', t: 'select', o: ['CRM', 'Pre-sales', 'Sourcing', 'Design', 'Vendors', 'Admin'] }, { k: 'link', l: 'Related ID (lead, client, vendor…)' }, { k: 'status', l: 'Status', t: 'select', o: ['Open', 'In progress', 'Done'] }, { k: 'notes', l: 'Notes', t: 'textarea', span: 'all' }]
   return (
-    <Page title="Tasks" back="/" backLabel="Dashboard" subtitle={assign ? 'Assign work to anyone on the team: sales, finance, design. They are notified on the due date.' : 'Your tasks, and tasks Cyril or an admin assigned to you. You can add tasks for yourself.'} actions={<Button variant="primary" onClick={() => setEdit({ owner: user.name, by: user.name, priority: 'Medium', status: 'Open', due: addDays(t, 2), module: 'CRM' })}>{assign ? 'Assign a task' : 'Add a task'}</Button>}>
+    <Page title="Tasks" back="/" backLabel="Dashboard" subtitle={assign ? 'Assign work to anyone on the team: sales, finance, design. They are notified on the due date.' : 'Your tasks, and tasks Cyril or an admin assigned to you. You can add tasks for yourself.'} actions={<Button variant="primary" onClick={() => tslot.open({ owner: user.name, by: user.name, priority: 'Medium', status: 'Open', due: addDays(t, 2), module: 'CRM' })}>{assign ? 'Assign a task' : 'Add a task'}</Button>}>
       <DataTable rows={rows} initialSort={{ key: 'due', dir: 'asc' }} searchKeys={['title', 'owner', 'link']} defaultView="mine"
         views={[{ value: 'mine', label: 'Mine, open', test: (x) => x.owner === user.name && x.status !== 'Done' }, { value: 'assigned', label: 'Assigned by me', test: (x) => x.by === user.name && x.owner !== user.name }, { value: 'done', label: 'Done', test: (x) => x.status === 'Done' }, { value: 'all', label: assign ? 'Everyone\'s tasks' : 'All mine' }]} filters={[{ key: 'owner', label: 'Owner' }, { key: 'module', label: 'Area' }, { key: 'priority', label: 'Priority' }]} onRowClick={(x) => setEdit({ ...x })}
         empty="No tasks here."
         columns={[{ key: 'done', label: '', sort: false, render: (x) => <input type="checkbox" checked={x.status === 'Done'} onClick={(e) => e.stopPropagation()} onChange={(e) => upsert('tasks', { ...x, status: e.target.checked ? 'Done' : 'Open', doneOn: e.target.checked ? t : '' }, { action: 'task ' + (e.target.checked ? 'done' : 'reopened') })} /> },
           { key: 'title', label: 'Task', render: (x) => <div><b>{x.title}</b>{x.link && <div className="small muted">{x.link}</div>}</div> }, { key: 'owner', label: 'Owner' }, { key: 'due', label: 'Due', render: (x) => <Badge tone={x.status === 'Done' ? 'muted' : x.due < t ? 'bad' : x.due === t ? 'warn' : 'info'}>{d(x.due)}</Badge> },
           { key: 'priority', label: 'Priority', render: (x) => <Badge>{x.priority}</Badge> }, { key: 'module', label: 'Area' }, { key: 'by', label: 'Assigned by' }, { key: 'status', label: 'Status', render: (x) => <Badge>{x.status}</Badge> }]} />
-      <Modal open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? 'Task ' + edit.id : 'New task'} footer={<>{edit?.id && <Confirm label="Delete task?" onConfirm={() => { remove('tasks', edit.id); setEdit(null) }}>Delete</Confirm>}<Button onClick={() => setEdit(null)}>Cancel</Button><Button variant="primary" onClick={() => { if (!edit.title) return; const isNew = !edit.id; const r = upsert('tasks', { ...edit, id: edit.id || nextId('tasks', 'TK-', 4), doneOn: edit.status === 'Done' ? edit.doneOn || t : '' }, { isNew }); if (r && isNew && r.owner !== user.name) pushNote(r.owner, { kind: 'task', title: 'New task from ' + user.name, body: r.title, link: '#/people/tasks', dueAt: new Date().toISOString() }); setEdit(null) }}>Save</Button></>}>
+      <Modal open={!!edit} onClose={closeT} title={edit?.id ? 'Task ' + edit.id : 'New task'} footer={<>{edit?.id && <Confirm label="Delete task?" onConfirm={() => { remove('tasks', edit.id); setOld(null) }}>Delete</Confirm>}<Button onClick={closeT}>{edit?.id ? 'Cancel' : 'Close (draft kept)'}</Button><Button variant="primary" onClick={() => { if (!edit.title) return; const isNew = !edit.id; const r = upsert('tasks', { ...edit, id: edit.id || nextId('tasks', 'TK-', 4), doneOn: edit.status === 'Done' ? edit.doneOn || t : '' }, { isNew }); if (r && isNew && r.owner !== user.name) pushNote(r.owner, { kind: 'task', title: 'New task from ' + user.name, body: r.title, link: '#/people/tasks', dueAt: new Date().toISOString() }); if (isNew) tslot.done(); else setOld(null) }}>Save</Button></>}>
+        {edit && !edit.id && <DraftNote at={tslot.restoredAt} onDiscard={() => tslot.discard()} />}
         {edit && <RecordForm cols={2} fields={F} value={edit} onChange={setEdit} />}
       </Modal>
     </Page>

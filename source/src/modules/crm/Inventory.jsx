@@ -8,6 +8,7 @@ import { sessionsFor, projectsFor } from '../../lib/designLink.js'
 import { Page, Card, Button, Badge, Grid, Stat, Seg, Modal, Field, Input, Select, KV, Confirm } from '../../components/ui.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import { inr, lakh, pct, d } from '../../lib/format.js'
+import { stageReady, stageTrigger } from '../../lib/schedule.js'
 
 const cls = (c) => !c ? '' : BOOKED.includes(c.status) ? 'sold' : c.status === 'Transferred' ? 'transfer' : ['Under cancellation', 'Cancelled'].includes(c.status) ? 'cancel' : c.status === 'To verify' ? 'verify' : ''
 
@@ -77,24 +78,46 @@ function Elevation() {
 
 // 2 Nov: construction stages. Finance and admin keep the status and dates; demand calls follow the completed stages.
 function Construction() {
-  const { db, user, upsert, notify } = useStore()
+  const { db, user, upsert, notify, upload, backend } = useStore()
+  const crm = useCrm()
   const edit = canWrite(user, 'clpStages')
   const rows = [...(db.clpStages || [])].sort((a, b) => Number(a.no) - Number(b.no))
+  const [cert, setCert] = useState(null)
   const set = (s, k, v) => { upsert('clpStages', { ...s, [k]: v, ...(k === 'status' && v === 'Completed' && !s.actual ? { actual: new Date().toISOString().slice(0, 10) } : {}) }); notify('Stage ' + s.no + ' updated') }
   const doneN = rows.filter((s) => s.status === 'Completed').length, pctDone = rows.filter((s) => s.status === 'Completed').reduce((a, s) => a + Number(s.pct || 0), 0)
+  // 7 Nov: who owes what when a stage is certified, so finance can raise the letters
+  const owing = (s) => crm.clients.filter((c) => (c.schedule || []).some((r) => r.clpStage === s.id && r.state === 'Letter not sent')).length
+  const missingCert = rows.filter((s) => s.status === 'Completed' && !stageReady(s))
   return <>
     <Grid cols={3}>
       <Stat label="Stages completed" value={`${doneN} / ${rows.length}`} tone="good" />
       <Stat label="In progress" value={rows.filter((s) => s.status === 'In progress').length} tone="info" />
       <Stat label="Payment share reached" value={pct(pctDone)} sub="of the construction-linked plan" tone="accent" />
     </Grid>
+    {missingCert.length > 0 && <div className="note warn small">{missingCert.length} completed stage{missingCert.length === 1 ? ' has' : 's have'} no completion certificate. A demand letter can go out for a stage only once the architect's or engineer's certificate is attached (or marked "on file" for stages billed before Accord).</div>}
     <Card title="Construction stages" pad={false} actions={!edit && <span className="locked">Updated by finance and admin</span>}>
-      <table className="table"><thead><tr><th>#</th><th>Stage</th><th className="right">Plan %</th><th>Status</th><th>Planned</th><th>Actual</th></tr></thead>
-        <tbody>{rows.map((s) => <tr key={s.id}><td className="mono">{s.no}</td><td>{s.stage}</td><td className="right">{(Number(s.pct || 0) * 100).toFixed(1)}%</td>
+      <div style={{ overflowX: 'auto' }}><table className="table"><thead><tr><th>#</th><th>Stage</th><th className="right">Plan %</th><th>Status</th><th>Planned</th><th>Actual</th><th>Certificate</th><th>Due on</th></tr></thead>
+        <tbody>{rows.map((s) => { const k = owing(s); return <tr key={s.id}><td className="mono">{s.no}</td><td>{s.stage}{s.status === 'Completed' && stageReady(s) && k > 0 && <div className="small" style={{ color: 'var(--warn)' }}>{k} client{k === 1 ? '' : 's'} to be sent a demand letter · <Link to="/crm/payments?tab=demand">raise</Link></div>}</td><td className="right">{(Number(s.pct || 0) * 100).toFixed(1)}%</td>
           <td>{edit ? <Select options={['Not started', 'In progress', 'Completed']} value={s.status || 'Not started'} onChange={(e) => set(s, 'status', e.target.value)} /> : <Badge tone={s.status === 'Completed' ? 'good' : s.status === 'In progress' ? 'info' : 'muted'}>{s.status || 'Not started'}</Badge>}</td>
           <td>{edit ? <Input type="date" value={s.planned || ''} onChange={(e) => set(s, 'planned', e.target.value)} /> : d(s.planned) || '–'}</td>
-          <td>{edit ? <Input type="date" value={s.actual || ''} onChange={(e) => set(s, 'actual', e.target.value)} /> : d(s.actual) || '–'}</td></tr>)}</tbody></table>
+          <td>{edit ? <Input type="date" value={s.actual || ''} onChange={(e) => set(s, 'actual', e.target.value)} /> : d(s.actual) || '–'}</td>
+          <td>{s.certNo ? <span className="small">{s.certUrl ? <a href={s.certUrl} target="_blank" rel="noreferrer">{s.certNo}</a> : s.certNo}<div className="muted">{d(s.certDate)}{s.certifiedBy ? ' · ' + s.certifiedBy : ''}</div></span> : s.certWaived === 'Yes' ? <span className="small muted">On file (before Accord)</span> : s.status === 'Completed' ? <Badge tone="warn">Missing</Badge> : <span className="muted">–</span>}
+            {edit && s.status === 'Completed' && <div><Button size="sm" variant="ghost" onClick={() => setCert({ ...s })}>{s.certNo ? 'Change' : 'Attach'}</Button></div>}</td>
+          <td>{edit ? <Select options={[{ value: '', label: 'From the name' }, { value: 'booking', label: 'Booking' }, { value: 'agreement', label: 'Registered agreement' }, { value: 'stage', label: 'Demand letter' }, { value: 'handover', label: 'Possession' }]} value={s.trigger || ''} onChange={(e) => set(s, 'trigger', e.target.value)} /> : <span className="small">{{ booking: 'Booking', agreement: 'Agreement', stage: 'Demand letter', handover: 'Possession' }[stageTrigger(s)]}</span>}</td></tr> })}</tbody></table></div>
     </Card>
+    {cert && <Modal open onClose={() => setCert(null)} title={'Completion certificate · stage ' + cert.no} footer={<><Button onClick={() => setCert(null)}>Cancel</Button>
+      <Button onClick={() => { upsert('clpStages', { ...rows.find((x) => x.id === cert.id), certWaived: 'Yes' }); notify('Marked as on file'); setCert(null) }}>Billed before Accord, certificate on file</Button>
+      <Button variant="primary" onClick={async () => { if (!cert.certNo || !cert.certDate) return notify('Enter the certificate number and date', 'bad'); let url = cert.certUrl || ''
+        if (cert.file && backend) url = await upload(cert.file, 'Project documents/Site progress', `stage-${cert.no}_completion-certificate_${cert.certDate}`, { kind: 'project', label: 'Stage ' + cert.no, category: 'Site progress', doc: 'completion certificate' }).catch(() => url)
+        const { file, ...rest } = cert; upsert('clpStages', { ...rest, certUrl: url }); notify('Certificate saved for stage ' + cert.no); setCert(null) }}>Save certificate</Button></>}>
+      <p className="small muted" style={{ marginTop: 0 }}>{cert.stage}. The demand letter quotes this certificate.</p>
+      <div className="form fc2">
+        <label className="field"><span className="field-label">Certificate number *</span><Input value={cert.certNo || ''} onChange={(e) => setCert({ ...cert, certNo: e.target.value })} /></label>
+        <label className="field"><span className="field-label">Certificate date *</span><Input type="date" value={cert.certDate || ''} onChange={(e) => setCert({ ...cert, certDate: e.target.value })} /></label>
+        <label className="field span-all"><span className="field-label">Certified by (architect or engineer)</span><Input value={cert.certifiedBy || ''} onChange={(e) => setCert({ ...cert, certifiedBy: e.target.value })} /></label>
+        <label className="field span-all"><span className="field-label">Certificate (PDF or photo){backend ? ' · saved to Google Drive' : ' · connect the backend to save files'}</span><input type="file" accept="image/*,application/pdf" disabled={!backend} onChange={(e) => setCert({ ...cert, file: e.target.files[0] })} /></label>
+      </div>
+    </Modal>}
   </>
 }
 

@@ -1,16 +1,18 @@
-import React, { useState } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
 import { sessionsFor, projectsFor } from '../../lib/designLink.js'
 import { experienceUrl } from '../../components/Tower.jsx'
 import { useCrm } from '../../lib/calc.js'
 import { canWrite, canOpen, canPage, seesAll, seesMoney, canAssignTasks, canRecordPayment } from '../../lib/perms.js'
 import { META, OPS } from '../../lib/seed.js'
-import { Page, Card, Button, Badge, Modal, Grid, Stat, KV, Bar, Chips, Locked } from '../../components/ui.jsx'
+import { Page, Card, Button, Badge, Modal, Grid, Stat, KV, Bar, Chips, Locked, DraftNote } from '../../components/ui.jsx'
+import { useDraftSlot } from '../../lib/drafts.js'
 import DataTable from '../../components/DataTable.jsx'
 import RecordForm from '../../components/RecordForm.jsx'
 import LogInteraction, { OutcomeBadge } from '../../components/LogInteraction.jsx'
 import PaymentForm from './PaymentForm.jsx'
+import { ScheduleCard } from './Schedule.jsx'
 import { useBookingChanges, CancellationCard } from './BookingChanges.jsx'
 import { d, inr, pct, lakh, waLink, TITLES, CITIES, fullName, salute, n, nextWhen } from '../../lib/format.js'
 
@@ -20,6 +22,7 @@ export const CLIENT_FIELDS = (team, { money = true, assign = true } = {}) => [
   { k: 'bookingId', l: 'Booking ID', auto: true }, { k: 'clientId', l: 'Client ID', auto: true }, { k: 'unit', l: 'Unit No.', t: 'number', ro: !assign },
   assign ? { k: 'status', l: 'Booking status', t: 'select', o: 'Booking status' } : { k: 'status', l: 'Booking status', auto: true },
   { k: 'category', l: 'Customer category', t: 'select', o: 'Customer category' }, { k: 'bookingDate', l: 'Booking date', t: 'date', ro: !assign },
+  { k: 'allotmentDate', l: 'Allotment letter date', t: 'date', hint: 'Sets the cancellation charge before the agreement (K-RERA model allotment letter)' },
   { section: 'Basic information', n: '1' },
   { k: 'title', l: 'Title', t: 'select', o: TITLES, hint: 'Opens every message: Dear Dr. …' }, { k: 'name', l: 'Primary applicant', req: true }, { k: 'coapp', l: 'Co-applicant(s)' },
   { k: 'buyerType', l: 'Buyer type', t: 'select', o: 'Buyer type' },
@@ -40,7 +43,9 @@ export const CLIENT_FIELDS = (team, { money = true, assign = true } = {}) => [
   assign ? { k: 'coOwners', l: 'Also responsible', t: 'chips', o: team, span: 'all', hint: 'They see this client in full and get its reminders' } : { k: 'coOwners', l: 'Also responsible', auto: true, fmt: (v) => (v || []).join(', ') },
   ...(money ? [{ section: 'Unit and deal', n: '₹', note: 'Visible to finance, senior sales and admins only' },
     { k: 'tc', l: 'Total consideration (₹)', t: 'number' }, { k: 'adjustment', l: 'Adjustment (₹)', t: 'number' }, { k: 'adjType', l: 'Adjustment type', t: 'select', o: 'Adjustment type' },
-    { k: 'plan', l: 'Payment plan', t: 'select', o: 'Payment plan' }, { k: 'agreement', l: 'Agreement for sale', t: 'select', o: 'Agreement status' }, { k: 'parkingEntitlement', l: 'Car parks entitled', t: 'number' }] : []),
+    { k: 'plan', l: 'Payment plan', t: 'select', o: 'Payment plan' }, { k: 'agreement', l: 'Agreement for sale', t: 'select', o: 'Agreement status' },
+    { k: 'agreementDate', l: 'Agreement registered on', t: 'date', hint: 'The agreement instalment and any catch-up stages fall due on this date' },
+    { k: 'possessionOfferDate', l: 'Possession offered on', t: 'date' }, { k: 'parkingEntitlement', l: 'Car parks entitled', t: 'number' }] : []),
   { section: 'Notes', n: '·' },
   { k: 'remarks', l: 'Internal notes', t: 'textarea', span: 'all' },
 ]
@@ -94,10 +99,11 @@ export function Client360() {
   const { db, user, upsert } = useStore()
   const crm = useCrm()
   const nav = useNavigate()
-  const c = crm.clients.find((x) => x.id === id || x.clientId === id)
-  const [edit, setEdit] = useState(null)
-  const [log, setLog] = useState(false)
-  const [pay, setPay] = useState(false)
+  const c = crm.clients.find((x) => x.id === id || x.clientId === id || x.bookingId === id)
+  const [qs] = useSearchParams()
+  const [edit, setEdit, editSlot] = useDraftSlot('client:edit:' + (c?.id || id), { uid: user?.id, label: 'Edit client · ' + (c?.name || id), route: '/crm/clients/' + id + '?draft=client:edit:' + (c?.id || id) })
+  const [log, setLog] = useState(() => String(qs.get('draft') || '').startsWith('log:') || !!qs.get('focus'))
+  const [pay, setPay] = useState(() => String(qs.get('draft') || '').startsWith('pay:new:'))
   if (!c) return <Page title="Client not found" back="/crm/clients" backLabel="Client 360" />
   // 4 Nov: say why the details are hidden and what to do about it
   if (c.directoryOnly) return <Page title={c.name} back="/crm/clients" backLabel="Client 360" subtitle={`Residence ${c.unit} · ${c.status}`}>
@@ -105,10 +111,15 @@ export function Client360() {
     {seesAll(user) ? <div className="note warn">An admin has given you access to every client, but the Google backend has not been updated yet, so it still sends only the name and residence. Ask an admin to paste the new backend/Code.gs into Apps Script and deploy a new version. Then reload Accord.</div>
       : <div className="note">To open this client, ask an admin to make you the <b>Relationship owner</b> or add you under <b>Also responsible</b>. Or ask them to tick <b>See and edit every client and lead</b> for you in Users and access.</div>}
   </Page>
-  return <Client360Body c={c} edit={edit} setEdit={setEdit} log={log} setLog={setLog} pay={pay} setPay={setPay} />
+  return <Client360Body c={c} edit={edit} setEdit={setEdit} editSlot={editSlot} log={log} setLog={setLog} pay={pay} setPay={setPay} />
 }
-function Client360Body({ c, edit, setEdit, log, setLog, pay, setPay }) {
+function Client360Body({ c, edit, setEdit, editSlot, log, setLog, pay, setPay }) {
   const { db, user, upsert } = useStore()
+  const [qs, setQs] = useSearchParams()
+  const focus = qs.get('focus')
+  const [payEdit, setPayEdit] = useState(() => { const dr = String(qs.get('draft') || ''); return dr.startsWith('pay:edit:') ? db.payments.find((p) => p.id === dr.slice(9)) || null : null })
+  useEffect(() => { const dr = qs.get('draft'); if (dr === 'client:edit:' + c.id) { const r0 = db.clients.find((x) => x.id === c.id); if (r0) editSlot.open({ ...r0 }) } if (dr) { const nq = new URLSearchParams(qs); nq.delete('draft'); setQs(nq, { replace: true }) } }, [c.id]) // eslint-disable-line
+  useEffect(() => { if (!focus) return; const t0 = setTimeout(() => { const el = document.getElementById('int-' + focus); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('focus-row') } }, 300); return () => clearTimeout(t0) }, [focus])
   const crm = useCrm()
   const nav = useNavigate()
   const changes = useBookingChanges(c)
@@ -132,7 +143,7 @@ function Client360Body({ c, edit, setEdit, log, setLog, pay, setPay }) {
         {money && <Link className="btn" to={'/crm/clients/' + c.id + '/statement'}>Payment summary</Link>}
         {canPage(user, 'brochure') && <Link className="btn" to={'/brochure?for=' + c.clientId + '&visit=return'}>e-Brochure</Link>}
         {changes.buttons}
-        {canWrite(user, 'clients') && <Button variant="primary" onClick={() => setEdit({ ...raw })}>Edit details</Button>}
+        {canWrite(user, 'clients') && <Button variant="primary" onClick={() => editSlot.open({ ...raw })}>Edit details</Button>}
       </>}>
       <CancellationCard c={c} />
       <div className="hero">
@@ -154,17 +165,18 @@ function Client360Body({ c, edit, setEdit, log, setLog, pay, setPay }) {
       <div className="split">
         <div>
           <Card title="Payments" pad={false} actions={<span className="small muted">{c.payments.length} entries{money && c.variance ? ` · differs from collections sheet by ${inr(c.variance)}` : ''}</span>}>
-            <table className="table dense"><thead><tr><th>Date</th><th>Receipt</th><th>Towards</th>{money && <><th>Mode</th><th className="right">Amount</th><th>Counted</th><th></th></>}</tr></thead>
+            <div style={{ overflowX: 'auto' }}><table className="table dense"><thead><tr><th>Date</th><th>Receipt</th><th>Towards</th>{money && <><th>Mode</th><th className="right">Amount</th><th>Counted</th><th></th></>}</tr></thead>
               <tbody>{c.payments.map((p) => <tr key={p.id} className={p.counted !== 'Yes' ? 'row-off' : ''}><td className="nowrap">{d(p.date)}</td><td>{p.receiptNo}</td><td>{p.towards}</td>
                 {money && <><td>{p.mode}</td><td className="right">{inr(p.amount)}</td><td><Badge tone={p.counted === 'Yes' ? 'good' : 'warn'}>{p.counted === 'Yes' ? 'Yes' : p.counted}</Badge></td>
-                <td><Link className="btn btn-sm btn-ghost" to={'/crm/payments/receipt/' + p.id}>Receipt</Link></td></>}</tr>)}</tbody>
-              {money && <tfoot><tr><td colSpan={4}>Counted total</td><td className="right">{inr(c.received)}</td><td colSpan={2}></td></tr></tfoot>}</table>
+                <td className="nowrap"><Link className="btn btn-sm btn-ghost" to={'/crm/payments/receipt/' + p.id}>Receipt</Link>{canRecordPayment(user) && <Button size="sm" variant="ghost" onClick={() => setPayEdit(db.payments.find((x) => x.id === p.id) || p)}>Edit</Button>}{Number(p.rev) > 0 && <Badge tone="warn">Edited</Badge>}</td></>}</tr>)}</tbody>
+              {money && <tfoot><tr><td colSpan={4}>Counted total</td><td className="right">{inr(c.received)}</td><td colSpan={2}></td></tr></tfoot>}</table></div>
             {!money && <div className="card-body"><Locked>Amounts and receipts are with finance</Locked></div>}
           </Card>
+          {money && <ScheduleCard c={c} money={money} />}
           <PaymentMonths c={c} money={money} crm={crm} />
           <Card title="Contact history" actions={<Button size="sm" onClick={() => setLog(true)}>+ Log</Button>}>
             <div className="row gap-s small muted" style={{ marginBottom: 10 }}>Last private viewing or site visit: <b>{c.contact.lastSite ? d(c.contact.lastSite) : 'none recorded'}</b> · {c.contact.count} interactions</div>
-            {!c.contact.list.length ? <p className="muted">No interactions logged.</p> : <div className="timeline">{c.contact.list.slice(0, 25).map((i) => <div key={i.id} className="tl-item">
+            {!c.contact.list.length ? <p className="muted">No interactions logged.</p> : <div className="timeline">{c.contact.list.slice(0, 25).map((i) => <div key={i.id} id={'int-' + i.id} className="tl-item">
               <div className="tl-meta">{d(i.date)} {i.time} · {i.mode} · {i.purpose} {i.by ? '· ' + i.by : ''} <OutcomeBadge v={i.outcome} /></div><p>{i.summary}</p>
               {i.nextDate && <div className="small muted">Next: {i.nextAction || 'follow up'} on {nextWhen(i)}{i.status === 'Open' ? '' : ' (closed)'}</div>}</div>)}</div>}
           </Card>
@@ -179,7 +191,7 @@ function Client360Body({ c, edit, setEdit, log, setLog, pay, setPay }) {
             <KV rows={[['Co-applicant', c.coapp || '–'], ['Buyer type', c.buyerType], ['Phone', c.phone], ['WhatsApp', c.whatsapp], ['Email', c.email], ['Address', c.address], ['City / country', [c.city, c.country].filter(Boolean).join(', ')], ['Residency', c.residency], ['PAN', c.pan], ['Preferred contact', c.contactPref]]} />
           </Card>
           <Card title="Purpose and funding">
-            <KV rows={[['Purpose', c.purpose], ['Occupant', c.occupant], ['Funding', c.funding], ['Loan', [c.loanBank, c.loanStatus].filter(Boolean).join(' · ')], money && ['Plan', c.plan], money && ['Agreement', <Badge tone={c.agreement === 'Registered' ? 'good' : c.reraFlag === 'Yes' ? 'bad' : 'warn'}>{c.agreement}</Badge>], ['Booking date', d(c.bookingDate)]]} />
+            <KV rows={[['Purpose', c.purpose], ['Occupant', c.occupant], ['Funding', c.funding], ['Loan', [c.loanBank, c.loanStatus].filter(Boolean).join(' · ')], money && ['Plan', c.plan], money && ['Agreement', <span><Badge tone={c.agreement === 'Registered' ? 'good' : c.reraFlag === 'Yes' ? 'bad' : 'warn'}>{c.agreement}</Badge>{c.agreementDate ? ' ' + d(c.agreementDate) : ''}</span>], ['Booking date', d(c.bookingDate)], c.allotmentDate && ['Allotment letter', d(c.allotmentDate)]]} />
           </Card>
           <Card title="Background">
             <KV rows={[['Occupation', c.occupation], ['Employer', c.employer], ['Income band', c.income], ['Family', c.familyProfile], ['Decision maker', c.decisionMaker], ['Source', c.source], ['Advisor', c.owner]]} />
@@ -194,10 +206,12 @@ function Client360Body({ c, edit, setEdit, log, setLog, pay, setPay }) {
           {c.remarks && <Card title="Remarks"><p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{c.remarks}</p>{c.history && <p className="small muted">{c.history}</p>}</Card>}
         </div>
       </div>
-      <Modal open={!!edit} onClose={() => setEdit(null)} title={'Edit ' + c.name} wide footer={<><Button onClick={() => setEdit(null)}>Cancel</Button><Button variant="primary" onClick={() => { upsert('clients', edit); setEdit(null) }}>Save</Button></>}>
+      <Modal open={!!edit} onClose={() => editSlot.close()} title={'Edit ' + c.name} wide footer={<><Button onClick={() => editSlot.close()}>Close (draft kept)</Button><Button variant="primary" onClick={() => { if (upsert('clients', edit)) editSlot.done() }}>Save</Button></>}>
+        <DraftNote at={editSlot.restoredAt} onDiscard={() => editSlot.discard()} />
         {edit && <RecordForm sheet fields={CLIENT_FIELDS(team, { money, assign: canAssignTasks(user) })} value={edit} onChange={setEdit} />}
       </Modal>
-      <LogInteraction open={log} onClose={() => setLog(false)} recordId={c.clientId} />
+      <LogInteraction open={log} onClose={() => { setLog(false); if (focus) { const nq = new URLSearchParams(qs); nq.delete('focus'); setQs(nq, { replace: true }) } }} recordId={c.clientId} />
+      {payEdit && <PaymentForm open edit={payEdit} onClose={() => setPayEdit(null)} unit={payEdit.unit} />}
       {changes.modals}
       <PaymentForm open={pay} onClose={(p) => { setPay(false); if (p?.id && !p.ledger) nav('/crm/payments/receipt/' + p.id) }} unit={c.unit} />
     </Page>

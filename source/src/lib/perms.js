@@ -78,6 +78,7 @@ const WRITE = {
   files: ['admin', 'senior', 'sales', 'finance', 'design', 'sourcing'],
   leadInbox: ['admin', 'senior', 'sales'],
   demandLetters: ['admin', 'finance'],
+  paymentEdits: ['admin', 'finance'],
   partners: ['admin', 'senior'],
 }
 // 4 Nov: access by page. Each role has its default pages (from the lists above); an admin can tick extra pages or
@@ -148,7 +149,7 @@ export const canAssignTasks = (u) => has(u, 'assign')
 export const canEditTemplates = (u) => has(u, 'templates')
 export const canRecordPayment = (u) => has(u, 'recordPayments')
 
-export const MONEY_FIELDS = ['tc', 'adjustment', 'adjType', 'adjReason', 'receivedPerCollections', 'outstandingPerCollections', 'loanAmount']
+export const MONEY_FIELDS = ['tc', 'adjustment', 'adjType', 'adjReason', 'receivedPerCollections', 'outstandingPerCollections', 'loanAmount', 'customPlan', 'cancelCalc', 'waivers', 'refunds']
 
 // Local mode: filter the full database the way the server's pull() does.
 // 5 Nov: what a consultant and a bank contact may never receive
@@ -175,6 +176,7 @@ export function scopeDb(db, u, derive) {
     ...db,
     clients: db.clients.map((c) => (isMine(c) ? { ...(seesMoney(u) ? c : strip(c, MONEY_FIELDS)), ...pay(c), mine: true } : { ...Object.fromEntries(DIR.filter((k) => c[k] !== undefined).map((k) => [k, c[k]])), directoryOnly: true })),
     payments: db.payments.filter((p) => mineUnits.has(String(p.unit))).map((p) => (seesMoney(u) ? p : { id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, towards: p.towards, counted: p.counted })),
+    paymentEdits: seesMoney(u) ? (db.paymentEdits || []).filter((x) => mineUnits.has(String(x.unit))) : [],
     demandLetters: (db.demandLetters || []).filter((x) => mineUnits.has(String(x.unit))).map((x) => (seesMoney(u) ? x : { id: x.id, unit: x.unit, callId: x.callId, date: x.date, dueDate: x.dueDate, status: x.status })),
     leads,
     interactions: db.interactions.filter((i) => i.by === me || (i.nextOwners || []).includes(me) || i.nextOwner === me),
@@ -203,7 +205,7 @@ export function redactForConsultant(db, u) {
     interactions: db.interactions.map((i) => ({ id: i.id, date: i.date, time: i.time, type: i.type, recordId: i.recordId, mode: i.mode, purpose: i.purpose, by: i.by, outcome: i.outcome, nextDate: i.nextDate, nextTime: i.nextTime, nextOwners: i.nextOwners, nextOwner: i.nextOwner, status: i.status, recordName: i.recordName })),
     payments: db.payments.map((p) => { const r = { ...p }; delete r.instrument; delete r.bank; delete r.proofUrl; delete r.thirdParty; return r }),
     documents: db.documents.map((d) => ({ id: d.id, bookingId: d.bookingId, items: d.items })),
-    viewings: (db.viewings || []).map(strip), costSheets: [], files: [], messages: [], leadInbox: [], clientForms: [], audit: [],
+    viewings: (db.viewings || []).map(strip), costSheets: [], files: [], messages: [], leadInbox: [], clientForms: [], audit: [], paymentEdits: [],
     timeEvents: (db.timeEvents || []).map((t) => { const r = { ...t }; delete r.lat; delete r.lng; delete r.device; return r }),
     notifications: (db.notifications || []).filter((n) => n.to === u.name), tasks: db.tasks.filter((t) => t.owner === u.name || t.by === u.name) }
 }
@@ -215,7 +217,7 @@ export function scopeForBank(db, u) {
     clients: loan.map((c) => Object.fromEntries(keep.filter((k) => c[k] !== undefined).map((k) => [k, c[k]]))),
     payments: db.payments.filter((p) => units.has(String(p.unit))).map((p) => ({ id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, amount: p.amount, tds: p.tds, towards: p.towards, mode: p.mode, counted: p.counted, demandLetter: p.demandLetter, ledgerOnly: p.ledgerOnly })),
     demandLetters: (db.demandLetters || []).filter((x) => units.has(String(x.unit))),
-    leads: [], interactions: [], documents: [], issues: [], costSheets: [], messages: [], files: [], leadInbox: [], clientForms: [], viewings: [], accordSessions: [], audit: [], attendance: [], timeEvents: [], partners: [],
+    leads: [], interactions: [], documents: [], issues: [], costSheets: [], messages: [], files: [], leadInbox: [], clientForms: [], viewings: [], accordSessions: [], audit: [], attendance: [], timeEvents: [], partners: [], paymentEdits: [],
     users: db.users.map((x) => ({ id: x.id, name: x.name, designation: x.designation, appRole: x.appRole, team: x.team, active: x.active })),
     notifications: (db.notifications || []).filter((n) => n.to === u.name), tasks: db.tasks.filter((t) => t.owner === u.name) }
 }

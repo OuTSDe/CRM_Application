@@ -114,3 +114,9 @@ export const Seg = ({ options, value, onChange }) => (
   <div className="seg">{options.map((o) => { const v = typeof o === 'object' ? o.value : o; const l = typeof o === 'object' ? o.label : o
     return <button type="button" key={v} className={cx(v === value && 'on')} onClick={() => onChange(v)}>{l}</button> })}</div>
 )
+
+// 7 Nov: shown at the top of a form that was reopened from a saved draft
+export const DraftNote = ({ at, onDiscard }) => !at ? null : (
+  <div className="draft-note" role="status"><span>Draft from {(() => { try { const t = new Date(at); return (new Date().toDateString() === t.toDateString() ? '' : t.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ', ') + t.toTimeString().slice(0, 5) } catch (e) { return '' } })()} restored. Closing keeps it.</span>
+    {onDiscard && <button type="button" onClick={onDiscard}>Discard draft</button>}</div>
+)

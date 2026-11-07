@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
 import { useCrm, costSheet, BOOKED } from '../../lib/calc.js'
 import { canWrite, isAdmin } from '../../lib/perms.js'
-import { Page, Card, Button, Badge, Field, Select, Input, Textarea, Seg, Modal } from '../../components/ui.jsx'
+import { Page, Card, Button, Badge, Field, Select, Input, Textarea, Seg, Modal, DraftNote } from '../../components/ui.jsx'
+import { useDraft } from '../../lib/drafts.js'
 import DocHeader from '../../components/DocHeader.jsx'
 import RecordPicker from '../../components/RecordPicker.jsx'
 import { d, inr, words, today, addDays, n, waLink } from '../../lib/format.js'
@@ -15,10 +16,12 @@ export default function CostSheet() {
   const nav = useNavigate()
   const [qs] = useSearchParams()
   const rc = settings.rateCard || {}
-  const [v, setV] = useState(() => ({ unit: qs.get('unit') || '', leadId: qs.get('lead') || '', funding: 'Self', discountPct: 0, finalRate: '', parking: 1, plc: 0, notes: '' }))
+  // 7 Nov: a cost sheet being built is kept as a draft (per residence, lead or saved sheet) until it is saved
+  const dkey = 'cost:' + (qs.get('id') || qs.get('unit') || qs.get('lead') || 'new')
+  const [v, setV, cdraft] = useDraft(dkey, { unit: qs.get('unit') || '', leadId: qs.get('lead') || '', funding: 'Self', discountPct: 0, finalRate: '', parking: 1, plc: 0, notes: '' }, { uid: user?.id, label: 'Cost sheet' + (qs.get('unit') ? ' · ' + qs.get('unit') : qs.get('lead') ? ' · ' + qs.get('lead') : ''), route: '/crm/cost-sheet' + (window.location.hash.split('?')[1] ? '?' + window.location.hash.split('?')[1] : '') })
   const [view, setView] = useState('build')
   const [convert, setConvert] = useState(null)
-  useEffect(() => { const id = qs.get('id'); const s = id && db.costSheets.find((x) => x.id === id); if (s) { setV({ ...s }); setView('print') } }, []) // eslint-disable-line
+  useEffect(() => { const id = qs.get('id'); const s = id && db.costSheets.find((x) => x.id === id); if (s) { if (cdraft.restoredAt) cdraft.setBase({ ...s }); else { cdraft.setBase({ ...s }); setV({ ...s }); setView('print') } } }, []) // eslint-disable-line
   const set = (k, x) => setV((s) => ({ ...s, [k]: x }))
   const unit = crm.units.find((u) => String(u.unit) === String(v.unit))
   // 2 Nov: no double booking. To verify and under cancellation also block the residence until resolved.
@@ -44,6 +47,7 @@ export default function CostSheet() {
     const rec = { ...v, id: v.id || nextId('costSheets', 'CS-', 4), date: v.date || today(), validTill: v.validTill || addDays(today(), n(rc.validityDays) || 15), rate, effDisc: Number(effDisc.toFixed(2)), total: Math.round(cs.total), av: Math.round(cs.av),
       name: lead?.name || v.name || '', owner: lead?.owner || user.name, preparedBy: v.preparedBy || user.name, status: needsApproval && !['Approved', 'Converted'].includes(status) ? 'Pending approval' : status === 'Draft' ? 'Ready' : status, ...patch }
     const r = upsert('costSheets', rec, { action: patch.status ? patch.status.toLowerCase() : 'saved' })
+    if (r) cdraft.clear()
     if (r) { setV(r); notify(r.status === 'Pending approval' ? `Saved. ${effDisc.toFixed(1)}% is above ${rc.approvalAbove}%, so it waits for admin approval.` : 'Cost sheet saved') }
     return r
   }
@@ -56,6 +60,7 @@ export default function CostSheet() {
       {view === 'list' && <Card pad={false}><table className="table"><thead><tr><th>ID</th><th>Date</th><th>Residence</th><th>For</th><th className="right">Rate</th><th className="right">Total</th><th>Status</th><th>By</th></tr></thead>
         <tbody>{db.costSheets.map((s) => <tr key={s.id} className="click" onClick={() => { setV({ ...s }); setView('print') }}><td>{s.id}</td><td>{d(s.date)}</td><td>{s.unit}</td><td>{s.name}</td><td className="right">{inr(s.rate)}</td><td className="right">{inr(s.total)}</td><td><Badge tone={s.status === 'Pending approval' ? 'warn' : s.status === 'Approved' || s.status === 'Converted' ? 'good' : 'info'}>{s.status}</Badge></td><td>{s.preparedBy}</td></tr>)}</tbody></table>
         {!db.costSheets.length && <div className="empty">No cost sheets saved yet.</div>}</Card>}
+      {view === 'build' && <DraftNote at={cdraft.restoredAt} onDiscard={() => cdraft.reset()} />}
       {view === 'build' && <div className="split-r split">
         <div>
           <Card title="1 · Residence and buyer">

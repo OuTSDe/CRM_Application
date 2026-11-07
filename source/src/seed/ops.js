@@ -69,7 +69,7 @@ export const EXTRA_USERS = [
 export const ROLE_OF = { Aryan: 'admin', Shruthadev: 'admin', Anuradha: 'sales', Medha: 'sales', Cyril: 'senior', Khushi: 'senior', Yakshith: 'sales', Kajal: 'design', 'Smitha (SBI)': 'bank' }
 // Chain of command for escalations: a follow-up left open goes to the person's manager, then theirs.
 export const REPORTS_TO = { Anuradha: 'Cyril', Medha: 'Cyril', Yakshith: 'Cyril', Khushi: 'Aryan', Cyril: 'Aryan', Kajal: 'Shruthadev' }
-export const DESIGNATION_OF = { Aryan: 'Director', Anuradha: 'Client Relations', Medha: 'Client Relations', Cyril: 'Senior Sales Manager', Khushi: 'Sales and CRM', Yakshith: 'Client Relations' }
+export const DESIGNATION_OF = { Aryan: 'Director', Anuradha: 'Client Relations', Medha: 'Client Relations', Cyril: 'Sales Lead', Khushi: 'Sales and CRM', Yakshith: 'Client Relations' }
 
 // ---------------- Vendors from the sourcing trip plan
 const V = (id, name, category, city, area, address, phone, brands, packages, extra = {}) => ({

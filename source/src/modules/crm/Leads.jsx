@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
 import { useCrm } from '../../lib/calc.js'
 import { canWrite, canAssignTasks, seesAll } from '../../lib/perms.js'
 import { OPS, DEFAULT_TEMPLATES } from '../../lib/seed.js'
-import { Page, Card, Button, Badge, Modal, Grid, Stat, KV, Chips, Seg } from '../../components/ui.jsx'
+import { Page, Card, Button, Badge, Modal, Grid, Stat, KV, Chips, Seg, DraftNote } from '../../components/ui.jsx'
+import { useDraftSlot } from '../../lib/drafts.js'
 import DocHeader from '../../components/DocHeader.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import RecordForm, { missingRequired, missingKeys } from '../../components/RecordForm.jsx'
@@ -83,7 +84,9 @@ export function Leads() {
   const { db, user, upsert, nextId, notify } = useStore()
   const crm = useCrm()
   const nav = useNavigate()
-  const [add, setAdd] = useState(null)
+  // 7 Nov: the new-lead form is kept as a draft until it is saved
+  const [add, setAdd, addSlot] = useDraftSlot('lead:new', { uid: user?.id, label: 'New lead', route: '/crm/leads?draft=lead:new' })
+  const openAdd = (x, fresh) => addSlot.open(x, fresh)
   const [errs, setErrs] = useState({})
   const [why, setWhy] = useState('')
   const [qs, setQs] = useSearchParams()
@@ -116,18 +119,19 @@ export function Leads() {
     const r = upsert('leads', { ...add, confirmDup: undefined, inboxId: undefined, id: nextId('leads', 'YSC-L-', 4) }, { action: 'created' })
     if (r) {
       if (add.inboxId) { const ib = (db.leadInbox || []).find((x) => x.id === add.inboxId); if (ib) upsert('leadInbox', { ...ib, status: 'Accepted', leadId: r.id, by: user.name, handledAt: new Date().toISOString() }, { system: true, silent: true }) }
-      setAdd(null); setErrs({}); setWhy(''); notify(`Lead ${r.id} saved`); nav('/crm/leads/' + r.id)
+      addSlot.done(); setErrs({}); setWhy(''); notify(`Lead ${r.id} saved`); nav('/crm/leads/' + r.id)
     }
     else setWhy('Not saved: your access does not allow adding leads.')
   }
-  const close = () => { setAdd(null); setErrs({}); setWhy('') }
+  const close = () => { addSlot.close(); setErrs({}); setWhy('') }
+  useEffect(() => { if (qs.get('draft') === 'lead:new' && !add) { openAdd({ date: t, stage: 'New', temperature: 'Warm', owner: user.name, interests: [] }); const n = new URLSearchParams(qs); n.delete('draft'); setQs(n, { replace: true }) } }, []) // eslint-disable-line
   return (
     <Page title="Leads and prospects" back="/" backLabel="Dashboard" subtitle={seesAll(user) ? 'Every enquiry, walk-in, cold call and referral, across the team.' : 'Leads assigned to you. Open one to log a call, plan a private viewing or convert it to a booking.'}
       actions={canWrite(user, 'leads') && <>
         <Button onClick={() => setView(view === 'inbox' ? 'open' : 'inbox')}>{view === 'inbox' ? 'Back to leads' : `Inbox${inbox.length ? ' (' + inbox.length + ')' : ''}`}</Button>
         <Button onClick={() => setPaste('')}>Paste an enquiry</Button>
         <Link className="btn" to="/crm/partners">Channel partners</Link>
-        <Button variant="primary" onClick={() => setAdd({ date: t, stage: 'New', temperature: 'Warm', owner: user.name, interests: [] })}>New lead</Button></>}>
+        <Button variant="primary" onClick={() => openAdd({ date: t, stage: 'New', temperature: 'Warm', owner: user.name, interests: [] })}>New lead</Button></>}>
       <Grid cols={5}>
         <Stat label="Open" value={crm.leads.filter(OPEN).length} tone="info" onClick={() => setView('open')} />
         <Stat label="Hot" value={crm.leads.filter((l) => l.temperature === 'Hot' && OPEN(l)).length} tone="bad" onClick={() => setView('hot')} />
@@ -135,7 +139,7 @@ export function Leads() {
         <Stat label="Viewings done" value={crm.leads.filter((l) => l.svDone === 'Yes').length} tone="teal" />
         <Stat label="Booked / lost" value={`${crm.leads.filter((l) => l.stage === 'Booked').length} / ${crm.leads.filter((l) => l.stage === 'Lost').length}`} />
       </Grid>
-      {view === 'inbox' ? <Inbox onAccept={(x) => setAdd({ date: t, stage: 'New', temperature: 'Warm', owner: user.name, interests: [], ...fromInbox(x) })} /> :
+      {view === 'inbox' ? <Inbox onAccept={(x) => openAdd({ date: t, stage: 'New', temperature: 'Warm', owner: user.name, interests: [], ...fromInbox(x) }, true)} /> :
       <DataTable rows={rows} initialSort={{ key: 'next', dir: 'asc' }} searchKeys={['name', 'id', 'phone', 'phone2', 'email', 'city', 'notes', 'referredBy']} onRowClick={(l) => nav('/crm/leads/' + l.id)}
         views={views} defaultView={view} key={view}
         filters={[{ key: 'stage', label: 'Stage' }, { key: 'source', label: 'Source' }, { key: 'temperature', label: 'Temperature' }, { key: 'owner', label: 'Advisor' }, { key: 'config', label: 'Config' }]}
@@ -148,11 +152,12 @@ export function Leads() {
           { key: 'owner', label: 'Advisor', render: (l) => <span>{l.owner || <span className="missing">Not assigned</span>}{l.coOwners?.length ? <span className="small muted"> + {l.coOwners.join(', ')}</span> : null}</span> },
           { key: 'gaps', label: 'Missing', sortValue: (l) => gapsOf(l).length, render: (l) => { const g = gapsOf(l); return g.length ? <span className="small missing" title={g.join(', ')}>{g.length} missing</span> : <span className="small muted">Complete</span> } },
         ]} />}
-      <Modal open={paste !== null} onClose={() => setPaste(null)} title="Paste an enquiry" footer={<><Button onClick={() => setPaste(null)}>Cancel</Button><Button variant="primary" onClick={() => { const x = parseEnquiry(paste || ''); if (!x.phone && !x.email && !x.name) return notify('Could not find a name, number or e-mail in that text', 'bad'); setPaste(null); setAdd({ date: t, stage: 'New', temperature: 'Warm', owner: user.name, interests: [], ...x }) }}>Read it into a new lead</Button></>}>
+      <Modal open={paste !== null} onClose={() => setPaste(null)} title="Paste an enquiry" footer={<><Button onClick={() => setPaste(null)}>Cancel</Button><Button variant="primary" onClick={() => { const x = parseEnquiry(paste || ''); if (!x.phone && !x.email && !x.name) return notify('Could not find a name, number or e-mail in that text', 'bad'); setPaste(null); openAdd({ date: t, stage: 'New', temperature: 'Warm', owner: user.name, interests: [], ...x }, true) }}>Read it into a new lead</Button></>}>
         <p className="small muted" style={{ marginTop: 0 }}>Paste a WhatsApp message, a 99acres or website e-mail, or any text with the enquiry. Accord picks out the name, mobile, e-mail, city and BHK; you check them before saving.</p>
         <textarea className="input" rows={8} style={{ width: '100%' }} value={paste || ''} onChange={(e) => setPaste(e.target.value)} placeholder="e.g. Name: Ravi Kumar, Mobile +91 98450 12345, ravi@example.com, looking for 3 BHK, from Bengaluru" />
       </Modal>
-      <Modal open={!!add} onClose={close} title="New lead" wide footer={<>{why && <div className="form-why" role="alert">{why}</div>}<Button onClick={close}>Cancel</Button><Button variant="primary" onClick={save}>Save lead</Button></>}>
+      <Modal open={!!add} onClose={close} title="New lead" wide footer={<>{why && <div className="form-why" role="alert">{why}</div>}<Button onClick={close}>Close (draft kept)</Button><Button variant="primary" onClick={save}>Save lead</Button></>}>
+        <DraftNote at={addSlot.restoredAt} onDiscard={() => addSlot.discard()} />
         {add && <RecordForm sheet fields={LEAD_FIELDS(team, assign, partnerOpts)} value={add} onChange={(v) => { setAdd(v); if (why && !v.confirmDup) setWhy('') }} errors={errs} />}
       </Modal>
     </Page>
@@ -166,8 +171,12 @@ export function LeadDetail() {
   const partnerOpts = partnerOptions(db)
   const nav = useNavigate()
   const l = crm.leads.find((x) => x.id === id)
-  const [edit, setEdit] = useState(null)
-  const [log, setLog] = useState(false)
+  const [qs, setQs] = useSearchParams()
+  const [edit, setEdit, editSlot] = useDraftSlot('lead:edit:' + id, { uid: user?.id, label: 'Edit lead · ' + (l?.name || id), route: '/crm/leads/' + id + '?draft=lead:edit:' + id })
+  const [log, setLog] = useState(() => String(qs.get('draft') || '').startsWith('log:') || !!qs.get('focus'))
+  const focus = qs.get('focus')
+  useEffect(() => { if (qs.get('draft') === 'lead:edit:' + id) { const r0 = db.leads.find((x) => x.id === id); if (r0) editSlot.open({ ...r0 }) } if (qs.get('draft')) { const n = new URLSearchParams(qs); n.delete('draft'); setQs(n, { replace: true }) } }, [id]) // eslint-disable-line
+  useEffect(() => { if (!focus) return; const t0 = setTimeout(() => { const el = document.getElementById('int-' + focus); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('focus-row') } }, 300); return () => clearTimeout(t0) }, [focus])
   const [sheet, setSheet] = useState(false)
   const [del, setDel] = useState(false)
   const team = db.users.filter((u) => u.appRole !== 'none').map((u) => u.name)
@@ -175,7 +184,7 @@ export function LeadDetail() {
   if (!l) return <Page title="Lead not found" back="/crm/leads" backLabel="Leads" />
   const can = canWrite(user, 'leads')
   const [lost, setLost] = useState(null)
-  const save = () => { if (edit.stage === 'Lost' && !edit.lostReason) return notify('Pick the reason it was lost (Outcome section)', 'bad'); upsert('leads', edit); setEdit(null) }
+  const save = () => { if (edit.stage === 'Lost' && !edit.lostReason) return notify('Pick the reason it was lost (Outcome section)', 'bad'); upsert('leads', edit); editSlot.done() }
   const setStage = (stage) => { if (stage === 'Lost') return setLost({ reason: '', note: '', send: true }); upsert('leads', { ...db.leads.find((x) => x.id === id), stage }, { action: 'stage ' + stage }); notify('Stage: ' + stage) }
   const raw = db.leads.find((x) => x.id === id)
   if (sheet) return <LeadSheet l={l} onBack={() => setSheet(false)} />
@@ -189,12 +198,12 @@ export function LeadDetail() {
         <Link className="btn" to={'/presales?new=' + l.id}>Plan private viewing</Link>
         <Link className="btn" to={'/brochure?for=' + l.id}>e-Brochure</Link>
         <Button onClick={() => setSheet(true)}>Lead sheet</Button>
-        {can && <Button onClick={() => setEdit({ ...raw })}>Edit</Button>}
+        {can && <Button onClick={() => editSlot.open({ ...raw })}>Edit</Button>}
         {can && l.stage !== 'Booked' && <Button variant="primary" onClick={() => nav('/crm/cost-sheet?lead=' + l.id)}>Convert to booking →</Button>}
         {user.appRole === 'admin' && <Button variant="danger" onClick={() => setDel(true)}>Delete lead</Button>}
       </>}>
       {lost && <LostModal l={l} v={lost} setV={setLost} />}
-      {gapsOf(l).length > 0 && <div className="note warn small" style={{ marginBottom: 12 }}>Missing: <b>{gapsOf(l).join(', ')}</b>. {can && <button type="button" className="linkish" onClick={() => setEdit({ ...raw })}>Fill them in</button>}</div>}
+      {gapsOf(l).length > 0 && <div className="note warn small" style={{ marginBottom: 12 }}>Missing: <b>{gapsOf(l).join(', ')}</b>. {can && <button type="button" className="linkish" onClick={() => editSlot.open({ ...raw })}>Fill them in</button>}</div>}
       {del && <DeleteLead l={l} views={views} onClose={() => setDel(false)} onDone={() => { setDel(false); nav('/crm/leads') }} />}
       <div className="row gap-s" style={{ marginBottom: 14 }}>
         <span className="small muted">Stage</span>
@@ -204,7 +213,7 @@ export function LeadDetail() {
         <div>
           <Card title="History" actions={<Button size="sm" onClick={() => setLog(true)}>+ Log</Button>}>
             {!l.contact.list.length ? <p className="muted">No interactions yet. Log the first call.</p> : <div className="timeline">
-              {l.contact.list.map((i) => <div key={i.id} className="tl-item"><div className="tl-meta">{d(i.date)} {i.time} · {i.mode} · {i.purpose} {i.by ? '· ' + i.by : ''} <OutcomeBadge v={i.outcome} /></div>
+              {l.contact.list.map((i) => <div key={i.id} id={'int-' + i.id} className="tl-item"><div className="tl-meta">{d(i.date)} {i.time} · {i.mode} · {i.purpose} {i.by ? '· ' + i.by : ''} <OutcomeBadge v={i.outcome} /></div>
                 <p>{i.summary}</p>{i.nextDate && <div className="small muted">Next: {i.nextAction || 'follow up'} on {nextWhen(i)} {i.status === 'Open' ? '' : '(closed)'}</div>}</div>)}
             </div>}
           </Card>
@@ -225,10 +234,11 @@ export function LeadDetail() {
           {l.notes && <Card title="Notes"><p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{l.notes}</p></Card>}
         </div>
       </div>
-      <Modal open={!!edit} onClose={() => setEdit(null)} title={'Edit ' + l.name} wide footer={<><Button onClick={() => setEdit(null)}>Cancel</Button><Button variant="primary" onClick={save}>Save</Button></>}>
+      <Modal open={!!edit} onClose={() => editSlot.close()} title={'Edit ' + l.name} wide footer={<><Button onClick={() => editSlot.close()}>Close (draft kept)</Button><Button variant="primary" onClick={save}>Save</Button></>}>
+        <DraftNote at={editSlot.restoredAt} onDiscard={() => editSlot.discard()} />
         {edit && <RecordForm sheet fields={LEAD_FIELDS(team, canAssignTasks(user), partnerOpts)} value={edit} onChange={setEdit} />}
       </Modal>
-      <LogInteraction open={log} onClose={() => setLog(false)} recordId={l.id} />
+      <LogInteraction open={log} onClose={() => { setLog(false); if (focus) { const n = new URLSearchParams(qs); n.delete('focus'); setQs(n, { replace: true }) } }} recordId={l.id} />
     </Page>
   )
 }

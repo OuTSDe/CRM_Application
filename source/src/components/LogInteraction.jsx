@@ -1,7 +1,9 @@
+import { targetFor } from '../lib/links.js'
 import React, { useEffect, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { META } from '../lib/seed.js'
-import { Modal, Button, Field, Select, Textarea, Input, Badge } from './ui.jsx'
+import { Modal, Button, Field, Select, Textarea, Input, Badge, DraftNote } from './ui.jsx'
+import { useDraftSlot } from '../lib/drafts.js'
 import RecordPicker from './RecordPicker.jsx'
 import { today, nowTime, addDays, d, dueAtOf, hm12 } from '../lib/format.js'
 
@@ -11,15 +13,22 @@ export const recordType = (id = '') => (id.startsWith('YSC-C') ? 'Client' : id.s
 export default function LogInteraction({ open, onClose, recordId: rid0, preset = {} }) {
   const { db, raw, user } = useStore()
   const blank = () => ({ recordId: rid0 || '', mode: 'Call - outgoing', purpose: 'Follow-up', outcome: '', summary: '', nextAction: '', nextDate: addDays(today(), 2), nextTime: '10:00', nextOwners: [user?.name], ...preset })
-  const [v, setV] = useState(blank)
-  useEffect(() => { if (open) setV(blank()) }, [open, rid0]) // eslint-disable-line
+  // 7 Nov: what is typed is kept as a draft per record, so closing or going back does not lose it
+  const here = (window.location.hash || '').slice(1).split('?')[0] || '/'
+  const dkey = 'log:' + (rid0 || 'new')
+  const [sv, setSv, slot] = useDraftSlot(dkey, { uid: user?.id, label: 'Interaction' + (rid0 ? ' · ' + rid0 : ''), route: here + '?draft=' + dkey })
+  useEffect(() => { if (open) slot.open(blank()); else if (sv) slot.close() }, [open, rid0]) // eslint-disable-line
+  const v = sv || blank()
+  const setV = (f) => setSv((s) => (typeof f === 'function' ? f(s || blank()) : f))
   const set = (k, x) => setV((s) => ({ ...s, [k]: x }))
+  const close = () => { slot.close(); onClose() }
   const rec = db.clients.find((c) => c.clientId === v.recordId) || db.leads.find((l) => l.id === v.recordId)
   const team = raw.users.filter((u) => u.appRole !== 'none' && u.active !== 'No' && u.team !== 'External' && ['admin', 'senior', 'sales', 'finance'].includes(u.appRole)).map((u) => u.name)
   const saveOne = useLogSaver()
-  const save = () => { if (saveOne(v)) onClose() }
+  const save = () => { if (saveOne(v)) { slot.done(); onClose() } }
   return (
-    <Modal open={open} onClose={onClose} title="Log interaction" wide footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={save}>Save</Button></>}>
+    <Modal open={open} onClose={close} title="Log interaction" wide footer={<><Button onClick={close}>Close (draft kept)</Button><Button variant="primary" onClick={save}>Save</Button></>}>
+      <DraftNote at={slot.restoredAt} onDiscard={() => { slot.discard() }} />
       <div className="form fc3">
         <Field label="With (name, ID, flat no. or phone)" span={2}><RecordPicker value={v.recordId} onChange={(id) => set('recordId', id)} /></Field>
         <Field label="Logged"><Input value={`${d(today())}, ${nowTime()} · ${user?.name}`} disabled /></Field>
@@ -62,7 +71,7 @@ export function useLogSaver() {
     const owners = v.nextOwners?.length ? v.nextOwners : [user.name]
     const id = nextId('interactions', 'I-', 4)
     upsert('interactions', { id, date: today(), time: nowTime(), by: user.name, type: recordType(v.recordId), ...v, nextOwners: owners, nextOwner: owners[0], recordName: rec?.name || '', nextTime: v.nextDate ? (v.nextTime || '10:00') : '', status: v.nextDate ? 'Open' : 'Done' }, { action: 'logged', silent: quiet })
-    if (v.nextDate) owners.forEach((o) => pushNote(o, { kind: 'followup', title: 'Follow up: ' + (rec?.name || v.recordId), body: (v.nextAction || 'Follow up') + (o === user.name ? '' : ' · set by ' + user.name), link: 'i:' + id, dueAt: dueAtOf(v.nextDate, v.nextTime) }))
+    if (v.nextDate) owners.forEach((o) => pushNote(o, { kind: 'followup', title: 'Follow up: ' + (rec?.name || v.recordId), body: (v.nextAction || 'Follow up') + (o === user.name ? '' : ' · set by ' + user.name), link: 'i:' + id, target: targetFor(db, v.recordId, id), dueAt: dueAtOf(v.nextDate, v.nextTime) }))
     if (recordType(v.recordId) === 'Lead' && rec) {
       const patch = {}
       if (v.mode === 'Site visit') { patch.svDone = 'Yes'; patch.svDate = today(); if (['New', 'Contacted', 'Qualified', 'Site visit scheduled'].includes(rec.stage)) patch.stage = 'Site visit done' }

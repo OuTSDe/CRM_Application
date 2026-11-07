@@ -14,7 +14,7 @@ import CrmDashboard from './modules/crm/Dashboard.jsx'
 import { Leads, LeadDetail } from './modules/crm/Leads.jsx'
 import { Clients, Client360 } from './modules/crm/Clients.jsx'
 import Interactions from './modules/crm/Interactions.jsx'
-import { Payments, Receipt, BulkReceipts, DemandLetter } from './modules/crm/Payments.jsx'
+import { Payments, Receipt, BulkReceipts, DemandLetter, CombinedLetters, BulkLetters } from './modules/crm/Payments.jsx'
 import Analytics from './modules/crm/Analytics.jsx'
 import Help from './pages/Help.jsx'
 import Reports from './modules/reports/Reports.jsx'
@@ -70,6 +70,8 @@ function Main() {
         <Route path="crm/interactions" element={G('interactions', <Interactions />)} />
         <Route path="crm/payments" element={G('payments', <Payments />)} />
         <Route path="crm/payments/demand/:id" element={G('payments', <DemandLetter />)} />
+        <Route path="crm/payments/demand-combined" element={G('payments', <CombinedLetters />)} />
+        <Route path="crm/payments/demand-letters/print" element={G('payments', <BulkLetters />)} />
         <Route path="crm/payments/receipts" element={G('payments', <BulkReceipts />)} />
         <Route path="crm/analytics" element={G('analytics', <Analytics />)} />
         <Route path="help" element={G('help', <Help />)} />
