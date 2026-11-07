@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
 import { useCrm, costSheet, BOOKED } from '../../lib/calc.js'
 import { canWrite, isAdmin } from '../../lib/perms.js'
 import { Page, Card, Button, Badge, Field, Select, Input, Textarea, Seg, Modal, DraftNote } from '../../components/ui.jsx'
 import { useDraft } from '../../lib/drafts.js'
+import { useFitPages } from '../../lib/fitPages.js'
 import DocHeader from '../../components/DocHeader.jsx'
 import RecordPicker from '../../components/RecordPicker.jsx'
 import { d, inr, words, today, addDays, n, waLink, fullName } from '../../lib/format.js'
@@ -21,9 +22,11 @@ export default function CostSheet() {
   const [qs] = useSearchParams()
   const rc = settings.rateCard || {}
   // 7 Nov: a cost sheet being built is kept as a draft (per residence, lead or saved sheet) until it is saved
+  const docRef = useRef(null)
   const dkey = 'cost:' + (qs.get('id') || qs.get('unit') || qs.get('lead') || 'new')
   const [v, setV, cdraft] = useDraft(dkey, { unit: qs.get('unit') || '', leadId: qs.get('lead') || '', funding: 'Self', discountPct: 0, finalRate: '', parking: 1, plc: 0, notes: '' }, { uid: user?.id, label: 'Cost sheet' + (qs.get('unit') ? ' · ' + qs.get('unit') : qs.get('lead') ? ' · ' + qs.get('lead') : ''), route: '/crm/cost-sheet' + (window.location.hash.split('?')[1] ? '?' + window.location.hash.split('?')[1] : '') })
   const [view, setView] = useState('build')
+  useFitPages(docRef, [view])
   const [convert, setConvert] = useState(null)
   useEffect(() => { const id = qs.get('id'); const s = id && db.costSheets.find((x) => x.id === id); if (s) { if (cdraft.restoredAt) cdraft.setBase({ ...s }); else { cdraft.setBase({ ...s }); setV({ ...s }); setView('print') } } }, []) // eslint-disable-line
   const set = (k, x) => setV((s) => ({ ...s, [k]: x }))
@@ -122,7 +125,7 @@ export default function CostSheet() {
         <div>{cs ? <SheetView cs={cs} v={{ ...v, rate, name: lead ? fullName(lead) : v.name }} unit={unit} settings={settings} park={park} stages={db.clpStages} rep={rep0} parking={db.parking} /> : <Card><div className="empty">Pick a residence to see the cost sheet.</div></Card>}</div>
       </div>}
       {view === 'print' && cs && <div><div className="doc-tools no-print"><Button onClick={() => setView('build')}>← Edit</Button><Button variant="primary" onClick={() => window.print()}>Print or save as PDF</Button></div>
-        <div className="doc"><SheetView cs={cs} v={{ ...v, rate, name: lead ? fullName(lead) : v.name }} unit={unit} settings={settings} park={park} stages={db.clpStages} rep={rep0} parking={db.parking} doc /></div></div>}
+        <div className="doc cs-doc" ref={docRef}><SheetView cs={cs} v={{ ...v, rate, name: lead ? fullName(lead) : v.name }} unit={unit} settings={settings} park={park} stages={db.clpStages} rep={rep0} parking={db.parking} doc /></div></div>}
       <Modal open={!!convert} onClose={() => setConvert(null)} title={`Convert to booking · residence ${unit?.unit}`} footer={<><Button onClick={() => setConvert(null)}>Cancel</Button><Button variant="primary" onClick={() => {
         if (!convert.name) return notify('Name is required', 'bad')
         if (taken(unit.unit)) return notify(`Residence ${unit.unit} was just booked by ${crm.byUnit[unit.unit].name}. Pick another residence.`, 'bad')
@@ -171,8 +174,8 @@ export function ParkInset({ slots, parking, doc }) {
   </div>
 }
 
-// The client pack (8 Nov, from Yamuna_Sky_City_Cost_Sheet_Master_Template_YHD.xlsx). Only these three go to the client:
-// 1 financial summary, 2 payment plan and payment schedule, 3 the residence (elevation, floor plan, car parking).
+// The client pack (8 Nov, from Yamuna_Sky_City_Cost_Sheet_Master_Template_YHD.xlsx). Four pages go to the client:
+// 1 financial summary, 2 payment plan at booking, 3 master payment schedule, 4 floor, unit and parking selection.
 // Founding privilege, approval and internal notes stay on the Build screen.
 function SheetView({ cs, v, unit, settings, doc, park, stages, rep, parking }) {
   const co = settings.company || {}
@@ -180,7 +183,10 @@ function SheetView({ cs, v, unit, settings, doc, park, stages, rep, parking }) {
   const gst = (n(rc.gst) * 100).toFixed(0)
   const sub = v.id ? `${v.id} · ${d(v.date || today())}` : 'Draft'
   const slots = park?.slots || []
-  const clp = (stages || []).filter((s) => n(s.pct) > 0)
+  // 8 Nov: the master CLP schedule from Admin → Settings (a general reference); the construction stages until it is set
+  const master = (settings.clpMaster || []).filter((s) => n(s.pct) > 0)
+  const clp = master.length ? master : [...(stages || [])].filter((s) => n(s.pct) > 0).sort((a, b) => n(a.no) - n(b.no))
+  const hasTiming = master.some((s) => s.timing)
   const clpSum = clp.reduce((a, s) => a + n(s.pct), 0)
   let clpRun = 0
   const clpRows = clp.map((s, i) => { const amt = i === clp.length - 1 ? Math.round(cs.total) - clpRun : Math.round(cs.total * n(s.pct)); clpRun += amt; return { ...s, amt } })
@@ -214,32 +220,38 @@ function SheetView({ cs, v, unit, settings, doc, park, stages, rep, parking }) {
     <div className="sec">Payment details</div>
     <table><tbody><tr><th style={{ width: '22%' }}>Developer entity</th><td>{co.name}</td><th style={{ width: '14%' }}>Bank</th><td>{co.bank}</td></tr>
       <tr><th>Account number</th><td>{co.account}</td><th>IFSC</th><td>{co.ifsc}{co.branch ? ' · ' + co.branch : ''}</td></tr></tbody></table>
-    {doc && <div className="sign"><div>For {co.name || 'Yamuna Homes and Design Pvt. Ltd.'}</div><div style={{ textAlign: 'right' }}>Client signature</div></div>}
+    {doc && <div className="sign"><div>For {co.name || 'Yamuna Homes and Design Pvt. Ltd.'}<br /><span className="sign-sub">Authorised signatory · date</span></div><div style={{ textAlign: 'right' }}>Client signature<br /><span className="sign-sub">Name · date</span></div></div>}
   </div>
+  // 8 Nov: four pages: 1 financial summary, 2 this client's payment plan, 3 the master payment schedule (reference),
+  // 4 floor, unit and parking selection
   const page2 = <div className="cs-page">
-    <DocHeader title="PAYMENT PLAN AND SCHEDULE" sub={sub} />
+    <DocHeader title="PAYMENT PLAN" sub={sub} />
     <p className="small" style={{ margin: '0 0 6px' }}>Residence {unit.unit} · {unit.type} · {ordinal(unit.floor)} floor · grand total {inr(cs.total)} · {v.funding}</p>
-    <div className="sec">Payment plan · milestone slab</div>
+    <div className="sec">Your payment plan at booking · {v.funding}</div>
     <table><thead><tr><th>Stage</th><th className="right">% of total</th><th className="right">Amount payable (₹)</th></tr></thead>
       <tbody>{planRows.map((p) => <tr key={p.stage}><td>{p.stage}</td><td className="right">{(n(p.pct) * 100).toFixed(0)}%</td><td className="right">{inr(p.amt)}</td></tr>)}
         <tr className="total"><td>Grand total</td><td className="right">{(cs.plan.reduce((a, p) => a + n(p.pct), 0) * 100).toFixed(0)}%</td><td className="right">{inr(planRun)}</td></tr></tbody></table>
-    {clpRows.length > 0 && <>
-      <div className="sec">Payment schedule · construction-linked, slab by slab</div>
-      <table><thead><tr><th>#</th><th>Completion stage</th><th className="right">% of completion</th><th className="right">Amount payable (₹)</th></tr></thead>
-        <tbody>{clpRows.map((s, i) => <tr key={s.id || i}><td>{i + 1}</td><td>{s.stage}</td><td className="right">{(n(s.pct) * 100).toFixed(0)}%</td><td className="right">{inr(s.amt)}</td></tr>)}
-          <tr className="total"><td /><td>Total</td><td className="right">{(clpSum * 100).toFixed(0)}%</td><td className="right">{inr(clpRun)}</td></tr></tbody></table></>}
-    <p className="small" style={{ color: '#666' }}>Construction milestone dates are indicative and subject to change. Each instalment is payable within 15 days of the demand letter for that stage. Rounding is carried in the last line.</p>
+    <p className="small" style={{ color: '#666' }}>This is the plan for this residence and funding mode as at the date of this cost sheet. Stage payments fall due on completion of the stage, payable within 15 days of the demand letter. Rounding is carried in the last line.</p>
+    {doc && <div className="sign"><div>For {co.name || 'Yamuna Homes and Design Pvt. Ltd.'}<br /><span className="sign-sub">Authorised signatory · date</span></div><div style={{ textAlign: 'right' }}>Client signature<br /><span className="sign-sub">Name · date</span></div></div>}
+  </div>
+  const page2b = clpRows.length > 0 && <div className="cs-page">
+    <DocHeader title="MASTER PAYMENT SCHEDULE" sub={sub} />
+    <p className="small" style={{ margin: '0 0 6px' }}>Construction-linked payment schedule (CLP) for Yamuna Sky City, worked out on the grand total of residence {unit.unit} ({inr(cs.total)}). For reference.</p>
+    <table className="cs-clp"><thead><tr><th>#</th><th>Completion stage</th>{hasTiming && <th>Indicative timing</th>}<th className="right">%</th><th className="right">Amount payable (₹)</th></tr></thead>
+      <tbody>{clpRows.map((s, i) => <tr key={s.id || i}><td>{i + 1}</td><td>{s.stage}</td>{hasTiming && <td>{s.timing || ''}</td>}<td className="right">{(n(s.pct) * 100).toFixed(1).replace(/\.0$/, '')}%</td><td className="right">{inr(s.amt)}</td></tr>)}
+        <tr className="total"><td /><td>Total</td>{hasTiming && <td />}<td className="right">{(clpSum * 100).toFixed(0)}%</td><td className="right">{inr(clpRun)}</td></tr></tbody></table>
+    <p className="small" style={{ color: '#666' }}>A general reference: stages and timings are indicative and subject to change. Each instalment is payable within 15 days of the demand letter for that stage. Rounding is carried in the last line.</p>
   </div>
   const page3 = <div className="cs-page">
-    <DocHeader title="YOUR RESIDENCE" sub={`${unit.unit} · ${unit.type} · ${ordinal(unit.floor)} floor`} />
+    <DocHeader title="FLOOR, UNIT AND PARKING" sub={`${unit.unit} · ${unit.type} · ${ordinal(unit.floor)} floor`} />
     <div className="cs-res">
       <div><div className="sec" style={{ marginTop: 0 }}>Elevation</div><ElevationDiagram unit={unit} /></div>
       <div><div className="sec" style={{ marginTop: 0 }}>Floor plan</div><UnitPlan unit={unit} /></div>
     </div>
     {slots.length > 0 && <><div className="sec">Car parking{park?.note !== 'Already allotted' ? ' · indicative, confirmed on allotment' : ''}</div><ParkInset slots={slots} parking={parking} doc={doc} /></>}
   </div>
-  const body = <>{page1}{page2}{page3}</>
-  return doc ? body : <Card title={`Total ${inr(cs.total)}`} actions={<span className="small muted">Client pack: financial summary, payment plan and schedule, residence</span>}><div className="doc" style={{ width: '100%', minHeight: 0, boxShadow: 'none', padding: 0 }}>{body}</div></Card>
+  const body = <>{page1}{page2}{page2b}{page3}</>
+  return doc ? body : <Card title={`Total ${inr(cs.total)}`} actions={<span className="small muted">Client pack: financial summary, payment plan, master payment schedule, floor, unit and parking</span>}><div className="doc" style={{ width: '100%', minHeight: 0, boxShadow: 'none', padding: 0 }}>{body}</div></Card>
 }
 
 // 2 Nov: send the cost sheet in one go. E-mail goes out with the Yamuna Sky City header; WhatsApp opens with the summary.

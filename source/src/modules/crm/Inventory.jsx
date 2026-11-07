@@ -10,7 +10,7 @@ import DataTable from '../../components/DataTable.jsx'
 import { inr, lakh, pct, d } from '../../lib/format.js'
 import { stageReady, stageTrigger } from '../../lib/schedule.js'
 import Parking from './Parking.jsx'
-import { WMElevation, WM_FLOORS, WM_BANDS, bandName, floorLabel, sideX } from '../../components/WhiteModel.jsx'
+import { WM_FLOORS, WM_BANDS, bandName, floorLabel, sideX } from '../../components/WhiteModel.jsx'
 import { WM } from '../../lib/whiteModel.js'
 
 const cls = (c) => !c ? '' : BOOKED.includes(c.status) ? 'sold' : c.status === 'Transferred' ? 'transfer' : ['Under cancellation', 'Cancelled'].includes(c.status) ? 'cancel' : c.status === 'To verify' ? 'verify' : ''
@@ -28,49 +28,17 @@ export default function Inventory() {
 
 // 1 Nov: Aryan finds the 3D tower hard to move around, so the grid (the CRM master layout) opens first; the choice is remembered.
 function Building() {
-  const [view, setV] = useState(() => { try { return localStorage.getItem('accord.buildingView') || 'grid' } catch (e) { return 'grid' } })
+  const [view, setV] = useState(() => { try { const v = localStorage.getItem('accord.buildingView'); return v === 'tower' ? 'tower' : 'grid' } catch (e) { return 'grid' } })
   const setView = (v) => { setV(v); try { localStorage.setItem('accord.buildingView', v) } catch (e) { /* */ } }
   return (
     <>
       <div className="row between" style={{ marginBottom: 12 }}>
-        <span className="small muted">{view === 'tower' ? 'The tower and plates from the Accord experience, coloured live from the Client Master.' : view === 'elevation' ? 'The exterior white model, coloured live from the Client Master.' : 'Every residence, floor by floor, laid out like the elevation.'}</span>
-        <Seg options={[{ value: 'grid', label: 'Grid' }, { value: 'elevation', label: 'Elevation' }, { value: 'tower', label: 'Tower and plans' }]} value={view} onChange={setView} />
+        <span className="small muted">{view === 'tower' ? 'The tower and plates from the Accord experience, coloured live from the Client Master.' : 'Every residence, floor by floor, laid out like the white-model elevation.'}</span>
+        <Seg options={[{ value: 'grid', label: 'Grid' }, { value: 'tower', label: 'Tower and plans' }]} value={view} onChange={setView} />
       </div>
-      {view === 'tower' ? <TowerView /> : view === 'elevation' ? <Elevation /> : <GridView />}
+      {view === 'tower' ? <TowerView /> : <GridView />}
     </>
   )
-}
-
-// 8 Nov: the elevation is now the exterior white model (YSC_WhiteModel_Exterior.3dm): each floor at its real width and
-// level, its residences coloured from the Client Master. Click a floor to see its residences.
-const wmStatus = (crm) => (no) => { const c = crm.byUnit[no]; return cls(c) }
-const useBuiltTo = (db) => useMemo(() => { const done = (db.clpStages || []).filter((s) => s.status === 'Completed').map((s) => (String(s.stage).match(/(\d+)(?:st|nd|rd|th)\s+floor/i) || [])[1]).filter(Boolean).map(Number); return done.length ? Math.max(...done) : null }, [db.clpStages])
-function Elevation() {
-  const crm = useCrm()
-  const { db } = useStore()
-  const [sel, setSel] = useState(null)
-  const [hov, setHov] = useState(null)
-  const [side, setSide] = useState('S')
-  const builtTo = useBuiltTo(db)
-  const byFloor = useMemo(() => { const m = {}; crm.units.forEach((u) => (m[u.floor] = m[u.floor] || []).push(u)); Object.values(m).forEach((l) => l.sort((a, b) => String(a.pos).localeCompare(String(b.pos), undefined, { numeric: true }))); return m }, [crm.units])
-  const unitsOf = (f) => (byFloor[f === 44 ? 43 : f] || []).map((u) => u.unit)
-  const f = sel != null ? WM_FLOORS.find((x) => x.floor === sel) : null
-  const list = sel != null ? byFloor[sel === 44 ? 43 : sel] || [] : []
-  return <div className="split">
-    <Card title="Elevation · white model" actions={<Seg options={[{ value: 'S', label: 'South · podium side' }, { value: 'N', label: 'North' }]} value={side} onChange={setSide} />}>
-      <WMElevation className="elev-wm" side={side} statusOf={wmStatus(crm)} unitsOf={unitsOf} selected={sel} hovered={hov} onSelect={setSel} onHover={setHov} builtTo={builtTo} />
-      <div className="legend" style={{ marginTop: 8 }}><span><i style={{ background: 'var(--accent)' }} />Booked</span><span><i style={{ background: '#7e57c2' }} />Transferred</span><span><i style={{ background: '#f6b26b' }} />Cancellation</span><span><i style={{ background: '#9fc5e8' }} />To verify</span><span><i style={{ background: 'var(--bg)', border: '1px solid var(--line-3)' }} />Available</span>{builtTo ? <span className="muted">Structure done to floor {builtTo}; floors above are lighter</span> : null}</div>
-      <p className="small muted" style={{ margin: '6px 0 0' }}>From the exterior white model: floor widths and levels are to scale (1 px = 250 mm), the residences on a floor are shown as equal parts of it. Floors 5 to 60 assume a 3.075 m floor-to-floor until Architechnics confirms.</p>
-    </Card>
-    <Card title={f ? `${f.floor === 0 ? 'Ground' : ordinal(f.floor)} floor · ${bandName(f.band)}` : 'Pick a floor'}>
-      {!f ? <p className="muted" style={{ margin: 0 }}>Click a floor on the elevation to see its residences.</p> : <>
-        <p className="small muted" style={{ marginTop: 0 }}>FFL +{f.ffl.toFixed(3)} m{f.floor === 44 ? ' · upper level of the 43rd-floor duplexes' : ''}</p>
-        {!list.length ? <p className="muted" style={{ margin: 0 }}>No residences on this floor.</p> :
-        <table className="table dense"><thead><tr><th>Residence</th><th>Type</th><th className="right">Area</th><th>Status</th></tr></thead>
-          <tbody>{list.map((u) => { const c = crm.byUnit[u.unit]; return <tr key={u.unit}><td className="mono">{c ? <Link to={'/crm/clients/' + c.id}>{u.unit}</Link> : u.unit}</td><td>{u.type}</td><td className="right">{u.area}</td><td>{!c ? <Link to={'/crm/cost-sheet?unit=' + u.unit}><Badge tone="good">Available</Badge></Link> : <Badge tone={BOOKED.includes(c.status) ? 'accent' : 'warn'}>{c.status}</Badge>}</td></tr> })}</tbody></table>}
-      </>}
-    </Card>
-  </div>
 }
 
 // 2 Nov: construction stages. Finance and admin keep the status and dates; demand calls follow the completed stages.

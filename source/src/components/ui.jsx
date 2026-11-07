@@ -16,7 +16,7 @@ export function Page({ title, subtitle, actions, children, back, backLabel, tone
   const b = back === true ? <BackLink>{backLabel || 'Back'}</BackLink> : typeof back === 'string' ? <BackLink to={back}>{backLabel || 'Back'}</BackLink> : back
   return (
     <div className={cx('page', tone && 'tone-' + tone)}>
-      {b && <div>{b}</div>}
+      {b && <div className="no-print">{b}</div>}
       <div className="page-head">
         <div>
           <h1>{title}</h1>

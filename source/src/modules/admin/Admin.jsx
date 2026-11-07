@@ -90,7 +90,8 @@ export function AdminSettings() {
   const co = (k, v) => setS({ ...s, company: { ...s.company, [k]: v } })
   const rc = (k, v) => setS({ ...s, rateCard: { ...s.rateCard, [k]: v } })
   const planSum = (p) => (s.plans[p] || []).reduce((a, x) => a + Number(x.pct || 0), 0)
-  const save = () => { for (const p of Object.keys(s.plans)) if (Math.abs(planSum(p) - 1) > 0.001) return notify(`${p} plan adds up to ${(planSum(p) * 100).toFixed(1)}%, not 100%`, 'bad'); setSettings(s); notify('Settings saved') }
+  const clpSum = (s.clpMaster || []).reduce((a, x) => a + Number(x.pct || 0), 0)
+  const save = () => { if ((s.clpMaster || []).length && Math.abs(clpSum - 1) > 0.001) return notify(`The master CLP schedule adds up to ${(clpSum * 100).toFixed(1)}%, not 100%`, 'bad'); for (const p of Object.keys(s.plans)) if (Math.abs(planSum(p) - 1) > 0.001) return notify(`${p} plan adds up to ${(planSum(p) * 100).toFixed(1)}%, not 100%`, 'bad'); setSettings(s); notify('Settings saved') }
   return (
     <Page title="Settings" back="/" backLabel="Dashboard" subtitle="Company details, the rate card and payment plans that drive cost sheets and receipts, and the workday for the time tracker." actions={<Button variant="primary" onClick={save}>Save settings</Button>}>
       <div className="grid g2">
@@ -112,6 +113,7 @@ export function AdminSettings() {
           <input className="input" type="number" style={{ width: 90 }} value={Math.round(x.pct * 1000) / 10} onChange={(e) => setS({ ...s, plans: { ...s.plans, [p]: s.plans[p].map((y, j) => (j === k ? { ...y, pct: Number(e.target.value) / 100 } : y)) } })} /><span className="small">%</span>
           <Button size="sm" variant="ghost" onClick={() => setS({ ...s, plans: { ...s.plans, [p]: s.plans[p].filter((_, j) => j !== k) } })}>×</Button></div>)}
         <Button size="sm" onClick={() => setS({ ...s, plans: { ...s.plans, [p]: [...s.plans[p], { stage: 'New stage', pct: 0 }] } })}>+ Stage</Button></Card>)}</div>
+      <ClpMasterCard s={s} setS={setS} sum={clpSum} />
       <div className="grid g2">
         <Card title="Cost sheet terms (one per line)"><Textarea rows={9} value={(s.terms || []).join('\n')} onChange={(e) => setS({ ...s, terms: e.target.value.split('\n').filter(Boolean) })} /></Card>
         <Card title="Receipt notes (one per line)"><Textarea rows={9} value={(s.receiptNotes || []).join('\n')} onChange={(e) => setS({ ...s, receiptNotes: e.target.value.split('\n').filter(Boolean) })} /></Card>
@@ -367,4 +369,23 @@ function ScheduleRulesCard({ s, setS }) {
       <Button size="sm" variant="ghost" onClick={() => setS({ ...s, demandLetter: { ...DEFAULT_RULES.demandLetter, contactName: R.demandLetter.contactName, contactPhone: R.demandLetter.contactPhone, signatoryName: R.demandLetter.signatoryName, signatoryDesignation: R.demandLetter.signatoryDesignation } })}>Restore the standard wording</Button>
     </Card>
   </>
+}
+
+// 8 Nov: the master construction-linked (CLP) schedule printed on every cost sheet as a general reference for the
+// client. It is separate from Building and parking → Construction, which tracks the real stages and their dates.
+function ClpMasterCard({ s, setS, sum }) {
+  const { db } = useStore()
+  const rows = s.clpMaster || []
+  const set = (rs) => setS({ ...s, clpMaster: rs })
+  const fromStages = () => set([...(db.clpStages || [])].filter((x) => Number(x.pct) > 0).sort((a, b) => Number(a.no) - Number(b.no)).map((x) => ({ stage: x.stage, pct: Number(x.pct), timing: '' })))
+  return <Card title="Master CLP schedule · on every cost sheet" actions={<span className="row gap-s">{rows.length > 0 && <Badge tone={Math.abs(sum - 1) < 0.001 ? 'good' : 'bad'}>{(sum * 100).toFixed(1)}%</Badge>}<Button size="sm" onClick={fromStages}>{rows.length ? 'Reset from construction stages' : 'Start from construction stages'}</Button></span>}>
+    <p className="small muted" style={{ marginTop: 0 }}>The generalised construction-linked payment schedule sent to clients as a reference on page 2 of the cost sheet, with each stage's amount worked out on that residence's grand total. The indicative timing is optional (for example "Month 6" or "Mar 2027"). Until this is filled, the cost sheet uses the construction stages.</p>
+    {!rows.length ? <p className="muted" style={{ margin: 0 }}>Not set yet.</p> : <table className="table dense"><thead><tr><th>#</th><th>Stage</th><th className="right">%</th><th>Indicative timing</th><th /></tr></thead>
+      <tbody>{rows.map((x, k) => <tr key={k}><td className="mono">{k + 1}</td>
+        <td><input className="input" value={x.stage} onChange={(e) => set(rows.map((y, j) => (j === k ? { ...y, stage: e.target.value } : y)))} aria-label={'Stage ' + (k + 1)} /></td>
+        <td className="right"><input className="input" type="number" step="0.5" style={{ width: 80 }} value={Math.round(Number(x.pct) * 1000) / 10} onChange={(e) => set(rows.map((y, j) => (j === k ? { ...y, pct: Number(e.target.value) / 100 } : y)))} aria-label={'Percent for stage ' + (k + 1)} /></td>
+        <td><input className="input" style={{ width: 130 }} value={x.timing || ''} placeholder="optional" onChange={(e) => set(rows.map((y, j) => (j === k ? { ...y, timing: e.target.value } : y)))} aria-label={'Timing for stage ' + (k + 1)} /></td>
+        <td className="nowrap"><Button size="sm" variant="ghost" disabled={k === 0} onClick={() => { const r = [...rows]; [r[k - 1], r[k]] = [r[k], r[k - 1]]; set(r) }} aria-label="Move up">↑</Button><Button size="sm" variant="ghost" onClick={() => set(rows.filter((_, j) => j !== k))} aria-label="Remove">×</Button></td></tr>)}</tbody></table>}
+    <Button size="sm" onClick={() => set([...rows, { stage: 'New stage', pct: 0, timing: '' }])}>+ Stage</Button>
+  </Card>
 }
