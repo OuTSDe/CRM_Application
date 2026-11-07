@@ -103,6 +103,15 @@ export function clientSchedule(c, ctx) {
   const mine = letters.filter((L) => (L.bookingId ? L.bookingId === c.bookingId : String(L.unit) === String(c.unit)) && L.status !== 'Withdrawn')
   const rowLetter = {}
   mine.sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach((L) => letterRows(L, calls, clpStages).forEach((k) => { if (!rowLetter[k]) rowLetter[k] = L }))
+  // 8 Nov: stages demanded before Accord, through the project-wide demand calls, count as demanded on the call's
+  // date (or, for a later booking, 15 days from the booking), unless an Accord letter covers them.
+  const callFor = {}
+  calls.filter((k) => k.due).forEach((k) => letterRows({ callId: k.id }, calls, clpStages).forEach((key) => {
+    if (rowLetter[key] || callFor[key]) return
+    const late = c.bookingDate && c.bookingDate > (k.raisedAt || k.raisedOn) ? addDays(c.bookingDate, rules.dueDays) : null
+    callFor[key] = { id: k.id, date: k.raisedAt || k.raisedOn, due: late && late > k.due ? late : k.due, inferred: !!k.inferred && !(late && late > k.due) }
+  }))
+  const notExecuted = ['Not executed', 'Drafted'].includes(c.agreement)
   let left = basis, cum = 0
   const out = rows.map((r, i) => {
     const base = i === rows.length - 1 && !r.fixed ? Math.max(0, Math.round(left)) : Math.round(r.fixed ? r.fixed : basis * r.pct)
@@ -118,8 +127,11 @@ export function clientSchedule(c, ctx) {
     // nothing beyond the 10% cap before a registered agreement
     if (ready && !registered && cum > rules.section13Cap + 1e-9 && r.trigger !== 'booking') { blocked = 'Over 10% before a registered agreement (RERA s.13)'; ready = null }
     const L = rowLetter[r.key] || null
-    const due = r.trigger === 'booking' ? (c.bookingDate || null) : L ? L.dueDate : r.trigger === 'agreement' ? agreeDate : null
+    const K = !L && r.trigger !== 'booking' && !notExecuted ? callFor[r.key] || null : null
+    if (K) { blocked = ''; ready = K.date }
+    const due = r.trigger === 'booking' ? (c.bookingDate || null) : L ? L.dueDate : K ? K.due : r.trigger === 'agreement' ? agreeDate : null
     return { ...r, base, gst: Math.round(base * gst), amount: Math.round(base * (1 + gst)), cum, ready, blocked, letter: L?.id || null, letterDate: L?.date || null, due,
+      call: K?.id || null, dueInferred: !!K?.inferred,
       projected: st?.planned || null, stageStatus: st?.status || '' }
   })
   // receipts (counted, plus TDS) settle the oldest instalment first

@@ -7,8 +7,9 @@ import { TowerStack, FloorPlan, usePlateTone, useAvailability, plateOf, plateRan
 import { sessionsFor, projectsFor } from '../../lib/designLink.js'
 import { Page, Card, Button, Badge, Grid, Stat, Seg, Modal, Field, Input, Select, KV, Confirm } from '../../components/ui.jsx'
 import DataTable from '../../components/DataTable.jsx'
-import { inr, lakh, pct, d } from '../../lib/format.js'
-import { stageReady, stageTrigger } from '../../lib/schedule.js'
+import { inr, lakh, pct, d, today } from '../../lib/format.js'
+import { stageReady, stageTrigger, letterRows } from '../../lib/schedule.js'
+import { slabTop, progressChanges } from '../../lib/construction.js'
 import Parking from './Parking.jsx'
 import { WM_FLOORS, WM_BANDS, bandName, floorLabel, sideX } from '../../components/WhiteModel.jsx'
 import { WM } from '../../lib/whiteModel.js'
@@ -53,9 +54,25 @@ function Construction() {
   // 7 Nov: who owes what when a stage is certified, so finance can raise the letters
   const owing = (s) => crm.clients.filter((c) => (c.schedule || []).some((r) => r.clpStage === s.id && r.state === 'Letter not sent')).length
   const missingCert = rows.filter((s) => s.status === 'Completed' && !stageReady(s))
+  // 8 Nov: set the progress in one step ("slab done up to the 24th floor")
+  const [prog, setProg] = useState(null)
+  const floors = [...new Set(rows.map(slabTop).filter((t) => t !== null && t >= 0 && t <= 60))].sort((a, b) => a - b)
+  const covered = new Set(crm.cum.flatMap((k) => letterRows({ callId: k.id }, crm.cum, rows)))
+  const changes = prog != null ? progressChanges(rows, prog, { coveredIds: covered, date: today() }) : []
+  const applyProg = () => { changes.forEach(({ after }) => upsert('clpStages', after, { action: 'construction progress' })); notify(`Construction set to the ${ordinal(prog)} floor slab · ${changes.length} stage${changes.length === 1 ? '' : 's'} updated`); setProg(null) }
   return <>
+    {edit && <Card title="Construction progress"><div className="row gap-s" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+      <span>Slab completed up to the</span>
+      <Select style={{ width: 'auto' }} options={floors.map((f) => ({ value: String(f), label: f === 0 ? 'ground floor' : ordinal(f) + ' floor' }))} value={String(crm.builtTo ?? '')} onChange={(e) => setProg(Number(e.target.value))} />
+      <span className="small muted">Marks every stage up to that slab completed and the next one in progress. Stages already billed through a demand call are marked "certificate on file". Payment status follows straightaway.</span>
+    </div></Card>}
+    {prog != null && <Modal open onClose={() => setProg(null)} title={`Slab completed up to the ${ordinal(prog)} floor`} footer={<><Button onClick={() => setProg(null)}>Cancel</Button><Button variant="primary" disabled={!changes.length} onClick={applyProg}>Apply {changes.length} change{changes.length === 1 ? '' : 's'}</Button></>}>
+      {changes.length ? <table className="table dense"><thead><tr><th>#</th><th>Stage</th><th>Now</th><th>Becomes</th></tr></thead>
+        <tbody>{changes.map(({ before, after }) => <tr key={before.id}><td className="mono">{before.no}</td><td>{before.stage}</td><td>{before.status || 'Not started'}</td><td><b>{after.status}</b>{after.certWaived === 'Yes' && before.certWaived !== 'Yes' && <div className="small muted">certificate on file</div>}{after.actual !== before.actual && <div className="small muted">actual {d(after.actual)}, change it in the table if known</div>}</td></tr>)}</tbody></table>
+        : <p className="small muted">The stages already say this. Nothing to change.</p>}
+    </Modal>}
     <Grid cols={3}>
-      <Stat label="Stages completed" value={`${doneN} / ${rows.length}`} tone="good" />
+      <Stat label="Stages completed" value={`${doneN} / ${rows.length}`} sub={crm.builtTo != null ? `slab up to the ${ordinal(crm.builtTo)} floor` : undefined} tone="good" />
       <Stat label="In progress" value={rows.filter((s) => s.status === 'In progress').length} tone="info" />
       <Stat label="Payment share reached" value={pct(pctDone)} sub="of the construction-linked plan" tone="accent" />
     </Grid>

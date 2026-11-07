@@ -4,7 +4,8 @@ import { useStore } from '../../lib/store.jsx'
 import { useCrm, letterStatus, NON_BILLED } from '../../lib/calc.js'
 import { fillTemplate, currentRate, lateInterest } from '../../lib/schedule.js'
 import { canRecordPayment, seesMoney } from '../../lib/perms.js'
-import { Page, Card, Button, Badge, Grid, Stat } from '../../components/ui.jsx'
+import { Page, Card, Button, Badge, Grid, Stat, Input } from '../../components/ui.jsx'
+import { ordinal } from '../../components/Tower.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import PaymentForm, { diffText } from './PaymentForm.jsx'
 import DocHeader from '../../components/DocHeader.jsx'
@@ -40,7 +41,7 @@ function SalesPayments() {
 }
 
 function FinancePayments() {
-  const { db, user } = useStore()
+  const { db, user, upsert, notify } = useStore()
   const crm = useCrm()
   const nav = useNavigate()
   const [qs] = useSearchParams()
@@ -55,7 +56,7 @@ function FinancePayments() {
       <Grid cols={4}>
         <Stat label="Counted receipts" value={lakh(counted.reduce((s, p) => s + Number(p.amount || 0), 0))} sub={`${counted.length} entries`} tone="good" />
         <Stat label="This month" value={lakh(counted.filter((p) => String(p.date).startsWith(m)).reduce((s, p) => s + Number(p.amount || 0), 0))} sub={m} tone="teal" />
-        <Stat label="Outstanding" value={lakh(live.reduce((s, c) => s + Math.max(0, c.outstanding), 0))} sub={`${live.filter((c) => c.outstanding > 0).length} clients`} tone="bad" />
+        <Stat label="Outstanding" value={lakh(live.reduce((s, c) => s + Math.max(0, c.outstanding), 0))} sub={`${live.filter((c) => c.outstanding > 0).length} clients · ${live.filter((c) => c.outstanding > 0.5 && c.overdue > 0).length} overdue`} tone="bad" />
         <Stat label="Not counted" value={db.payments.length - counted.length} sub="duplicates, bounced, on hold" tone="warn" />
       </Grid>
       {crm.perClient ? null : <div className="note info small">Demand is still worked out from the project-wide demand calls. Check each client's own schedule under <b>Schedule check</b>, then switch to per-client schedules in Admin → Settings → Payment schedule.</div>}
@@ -74,15 +75,18 @@ function FinancePayments() {
       {tab === 'due' && <DataTable rows={live.filter((c) => c.outstanding > 0)} initialSort={{ key: 'outstanding', dir: 'desc' }} searchKeys={['name', (c) => String(c.unit)]} onRowClick={(c) => nav('/crm/clients/' + c.id)}
         filters={[{ key: 'age', label: 'Ageing' }, { key: 'funding', label: 'Funding' }]}
         columns={[{ key: 'unit', label: 'Flat' }, { key: 'name', label: 'Client' }, { key: 'demand', label: 'Demanded', align: 'right', render: (c) => inr(c.demand) }, { key: 'received', label: 'Received', align: 'right', render: (c) => inr(c.received) },
-          { key: 'outstanding', label: 'Outstanding', align: 'right', render: (c) => <b style={{ color: 'var(--bad)' }}>{inr(c.outstanding)}</b> }, { key: 'due', label: 'Due', render: (c) => d(c.due) },
+          { key: 'outstanding', label: 'Outstanding', align: 'right', render: (c) => <b style={{ color: 'var(--bad)' }}>{inr(c.outstanding)}</b> }, { key: 'due', label: 'Due', render: (c) => <span>{d(c.due)}{c.dueInferred && <div className="small muted">at the latest</div>}</span> },
           { key: 'age', label: 'Ageing', render: (c) => <Badge tone={c.age === '60+ days' ? 'bad' : 'warn'}>{c.age}</Badge> }, { key: 'lc', label: 'Last contact', sortValue: (c) => c.contact.lastDate || '', render: (c) => d(c.contact.lastDate) },
           { key: 'act', label: '', sort: false, render: (c) => <Link className="btn btn-sm" onClick={(e) => e.stopPropagation()} to={'/crm/messages?to=' + c.clientId + '&tp=TP-02'}>Remind</Link> }]} />}
       {tab === 'letters' && <DemandLetters />}
-      {tab === 'demand' && !crm.perClient && <Card title="Demand calls raised" pad={false}>
-        <table className="table"><thead><tr><th>Call</th><th>Stage</th><th className="right">%</th><th className="right">Cumulative</th><th>Raised</th><th>Due</th><th>Letters</th></tr></thead>
-          <tbody>{crm.cum.map((k) => <tr key={k.id}><td>{k.id} · {k.description}</td><td>{k.stage}</td><td className="right">{(k.pct * 100).toFixed(1)}%</td><td className="right">{(k.cum * 100).toFixed(1)}%</td><td>{d(k.raisedOn) || <Badge tone="warn">Not set</Badge>}</td><td>{d(k.due)}</td>
-            <td>{canRecordPayment(user) && <RaiseLetters call={k} />}</td></tr>)}</tbody></table>
-        <p className="small muted" style={{ padding: '0 16px 12px' }}>Demand per client = (consideration − adjustment) × cumulative % × (1 + GST {(crm.gst * 100).toFixed(0)}%). Due {db.settings[0]?.dueDays || 15} days after the call is raised.</p>
+      {tab === 'demand' && <Card title={crm.perClient ? 'Demands raised before Accord' : 'Demand calls raised'} pad={false} actions={crm.builtTo != null && <Badge tone="info">{'Built to ' + (crm.builtTo === 0 ? 'ground' : ordinal(crm.builtTo)) + ' floor slab'}</Badge>}>
+        <div style={{ overflowX: 'auto' }}><table className="table"><thead><tr><th>Call</th><th>Stage</th><th className="right">%</th><th className="right">Cumulative</th><th>Raised</th><th>Due</th>{!crm.perClient && <th>Letters</th>}</tr></thead>
+          <tbody>{crm.cum.map((k) => <tr key={k.id}><td>{k.id} · {k.description}</td><td>{k.stage}</td><td className="right">{(k.pct * 100).toFixed(1)}%</td><td className="right">{(k.cum * 100).toFixed(1)}%</td>
+            <td>{canRecordPayment(user) ? <Input type="date" style={{ width: 150 }} value={k.raisedOn || ''} onChange={(e) => { upsert('demandCalls', { ...db.demandCalls.find((x) => x.id === k.id), raisedOn: e.target.value || null }, { action: 'demand call date' }); notify(k.id + ' raised date saved') }} /> : d(k.raisedOn)}
+              {k.inferred && <div className="small" style={{ color: 'var(--warn)' }}>Not recorded. Taken as no later than {d(k.raisedAt)}</div>}</td>
+            <td>{d(k.due)}{k.inferred && <div className="small muted">at the latest</div>}</td>
+            {!crm.perClient && <td>{canRecordPayment(user) && <RaiseLetters call={k} />}</td>}</tr>)}</tbody></table></div>
+        <p className="small muted" style={{ padding: '0 16px 12px' }}>{crm.perClient ? 'Stages these calls cover count as demanded on the call date in each client\'s schedule (15 days from the booking for a later booking), unless an Accord demand letter covers them. ' : `Demand per client = (consideration − adjustment) × cumulative % × (1 + GST ${(crm.gst * 100).toFixed(0)}%). `}Due {crm.rules.dueDays} days after the call is raised. A call without a raised date is taken as raised no later than the next call that has one, so its clients show as overdue for at least that long; enter the actual date for the exact ageing.</p>
       </Card>}
       <PaymentForm open={open} onClose={(p) => { setOpen(false); if (p?.id && !p.ledger) nav('/crm/payments/receipt/' + p.id) }} />
     </Page>

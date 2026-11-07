@@ -42,14 +42,14 @@ export function ScheduleCard({ c, money }) {
             <td>{r.stage}{r.projected && !r.ready && <div className="small muted">planned {d(r.projected)}</div>}</td>
             <td className="right">{(r.pct * 100).toFixed(1)}</td>
             {money && <td className="right">{inr(r.amount)}</td>}
-            <td>{r.letter ? <Link to={'/crm/payments/demand/' + r.letter}>{r.letter}</Link> : <span className="muted">–</span>}</td>
-            <td>{d(r.due) || <span className="muted">–</span>}</td>
+            <td>{r.letter ? <Link to={'/crm/payments/demand/' + r.letter}>{r.letter}</Link> : r.call ? <span className="small" title="Demanded before Accord through the project-wide demand call">{r.call}<div className="muted">before Accord</div></span> : <span className="muted">–</span>}</td>
+            <td>{d(r.due) || <span className="muted">–</span>}{r.dueInferred && <div className="small muted">at the latest</div>}</td>
             {money && <td className="right">{inr(r.paid)}</td>}
             {money && <td className="right">{r.balance > 0.5 ? inr(r.balance) : '–'}{intr.per[i] > 0 && <div className="small" style={{ color: 'var(--bad)' }}>+ {inr(intr.per[i])} interest</div>}</td>}
             <td><Badge tone={TONE[r.state] || 'warn'}>{r.state}</Badge></td></tr>)}</tbody></table>
       </div>
       {rows.filter((r) => r.state === 'Upcoming').length > 3 && <div style={{ padding: '6px 16px 0' }}><Button size="sm" variant="ghost" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${rows.length} instalments`}</Button></div>}
-      <p className="small muted" style={{ padding: '6px 16px 12px', margin: 0 }}>Booking is due at booking and the agreement instalment at the registered agreement. A stage is demanded once it is completed and certified; payment is due {R.dueDays} days from the demand letter. Stages finished before this booking are demanded at the registered agreement (RERA section 13: no more than {(R.section13Cap * 100).toFixed(0)}% before it).</p>
+      <p className="small muted" style={{ padding: '6px 16px 12px', margin: 0 }}>Booking is due at booking and the agreement instalment at the registered agreement. A stage is demanded once it is completed and certified; payment is due {R.dueDays} days from the demand letter. Stages billed before Accord count from the demand call date (Payments → Demand calls). Stages finished before this booking are demanded at the registered agreement (RERA section 13: no more than {(R.section13Cap * 100).toFixed(0)}% before it).</p>
       {open && <CustomPlan c={c} onClose={() => setOpen(false)} />}
     </Card>
   )

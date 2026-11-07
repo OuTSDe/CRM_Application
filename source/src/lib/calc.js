@@ -3,6 +3,7 @@ import { n, today, daysBetween, addDays } from './format.js'
 import { useStore } from './store.jsx'
 import { META } from './seed.js'
 import { rulesOf, clientSchedule, scheduleSummary } from './schedule.js'
+import { builtTo } from './construction.js'
 
 const PROFILE_FIELDS = ['name', 'coapp', 'buyerType', 'phone', 'whatsapp', 'email', 'address', 'city', 'country', 'residency', 'pan', 'aadhaar4', 'dob',
   'language', 'contactPref', 'purpose', 'occupant', 'funding', 'occupation', 'employer', 'income', 'marital', 'familyProfile', 'decisionMaker', 'source', 'owner']
@@ -39,7 +40,14 @@ export function deriveCrm(db) {
   }
   const calls = [...db.demandCalls].filter((c) => n(c.pct) > 0)
   const cum = []; let acc = 0
-  calls.forEach((c) => { acc += n(c.pct); cum.push({ ...c, cum: acc, due: c.raisedOn ? addDays(c.raisedOn, dueDays) : null }) })
+  // 8 Nov: a call with no raised date was raised no later than the next call that has one, so it is due no later
+  // than that call too. Overdue then shows (as "at least") until the actual date is entered.
+  calls.forEach((c, i) => {
+    acc += n(c.pct)
+    const later = c.raisedOn ? null : calls.slice(i + 1).map((x) => x.raisedOn).filter(Boolean).sort()[0] || s.legacyDemandDate || null
+    const raised = c.raisedOn || later
+    cum.push({ ...c, cum: acc, raisedAt: raised, inferred: !c.raisedOn && !!raised, due: raised ? addDays(raised, dueDays) : null })
+  })
   const billedPct = acc
   const docs = {}; db.documents.forEach((d) => (docs[d.bookingId] = d))
   const docKeys = META.docTypes.map((t) => t.key)
@@ -50,19 +58,20 @@ export function deriveCrm(db) {
     const received = recvByUnit[c.unit] || 0
     const tc = n(c.tc), basis = tc - n(c.adjustment)
     const billed = NON_BILLED.includes(c.status) ? 0 : billedPct
-    const schedule = clientSchedule(c, { rules, gst, clpStages, letters: rawLetters, calls: db.demandCalls, payments: payByUnit[c.unit] || [] })
+    const schedule = clientSchedule(c, { rules, gst, clpStages, letters: rawLetters, calls: cum, payments: payByUnit[c.unit] || [] })
     const sched = scheduleSummary(schedule)
     const legacyDemand = basis * billed * (1 + gst)
     const demand = perClient ? (NON_BILLED.includes(c.status) ? 0 : sched.demanded) : legacyDemand
     const outstanding = perClient ? (NON_BILLED.includes(c.status) ? 0 : demand - Math.min(demand, received + (tdsByUnit[c.unit] || 0))) : demand - received
-    let firstUnpaid = null, due = null, overdue = 0, age = 'Paid up'
+    let firstUnpaid = null, due = null, overdue = 0, age = 'Paid up', dueInferred = false
     if (perClient) {
-      if (!NON_BILLED.includes(c.status)) { firstUnpaid = sched.firstUnpaid ? { id: sched.firstUnpaid.letter || sched.firstUnpaid.key, description: sched.firstUnpaid.stage, due: sched.firstUnpaid.due } : null; due = sched.due; overdue = sched.overdue; age = sched.age }
+      if (!NON_BILLED.includes(c.status)) { firstUnpaid = sched.firstUnpaid ? { id: sched.firstUnpaid.letter || sched.firstUnpaid.key, description: sched.firstUnpaid.stage, due: sched.firstUnpaid.due } : null; due = sched.due; overdue = sched.overdue; age = sched.age; dueInferred = !!sched.firstUnpaid?.dueInferred }
     } else if (outstanding > 0) {
       const covered = cum.filter((k) => basis * k.cum * (1 + gst) <= received).length
       firstUnpaid = cum[covered] || null; due = firstUnpaid?.due || null
       overdue = due ? Math.max(0, daysBetween(due)) : 0
       age = !due ? 'Due, date not set' : overdue === 0 ? 'Not yet due' : overdue <= 30 ? '0-30 days' : overdue <= 60 ? '31-60 days' : '60+ days'
+      dueInferred = !!firstUnpaid?.inferred
     }
     const pct = tc ? received / tc : 0
     const ct = contact(c.clientId)
@@ -87,7 +96,7 @@ export function deriveCrm(db) {
     if (profilePct < 0.5) amber.push('Profile under 50%')
     if (ct.days === null) amber.push('No contact logged yet')
     const health = red.length ? 'Red' : amber.length ? 'Amber' : 'Green'
-    return { ...c, u, config: u.type, floor: u.floor, band: u.band, area: u.area, received, basis, demand, outstanding, schedule, sched, legacyDemand, firstUnpaid, due, overdue, age, pct,
+    return { ...c, u, config: u.type, floor: u.floor, band: u.band, area: u.area, received, basis, demand, outstanding, schedule, sched, legacyDemand, firstUnpaid, due, overdue, age, dueInferred, pct,
       contact: ct, docPct, docsDone: done, docsApplicable: applicable.length, profilePct, reraFlag, red, amber, health, payments: payByUnit[c.unit] || [],
       tds: tdsByUnit[c.unit] || 0, issues: openIssues[c.unit] || 0, variance: c.receivedPerCollections !== undefined ? received - n(c.receivedPerCollections) : null }
   })
@@ -97,7 +106,7 @@ export function deriveCrm(db) {
   const paidOn = {}; db.payments.forEach((p) => { if (p.demandLetter && p.counted === 'Yes') paidOn[p.demandLetter] = (paidOn[p.demandLetter] || 0) + n(p.amount) + n(p.tds) })
   const letters = (db.demandLetters || []).map((x) => { const paid = paidOn[x.id] || 0, bal = Math.max(0, n(x.amount) - n(x.credit) - paid)
     return { ...x, paid, balance: bal, state: x.status === 'Withdrawn' ? 'Withdrawn' : bal <= 0.5 ? 'Paid' : paid <= 0 ? (x.dueDate && x.dueDate < today() ? 'Overdue' : 'Raised') : bal > 0.5 ? 'Part paid' : 'Paid' } })
-  return { clients, byUnit, leads, units: db.units, cum, billedPct, gst, contact, recvByUnit, letters, rules, perClient }
+  return { clients, byUnit, leads, units: db.units, cum, billedPct, gst, contact, recvByUnit, letters, rules, perClient, builtTo: builtTo(clpStages) }
 }
 export function useCrm() {
   const { db } = useStore()
