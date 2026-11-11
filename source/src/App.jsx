@@ -17,6 +17,7 @@ import Interactions from './modules/crm/Interactions.jsx'
 import { Payments, Receipt, BulkReceipts, DemandLetter, CombinedLetters, BulkLetters } from './modules/crm/Payments.jsx'
 import Analytics from './modules/crm/Analytics.jsx'
 import Help from './pages/Help.jsx'
+import HelpGuide from './components/HelpGuide.jsx'
 import Reports from './modules/reports/Reports.jsx'
 import Partners from './modules/crm/Partners.jsx'
 import CostSheet from './modules/crm/CostSheet.jsx'
@@ -56,7 +57,8 @@ function Main() {
   if (!user) return <Login />
   if (session?.mustEnrol) return <Enrol />
   if (user.mustChange === 'Yes' && settings.authMode === 'password') return <div className="login"><ChangePassword forced /></div>
-  return (
+  return (<>
+    <HelpGuide />
     <Routes>
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/brochure" element={G('brochure', <BrochureScroll />)} />
@@ -76,6 +78,8 @@ function Main() {
         <Route path="crm/payments/receipts" element={G('payments', <BulkReceipts />)} />
         <Route path="crm/analytics" element={G('analytics', <Analytics />)} />
         <Route path="help" element={G('help', <Help />)} />
+        <Route path="help/c/:cat" element={G('help', <Help />)} />
+        <Route path="help/:id" element={G('help', <Help />)} />
         <Route path="crm/partners" element={G('partners', <Partners />)} />
         <Route path="reports" element={G('reports', <Reports />)} />
         <Route path="crm/payments/receipt/:id" element={G('payments', <Receipt />)} />
@@ -113,6 +117,6 @@ function Main() {
         <Route path="admin/cleanup" element={G('admin', <DataCleanup />)} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
-    </Routes>
+    </Routes></>
   )
 }

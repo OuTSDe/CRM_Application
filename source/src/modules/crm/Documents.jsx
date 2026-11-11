@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
 import { useCrm } from '../../lib/calc.js'
@@ -24,6 +24,7 @@ export default function Documents() {
   const groups = {}; META.docTypes.forEach((t) => (groups[t.group] = groups[t.group] || []).push(t))
   const setItem = (k, v) => upsert('documents', { ...doc, items: { ...doc.items, [k]: v } }, { silent: true })
   const [tab, setTab] = useState(qs.get('tab') || 'clients')
+  useEffect(() => { const t = qs.get('tab'); if (t) setTab(t) }, [qs.get('tab')]) // eslint-disable-line   // 10 Nov: a help link to another tab switches it
   const [other, setOther] = useState('')
   const filesFor = (key) => (db.files || []).filter((f) => f.recordId === b && f.doc === key)
   const [openRow, setOpenRow] = useState('')

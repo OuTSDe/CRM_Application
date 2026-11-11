@@ -19,6 +19,7 @@ const cls = (c) => !c ? '' : BOOKED.includes(c.status) ? 'sold' : c.status === '
 export default function Inventory() {
   const [qs] = useSearchParams()
   const [tab, setTab] = useState(qs.get('tab') || 'building')
+  useEffect(() => { const t = qs.get('tab'); if (t) setTab(t) }, [qs.get('tab')]) // eslint-disable-line   // 10 Nov: a help link to another tab switches it
   return (
     <Page back={true} title="Building and parking" subtitle="Live availability for every residence, and car parks allotted from the architect's parking drawings."
       actions={<Seg options={[{ value: 'building', label: 'Building' }, { value: 'list', label: 'Unit list' }, { value: 'parking', label: 'Car parking' }, { value: 'construction', label: 'Construction' }]} value={tab} onChange={setTab} />}>

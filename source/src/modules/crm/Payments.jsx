@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
 import { useCrm, letterStatus, NON_BILLED } from '../../lib/calc.js'
@@ -47,6 +47,7 @@ function FinancePayments() {
   const [qs] = useSearchParams()
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState(qs.get('tab') || 'ledger')
+  useEffect(() => { const t = qs.get('tab'); if (t) setTab(t) }, [qs.get('tab')]) // eslint-disable-line   // 10 Nov: a help link to another tab switches it
   const counted = db.payments.filter((p) => p.counted === 'Yes')
   const m = today().slice(0, 7)
   const live = crm.clients.filter((c) => !['Cancelled', 'Transferred'].includes(c.status))

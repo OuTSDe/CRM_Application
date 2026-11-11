@@ -1,86 +1,116 @@
-// 2 Nov: a short user guide inside Accord, so new people can find their way without a training session.
-// Each person sees the parts for their role first; everything else is folded underneath.
-import React from 'react'
-import { Link } from 'react-router-dom'
+// 2 Nov: a short user guide inside Accord. 10 Nov: replaced by the Help centre: search in plain words, one answer per
+// task with where to find it, "Take me there" (opens the page and points at the button), "Show me" (a tour over the
+// real screens) and short videos. Everyone can read every answer; what is outside their access is marked.
+import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { useStore } from '../lib/store.jsx'
 import { ROLES } from '../lib/perms.js'
-import { Page, Card } from '../components/ui.jsx'
+import { Page } from '../components/ui.jsx'
+import { ARTICLES, BY_ID, CATS, CAT_BY_ID, POPULAR } from '../help/articles.js'
+import { search } from '../help/search.js'
+import { accessOf } from '../help/access.js'
+import { VIDEOS, videoPoster } from '../help/videos.js'
+import { HelpSearch, ResultList, ArticleBody, Icon } from '../help/ui.jsx'
 
-const ALL = [
-  { id: 'start', title: 'Signing in and your day', roles: ['*'], items: [
-    'Sign in with your username and the 6-digit code from the authenticator app on your phone. Each person can use one computer and one phone; a new device waits for an admin to approve it.',
-    'Accord asks you to sign in again whenever the page is refreshed or closed, and signs you out after a spell with no activity. Save your work before stepping away.',
-    'Punch in from the clock at the top. At Sky City it counts as Office; elsewhere it is logged as Remote. Use Break for lunch, tea or a personal break, and Site visit when you go out. Punch out at the end of the day.',
-    'While you are punched in at the office, Accord checks your location every 15 minutes. If you leave, it marks you as Remote. During a site visit it reminds you every hour.',
-    'On your own computer or phone, tick "Trust this device" at sign-in: for the next few days you only press Continue, without the code. Stop it any time from the menu under your name.',
-    'Profile picture: menu under your name › Profile picture.',
-    'Training mode (in the menu under your name) lets you practise. Nothing you enter while it is on is saved, and it is all wiped when you switch it off.',
-    'Every text box checks spelling as you type. Words underlined in red can be fixed with a right-click.'] },
-  { id: 'leads', title: 'Leads', roles: ['admin', 'senior', 'sales'], items: [
-    'Leads › New lead. Name, mobile and e-mail are needed; a mobile already on another lead is flagged before saving.',
-    'Paste an enquiry: copy a WhatsApp or 99acres message into the box and Accord fills in the name, number, e-mail, city and BHK for you to check.',
-    'Inbox: enquiries sent in by the website or other tools wait here. Accept turns one into a lead (you check it first); Reject moves it out.',
-    'Add colleagues under "Also responsible" when more than one person handles a lead. They see it and get its follow-ups.',
-    'Views at the top of the table: follow-ups due, never contacted, no follow-up set, missing details. Fill in the gaps when you speak to the person.',
-    'When a lead is lost, pick the reason. Accord offers a short closing message by WhatsApp and closes its open follow-ups.',
-    'Admins can delete a lead from its page (Delete lead). This cannot be undone, so use Lost for real enquiries.'] },
-  { id: 'log', title: 'Logging calls and follow-ups', roles: ['admin', 'senior', 'sales', 'finance'], items: [
-    'Log interaction (top of the dashboard) after every call, visit or message. Set the next follow-up date and time (or tap a quick time). The reminder comes to you, and to everyone picked as a follow-up owner, at that time on that day.',
-    'Log several at once: one row per person. "Same for every row" fills the same message (for example festival wishes) into every row in one go.',
-    'A follow-up left open for too long is escalated to your manager, then one level up.'] },
-  { id: 'clients', title: 'Clients, documents and cost sheets', roles: ['admin', 'senior', 'sales'], items: [
-    'Client 360 has everything about a booking: details, payments status, papers, history and messages.',
-    'Documents: upload each paper against its line. Files are renamed and filed in the client\'s folder in the OuTSDe Drive. Photos, PDFs, Word and Excel files are accepted, up to 35 MB each.',
-    'Uploaded the wrong file? Press Files (n) on that line, or look under All uploaded files at the bottom. View shows the file; Delete removes it (only the person who uploaded it, or an admin). Then upload the right one.',
-    'Cost sheet: pick a residence that is free. Booked, on-hold and to-verify residences cannot be offered. Covered car parks come with the type; extra car parks are priced separately.',
-    'Seniors and admins can round the total to a clean figure; the rounding adjustment is shown on the sheet.',
-    'Send the cost sheet by WhatsApp or e-mail from the sheet itself. Upload the agreed cost sheet against the client when it is signed.'] },
-  { id: 'money', title: 'Payments and receipts', roles: ['admin', 'finance'], items: [
-    'Payments › Record payment. Each entry gets a receipt number and an A4 receipt to print or save as PDF.',
-    'Print receipts in bulk: choose a date range (and a residence if needed); every receipt prints on its own page in one go.',
-    'Building and parking › Construction: keep each stage\'s status and dates up to date. Demand calls follow the completed stages.',
-    'Building and parking › Car parking: the slots come from the architect\'s parking drawings (G, L1, L2, L3; an A after the number is the rear of a tandem pair). Plan allotment proposes slots for every booking that has fewer than it is entitled to, premium bands first and earliest booking first; nothing already allotted moves. Print the allotment letter from Client 360 and mark it issued to lock the slots.'] },
-  { id: 'letters', title: 'Demand letters, receipts and cancellations', roles: ['admin', 'finance', 'senior'], items: [
-    'Payments › Demand calls › Raise letters: one demand letter per live booking, each with its own code. Print each from Payments › Demand letters.',
-    'Record payment picks the open demand letter of that residence. The receipt says when it is a part payment, and what is still due on the letter.',
-    'Furniture, barter and other adjustments: choose "Ledger entry only, no receipt".',
-    'Cancel booking (Client 360): reason, date, deduction. Accounts get a refund task; record the refund when paid, then send the cancellation e-mail from the same card.',
-    'Move to another residence (Client 360): the booking and its payments move to a free residence; make a new cost sheet for it.'] },
-  { id: 'reports', title: 'Reports', roles: ['*'], items: [
-    'Team › Reports: pick a person or the whole team, the period and A4 portrait or landscape, then Print or save as PDF.',
-    'Reports show names and residences only, never phone numbers or e-mails.'] },
-  { id: 'partners', title: 'Channel partners', roles: ['admin', 'senior', 'sales'], items: [
-    'Leads › Channel partners: add a partner once; they get a code. Pick them on the lead under Channel partner so analytics can show what each partner brings.'] },
-  { id: 'team', title: 'Team, time and performance', roles: ['admin', 'senior'], items: [
-    'Team shows who reports to whom, department and on roll / off roll / consultant.',
-    'Time shows punches and breaks for each person, with the reason for each break.',
-    'Team › Analytics, Leads tab: leads by week or month, source, advisor and stage, how far they get and why they were lost.'] },
-  { id: 'analytics', title: 'Analytics', roles: ['*'], items: [
-    'Team › Analytics has three parts. Each person sees only the parts for their role.',
-    'Leads: for the sales team and admins. Advisors see the figures for their own leads.',
-    'Finance: for finance and admins. Collections by month and mode, outstanding and how old it is, the largest amounts due.',
-    'Overall: for admins only. Bookings, booking value, collections, the lead pipeline and team activity on one page.',
-    'Pick 30 days, 90 days, 1 year or all time at the top.'] },
-  { id: 'admin', title: 'Admin', roles: ['admin'], items: [
-    'Consultant role: for outside consultants; they see analytics, reports and progress but never contact details. Bank / DSA role: for a bank contact; they see loan clients only.',
-    'Users and access: add a person, give them a role and platforms, and send the authenticator set-up. Add department, employment and company for the team view.',
-    'Extra access: open a person in Users and access and go to Pages and permissions. Greyed ticks come with their role; tick any other page or power (for example Analytics: finance, or Record payments) to give it to that person only. To match a colleague, use Same access as, pick them, choose Client 360 only or Everything, then Give and Save.',
-    'Settings: the rate card (base rate, floor rise, car parks, MESCOM and others), payment plans and terms. Everyone is told when these change, with what changed.',
-    'Settings › Lead inbox: make a key and give the address to the website or WhatsApp tool that should send enquiries in.',
-    'Settings › Sign out after no activity: how many minutes before Accord signs a person out.',
-    'Data and sync shows the Google Sheet connection. All data lives in the OuTSDe Drive under Accord_Data.'] },
-]
+const CAT_ICON = {
+  start: 'M3 13V5l5-3 5 3v8H3zM6.5 13V9h3v4', leads: 'M2 3h12l-4.5 5v4.5l-3 1.5V8z', follow: 'M8 2v6l3.5 2M14 8A6 6 0 1 1 2 8a6 6 0 0 1 12 0z',
+  clients: 'M8 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM3 14c.6-2.9 2.6-4.5 5-4.5s4.4 1.6 5 4.5', docs: 'M4 2h5.5L12 4.5V14H4zM9.5 2v2.5H12M6 8h4M6 10.5h4',
+  cost: 'M3 2h10v12H3zM5.5 5h5M5.5 8h5M5.5 11h2.5', pay: 'M2 4.5h12v8H2zM2 7h12M4.5 10.5h2', demand: 'M3 2h10v12l-2-1.2-1.5 1.2L8 12.8 6.5 14 5 12.8 3 14zM5.5 5.5h5M5.5 8h5',
+  changes: 'M3 5h9.5L10 2.5M13 11H3.5L6 13.5', building: 'M4 14V2h8v12M2 14h12M6.5 4.5h3M6.5 7h3M6.5 9.5h3M7 14v-2h2v2', parking: 'M3 2h10v12H3zM6.5 11V5h2.2a1.8 1.8 0 0 1 0 3.6H6.5',
+  presales: 'M2 4h12v7.5H2zM5.5 14h5M8 11.5V14', messages: 'M2 3h12v8.5H6L3 14v-2.5H2z', team: 'M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM10.5 7a2 2 0 1 0 0-4M1.5 13c.4-2.4 2-3.7 4-3.7s3.6 1.3 4 3.7M11 9.3c1.8.2 3.2 1.5 3.5 3.7',
+  design: 'M2 14l3-1L13.5 4.5 11.5 2.5 3 11zM10 4l2 2', vendors: 'M2 6l1.5-3.5h9L14 6M2 6v8h12V6M2 6h12M6 14v-4h4v4', admin: 'M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4',
+}
+const CatIcon = ({ id }) => <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.1" aria-hidden="true"><path d={CAT_ICON[id]} /></svg>
 
 export default function Help() {
+  const { id, cat } = useParams()
+  if (id) return <HelpArticle id={id} />
+  if (cat) return <HelpCategory cat={cat} />
+  return <HelpHome />
+}
+
+function HelpHome() {
   const { user } = useStore()
-  const mine = (s) => s.roles.includes('*') || s.roles.includes(user.appRole) || user.appRole === 'admin'
-  const first = ALL.filter(mine), rest = ALL.filter((s) => !mine(s))
+  const nav = useNavigate()
+  const [qs, setQs] = useSearchParams()
+  const q = qs.get('q') || ''
+  const [v, setV] = useState(q)
+  useEffect(() => { setV(q) }, [q])
+  const res = useMemo(() => (q ? search(q) : null), [q])
+  const submit = (x) => { const t = x.trim(); setQs(t ? { q: t } : {}) }
+  const open = (a) => nav('/help/' + a.id)
+  const counts = useMemo(() => Object.fromEntries(CATS.map((c) => [c.id, ARTICLES.filter((a) => a.cat === c.id).length])), [])
+  // the most asked first, then what this person can do
+  const popular = POPULAR.map((x) => BY_ID[x]).filter((a) => a && accessOf(user, a).ok).slice(0, 8)
   return (
-    <Page title="User guide" back="/" backLabel="Dashboard" subtitle={`How to use Accord. You are signed in as ${ROLES[user.appRole] || user.appRole}; your parts come first.`}>
-      <div className="help">
-        {first.map((s) => <Card key={s.id} title={s.title}><ul>{s.items.map((x, i) => <li key={i}>{x}</li>)}</ul></Card>)}
-        {rest.length > 0 && <details><summary className="small">Other roles</summary>{rest.map((s) => <Card key={s.id} title={s.title}><ul>{s.items.map((x, i) => <li key={i}>{x}</li>)}</ul></Card>)}</details>}
-        <p className="small muted">Something missing or wrong? Tell an admin, or log it under <Link to="/crm/issues">Issues</Link>.</p>
+    <Page title="Help centre" back="/" backLabel="Dashboard">
+      <div className="hh">
+        <div className={'hh-hero' + (q ? ' slim' : '')}>
+          {!q && <><div className="hh-k">Accord · Yamuna Sky City</div><h2 className="hh-h">What do you want to do?</h2>
+            <p className="hh-sub">Type a word or a whole question. Each answer shows where to find it, the steps, and a button that takes you there.</p></>}
+          <HelpSearch value={v} onChange={setV} onSubmit={submit} onPick={open} autoFocus={!q} big />
+          {!q && popular.length > 0 && <div className="hh-pop"><span className="small muted">Asked most:</span>{popular.map((a) => <Link key={a.id} to={'/help/' + a.id} className="chip">{a.title.replace(/ \(.+\)$/, '')}</Link>)}</div>}
+        </div>
+
+        {res && <section className="hh-res">
+          {res.corrected && <p className="hh-dym">Showing answers for <button type="button" className="linkish" onClick={() => submit(res.corrected)}><b>{res.corrected}</b></button></p>}
+          {res.results.length
+            ? <><p className="small muted">{res.results.length} answer{res.results.length === 1 ? '' : 's'} for “{q}”</p><ResultList results={res.results} terms={res.terms} user={user} /></>
+            : <div className="hh-none"><h3>No answer for “{q}” yet</h3><p>Try fewer words, or the name of the page (Leads, Payments, Cost sheet…). Or browse the topics below.</p>
+              <p className="small">Still stuck? Log it under <Link to="/crm/issues">Issues</Link> with the words you searched, and it will be added here.</p></div>}
+        </section>}
+
+        {!q && <>
+          <section>
+            <h3 className="hh-sec">Browse by topic</h3>
+            <div className="hh-cats">{CATS.map((c) => <Link key={c.id} to={'/help/c/' + c.id} className="hh-cat">
+              <span className="hh-ci"><CatIcon id={c.id} /></span><span className="hh-ct">{c.title}</span><span className="hh-cb">{c.blurb}</span><span className="hh-cn">{counts[c.id]} answers</span></Link>)}</div>
+          </section>
+          <section>
+            <h3 className="hh-sec">Short videos</h3>
+            <p className="small muted" style={{ marginTop: -6 }}>Made with practice data. No real clients are shown.</p>
+            <div className="hh-vids">{VIDEOS.map((x) => <Link key={x.name} to={'/help/' + x.article} className="hh-vid">
+              <span className="hh-vt" style={{ backgroundImage: `url(${videoPoster(x.name)})` }}><span className="hh-play"><Icon k="play" size={14} /></span></span>
+              <span className="hh-vn">{x.title}</span></Link>)}</div>
+          </section>
+          <p className="small muted hh-foot">You are signed in as {ROLES[user.appRole] || user.appRole}. Answers outside your access are marked with a lock and say who to ask. Press <kbd>?</kbd> on any page to open help beside it.</p>
+        </>}
+      </div>
+    </Page>
+  )
+}
+
+function HelpCategory({ cat }) {
+  const { user } = useStore()
+  const nav = useNavigate()
+  const c = CAT_BY_ID[cat]
+  const [v, setV] = useState('')
+  if (!c) return <Page title="Help centre" back="/help" backLabel="Help centre"><p>That topic is not here.</p></Page>
+  const list = ARTICLES.filter((a) => a.cat === cat)
+  const mine = list.filter((a) => accessOf(user, a).ok), other = list.filter((a) => !accessOf(user, a).ok)
+  return (
+    <Page title={c.title} back="/help" backLabel="Help centre" subtitle={c.blurb}>
+      <div className="hh">
+        <HelpSearch value={v} onChange={setV} onSubmit={(x) => nav('/help?q=' + encodeURIComponent(x))} onPick={(a) => nav('/help/' + a.id)} />
+        <ResultList results={mine.map((a) => ({ a }))} terms={[]} user={user} />
+        {other.length > 0 && <><h3 className="hh-sec">Done by other roles</h3><ResultList results={other.map((a) => ({ a }))} terms={[]} user={user} /></>}
+        <div className="hh-catnav">{CATS.filter((x) => x.id !== cat).map((x) => <Link key={x.id} to={'/help/c/' + x.id} className="chip">{x.title}</Link>)}</div>
+      </div>
+    </Page>
+  )
+}
+
+function HelpArticle({ id }) {
+  const nav = useNavigate()
+  const a = BY_ID[id]
+  const [v, setV] = useState('')
+  useEffect(() => { window.scrollTo?.(0, 0) }, [id])
+  if (!a) return <Page title="Help centre" back="/help" backLabel="Help centre"><p>That answer is not here any more. <Link to="/help">Search the Help centre</Link>.</p></Page>
+  return (
+    <Page title="Help centre" back={true} backLabel="Back">
+      <div className="hh hh-art">
+        <HelpSearch value={v} onChange={setV} onSubmit={(x) => nav('/help?q=' + encodeURIComponent(x))} onPick={(x) => nav('/help/' + x.id)} />
+        <ArticleBody a={a} onOpen={(x) => nav('/help/' + x.id)} />
       </div>
     </Page>
   )

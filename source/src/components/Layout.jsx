@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
+import HelpPanel from './HelpPanel.jsx'
 import { useStore, daySums, NEEDS_BACKEND } from '../lib/store.jsx'
 import { canOpen, canPage, ROLES, WORKSPACES, workspacesOf } from '../lib/perms.js'
 import { setTheme } from '../lib/theme.js'
@@ -15,17 +16,17 @@ export const NAV = {
     { label: 'Today', items: [['/', 'Dashboard', 'crm', true], ['/crm/interactions', 'Interaction log', 'interactions'], ['/people/tasks', 'Tasks', 'tasks']] },
     { label: 'Clients', items: [['/crm/leads', 'Leads', 'leads'], ['/crm/partners', 'Channel partners', 'partners'], ['/crm/clients', 'Client 360', 'clients'], ['/crm/payments', 'Payments', 'payments'], ['/crm/documents', 'Documents', 'documents'], ['/crm/messages', 'Messages', 'messages'], ['/crm/issues', 'Issues', 'issues']] },
     { label: 'Selling', items: [['/crm/cost-sheet', 'Cost sheet', 'costSheet'], ['/crm/inventory', 'Building and parking', 'inventory'], ['/presales', 'Private viewings', 'viewings'], ['/brochure', 'e-Brochure', 'brochure'], ['/experience', 'Accord experience', 'experience']] },
-    { label: 'Team', items: [['/people', 'Time', 'time', true], ['/people/team', 'Team', 'team'], ['/people/performance', 'Performance', 'performance'], ['/crm/analytics', 'Analytics', 'analytics'], ['/reports', 'Reports', 'reports'], ['/help', 'User guide', 'help']] },
+    { label: 'Team', items: [['/people', 'Time', 'time', true], ['/people/team', 'Team', 'team'], ['/people/performance', 'Performance', 'performance'], ['/crm/analytics', 'Analytics', 'analytics'], ['/reports', 'Reports', 'reports'], ['/help', 'Help centre', 'help']] },
   ],
   design: [
     { label: 'Design', items: [['/', 'Overview', 'accord', true], ['/experience', 'Accord experience', 'experience'], ['/accord', 'Projects and BOQ', 'projects', true], ['/accord/residences', 'Residences', 'residences'], ['/presales/showcase', 'Design showcase', 'showcase']] },
     { label: 'Sourcing', items: [['/sourcing', 'Trips', 'sourcing', true], ['/sourcing/quotes', 'Quotes', 'sourcing'], ['/sourcing/compare', 'Compare', 'sourcing'], ['/sourcing/samples', 'Samples', 'sourcing']] },
-    { label: 'Team', items: [['/people', 'Time', 'time', true], ['/people/tasks', 'Tasks', 'tasks'], ['/help', 'User guide', 'help']] },
+    { label: 'Team', items: [['/people', 'Time', 'time', true], ['/people/tasks', 'Tasks', 'tasks'], ['/help', 'Help centre', 'help']] },
   ],
   vendors: [
     { label: 'Vendors', items: [['/', 'Overview', 'vendors', true], ['/vendors', 'Vendor directory', 'vendors', true], ['/apply/vendor', 'Onboarding form', 'vendors']] },
     { label: 'Sourcing', items: [['/sourcing/quotes', 'Quotes', 'sourcing'], ['/sourcing/samples', 'Samples', 'sourcing']] },
-    { label: 'Team', items: [['/people', 'Time', 'time', true], ['/people/tasks', 'Tasks', 'tasks'], ['/help', 'User guide', 'help']] },
+    { label: 'Team', items: [['/people', 'Time', 'time', true], ['/people/tasks', 'Tasks', 'tasks'], ['/help', 'Help centre', 'help']] },
   ],
 }
 const ADMIN = { label: 'Admin', items: [['/admin', 'Settings', 'admin', true], ['/admin/users', 'Users and access', 'admin'], ['/admin/data', 'Data and sync', 'admin'], ['/admin/cleanup', 'Data clean-up', 'admin']] }
@@ -94,6 +95,7 @@ export default function Layout() {
             {myDay && <PunchStatus day={myDay} punch={punch} notify={notify} />}
             <Drafts user={user} nav={nav} path={loc.pathname + loc.search} notify={notify} />
             <Bell db={db} user={user} markRead={markRead} nav={nav} />
+            <HelpPanel />
             <button className="icon-btn theme-toggle" onClick={toggleTheme} aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} title="Light or dark">
               {theme === 'light'
                 ? <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z" /></svg>
