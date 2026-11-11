@@ -16,7 +16,7 @@ export const EXP_UNITS = 'accord.units.status'             // read by the Accord
 const Ctx = createContext(null)
 // The backend address is published with the site (accord.config.js), so every device connects to the same Drive database.
 // 4 Nov: the backend version this site needs (backend/Code.gs VERSION). An older one means Code.gs was not redeployed.
-export const NEEDS_BACKEND = '3.6.0'
+export const NEEDS_BACKEND = '3.7.0'   // 12 Nov: reminds admins to redeploy Code.gs (faster audit and pulls)
 const verLess = (a, b) => { const x = String(a).match(/\d+/g)?.map(Number), y = String(b).split('.').map(Number); if (!x) return true; for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0) } return false }
 const SITE_BACKEND = (typeof window !== 'undefined' && window.ACCORD_CONFIG?.backendUrl) || ''
 const uid = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
@@ -107,41 +107,99 @@ export function StoreProvider({ children }) {
     return j
   }, [backend])
   const online = !!(backend && session?.token && session.token !== 'local')
+  // 12 Nov: only one push at a time (the 8-second timer and the save timer used to send the same changes twice),
+  // at most 40 changes per push, and every change sent is remembered for a minute so a pull that started before the
+  // server saved it cannot put the old version back on screen.
+  const flushing = useRef(false)
+  // 12 Nov: the server gave a new record the next free number because its number was taken. Change it here too,
+  // everywhere it is mentioned, including changes still waiting to be sent.
+  const applyRenames = (list, sentOps = []) => {
+    const map = {}; list.forEach((x) => { map[x.from] = x.to })
+    const fix = (o) => { if (!o || typeof o !== 'object') return o; let ch = false; const n = { ...o }
+      Object.keys(n).forEach((k) => { const v = n[k]; if (typeof v !== 'string') return
+        if (map[v]) { n[k] = map[v]; ch = true } else if (v.startsWith('i:') && map[v.slice(2)]) { n[k] = 'i:' + map[v.slice(2)]; ch = true } })
+      return ch ? n : o }
+    const fixOp = (op) => ({ ...op, id: map[op.id] || op.id, rec: op.rec ? fix(op.rec) : op.rec })
+    // only this person's own new or waiting records are touched, never a colleague's record that shares the old number
+    const mine = new Set([...sentOps, ...queue.current, ...recent.current.map((x) => x.op)].map((op) => op.rec?._cid).filter(Boolean))
+    queue.current = queue.current.map(fixOp)
+    recent.current = recent.current.map((x) => ({ ...x, op: fixOp(x.op) }))
+    setRaw((cur) => { const next = { ...cur }; Object.keys(next).forEach((c) => { if (Array.isArray(next[c])) next[c] = next[c].map((o) => (o && mine.has(o._cid) ? fix(o) : o)) }); return next })
+    notify(list.length === 1 ? `Saved as ${list[0].to} (${list[0].from} was already used by a colleague)` : `${list.length} new records were renumbered because their numbers were already used`)
+  }
+  const recent = useRef([])   // { op, at } pushed in the last minute
   const flush = useCallback(async () => {
-    if (!online || !queue.current.length) return
-    const ops = queue.current.slice()
+    if (!online || !queue.current.length || flushing.current) return
+    flushing.current = true
+    const ops = queue.current.slice(0, 40)
     try {
       setSync((s) => ({ ...s, state: 'syncing' }))
       const r = await call({ action: 'push', token: session.token, ops })
-      queue.current = queue.current.slice(ops.length); safeSet(QKEY, JSON.stringify(queue.current))
+      const sent = new Set(ops)
+      queue.current = queue.current.filter((o) => !sent.has(o))
+      if (r.renamed?.length) applyRenames(r.renamed, ops)
+      safeSet(QKEY, JSON.stringify(queue.current))
+      const now = Date.now(); recent.current = [...recent.current.filter((x) => now - x.at < 60000), ...ops.map((op) => ({ op, at: now }))]
       setSync({ state: 'synced', at: new Date().toISOString(), error: r.refused?.length ? 'Not allowed: ' + [...new Set(r.refused)].join(', ') : null })
+      if (queue.current.length) setTimeout(flush, 300)
     } catch (e) { setSync({ state: 'error', at: null, error: e.message }); if (/expired|signed in/i.test(e.message)) logout() }
+    finally { flushing.current = false }
   }, [online, session, call]) // eslint-disable-line
   const [serverVersion, setServerVersion] = useState('')
+  const pulling = useRef(false)
   const pull = useCallback(async () => {
-    if (!online || holdPull.current || trainingSnap.current) return
+    if (!online || holdPull.current || trainingSnap.current || pulling.current) return
+    pulling.current = true
+    const startedAt = Date.now()
     try {
       setSync((s) => ({ ...s, state: 'syncing' }))
       const j = await call({ action: 'pull', token: session.token })
       setServerVersion(j.version || 'older than 3.4.0')
       setRaw((cur) => {
         const next = { ...cur }
-        Object.keys(j.db || {}).forEach((c) => { if (c !== 'settings' || j.db[c].length) next[c] = j.db[c] })
-        // keep local edits that are still queued
-        queue.current.forEach((op) => { if (op.op === 'upsert' && next[op.coll]) { const i = next[op.coll].findIndex((x) => x.id === op.rec.id); next[op.coll] = i >= 0 ? next[op.coll].map((x, k) => (k === i ? op.rec : x)) : [op.rec, ...next[op.coll]] } })
-        return next
+        let changed = false
+        Object.keys(j.db || {}).forEach((c) => {
+          if (c === 'settings' && !j.db[c].length) return
+          // 12 Nov: a collection that has not changed keeps the same list, so pages do not redraw every pull
+          if (JSON.stringify(cur[c]) === JSON.stringify(j.db[c])) return
+          next[c] = j.db[c]; changed = true
+        })
+        // keep local changes the server may not have had when it answered: still queued, or pushed after this pull started
+        const keep = [...recent.current.filter((x) => x.at >= startedAt - 2000).map((x) => x.op), ...queue.current]
+        keep.forEach((op) => {
+          if (!next[op.coll]) return
+          if (op.op === 'delete') { if (next[op.coll].some((x) => x.id === op.id)) { next[op.coll] = next[op.coll].filter((x) => x.id !== op.id); changed = true } return }
+          if (op.op !== 'upsert') return
+          const i = next[op.coll].findIndex((x) => x.id === op.rec.id)
+          next[op.coll] = i >= 0 ? next[op.coll].map((x, k) => (k === i ? { ...x, ...op.rec } : x)) : [op.rec, ...next[op.coll]]
+          changed = true
+        })
+        return changed ? next : cur
       })
       setSync({ state: 'synced', at: new Date().toISOString(), error: null })
     } catch (e) { setSync({ state: 'error', at: null, error: e.message }); if (/expired|signed in/i.test(e.message)) logout() }
+    finally { pulling.current = false }
   }, [online, session, call]) // eslint-disable-line
   useEffect(() => {
     if (!online) return
     pull()
-    const a = setInterval(flush, 8000), b = setInterval(pull, 45000)
-    return () => { clearInterval(a); clearInterval(b) }
+    // 12 Nov: a tab in the background stops asking the server; it catches up as soon as it is looked at again
+    const visible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden'
+    const a = setInterval(flush, 8000), b = setInterval(() => { if (visible()) pull() }, 30000)
+    const back = () => { if (visible()) { flush(); pull() } }
+    document.addEventListener('visibilitychange', back)
+    return () => { clearInterval(a); clearInterval(b); document.removeEventListener('visibilitychange', back) }
   }, [online]) // eslint-disable-line
 
-  const enqueue = (op) => { if (!backend || trainingSnap.current) return; queue.current.push(op); safeSet(QKEY, JSON.stringify(queue.current)); setTimeout(flush, 400) }
+  // 12 Nov: saving the same record again before it was sent replaces the waiting copy instead of queueing another
+  const enqueue = (op) => {
+    if (!backend || trainingSnap.current) return
+    if (op.op === 'upsert') {
+      const i = queue.current.findIndex((o) => o.op === 'upsert' && o.coll === op.coll && o.rec?.id === op.rec?.id)
+      if (i >= 0) { const was = queue.current[i]; queue.current = queue.current.filter((_, k) => k !== i); op = { ...op, isNew: was.isNew || op.isNew, action: op.action || was.action, rec: { ...was.rec, ...op.rec } } }
+    }
+    queue.current = [...queue.current, op]; safeSet(QKEY, JSON.stringify(queue.current)); setTimeout(flush, 400)
+  }
 
   // ---------- data API
   const logAudit = (coll, id, action) => {
@@ -154,6 +212,9 @@ export function StoreProvider({ children }) {
     const r = { ...rec, updatedAt: new Date().toISOString(), updatedBy: user?.name || 'system' }
     ;['mine', 'directoryOnly', 'payState', 'lastPaymentDate', '_mineClients'].forEach((k) => delete r[k])
     const exists = (rawRef.current[coll] || []).some((x) => x.id === r.id)
+    // 12 Nov: a new record carries a one-off creation key, so the server can tell a clash of numbers (two people picked
+    // I-0266) from the same record being sent twice
+    if (!exists && !r._cid) r._cid = uid('c')
     let isNew = false
     setRaw((cur) => {
       const list = cur[coll] || []
@@ -162,7 +223,7 @@ export function StoreProvider({ children }) {
       const next = i >= 0 ? list.map((x, k) => (k === i ? { ...x, ...r } : x)) : [r, ...list]
       return { ...cur, [coll]: next }
     })
-    enqueue({ coll, op: 'upsert', rec: r, action: opts.action, isNew: opts.isNew })
+    enqueue({ coll, op: 'upsert', rec: r, action: opts.action, isNew: opts.isNew ?? !exists })
     if (!opts.silent && coll !== 'audit' && !demo) logAudit(coll, r.id, opts.action || 'saved')
     return r
   }, [user, backend, demo]) // eslint-disable-line
@@ -328,15 +389,21 @@ export function StoreProvider({ children }) {
   }, [online, session, call, raw.attendance, user, upsert, settings])
 
   // ---------- Accord experience sessions (written by the bridge in experience/index.html)
+  // 12 Nov: this used to compare the session's updatedAt with the saved record's, but saving stamps a new updatedAt,
+  // so they never matched: every save (and every pull) saved all sessions again, in a loop that never stopped while a
+  // session sat in this browser (13,600 audit rows for 5 sessions). The experience's own time is now kept as expAt,
+  // and the check runs on sign-in and when the experience tab writes, not on every change to the data.
   const importExperience = useCallback(() => {
     const list = readJson(EXP_SESSIONS, [])
     if (!user || !list.length) return
     list.forEach((s) => {
-      const cur = raw.accordSessions.find((x) => x.id === s.id)
-      if (!cur || cur.updatedAt !== s.updatedAt) upsert('accordSessions', { ...cur, ...s, by: s.by || cur?.by || user.name }, { system: true, silent: true })
+      const cur = (rawRef.current.accordSessions || []).find((x) => x.id === s.id)
+      const stamp = s.updatedAt || ''
+      if (cur && (cur.expAt === stamp || (!cur.expAt && stamp && cur.updatedAt >= stamp))) return
+      upsert('accordSessions', { ...cur, ...s, expAt: stamp, by: s.by || cur?.by || user.name }, { system: true, silent: true })
     })
-  }, [raw.accordSessions, upsert, user])
-  useEffect(() => { importExperience(); const h = (e) => { if (e.key === EXP_SESSIONS) importExperience() }; window.addEventListener('storage', h); return () => window.removeEventListener('storage', h) }, [importExperience])
+  }, [upsert, user])
+  useEffect(() => { importExperience(); const h = (e) => { if (e.key === EXP_SESSIONS) importExperience() }; window.addEventListener('storage', h); return () => window.removeEventListener('storage', h) }, [user?.id]) // eslint-disable-line
 
   // ---------- reminders on this device (service worker notification when allowed, else in-app only)
   useEffect(() => {

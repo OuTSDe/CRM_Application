@@ -39,7 +39,7 @@
  *  - Records made in demo mode carry _test = Yes: they send no reminders and are listed for clean-up.
  */
 
-var VERSION = '3.6.0';   // 4 Nov: the site warns admins when the deployed backend is older than this
+var VERSION = '3.7.0';   // 12 Nov: faster audit writes and pulls (see ACCORD_CHANGES_2026-11-12.md)
 var DATA_PATH = 'Accord_CRM_Application/Accord_Data';   // inside My Drive of the account that runs this script
 var TEMP_PASSWORD = 'Accord2026';                        // first sign-in only, to link the authenticator
 // The team, created by setup() when the Users tab is empty, so the first admin can sign in (temporary password, then the authenticator).
@@ -150,7 +150,11 @@ function clock_() { return Utilities.formatDate(new Date(), TZ, 'HH:mm'); }
 
 /* ───────────────────────── storage ───────────────────────── */
 function cols_(name) { return (SCHEMA[name] || [['id','ID'],['updatedAt','Updated at'],['updatedBy','Updated by']]).concat([['_extra','_extra']]); }
+// 12 Nov: sheets and sheet contents are remembered for the length of one request. A push of 40 changes used to read the
+// same tabs (users, leads, notifications) dozens of times. Every write below clears the remembered copy of its tab.
+var SHEETS_ = {}, READ_CACHE_ = {};
 function sheet_(name) {
+  if (SHEETS_[name]) return SHEETS_[name];
   var ss = SpreadsheetApp.getActive(), sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
@@ -159,6 +163,7 @@ function sheet_(name) {
     sh.getRange(2, 1, 1, c.length).setValues([c.map(function (x) { return x[0]; })]).setFontColor('#9A9087').setFontSize(8);
     sh.setFrozenRows(2);
   }
+  SHEETS_[name] = sh;
   return sh;
 }
 function keys_(sh) { var w = sh.getLastColumn(); return w ? sh.getRange(2, 1, 1, w).getValues()[0].map(String) : []; }
@@ -177,9 +182,20 @@ function rowOf_(keys, rec) {
   return keys.map(function (k) { return k === '_extra' ? (Object.keys(extra).length ? JSON.stringify(extra) : '') : cell_(rec[k]); });
 }
 function idKey_(name) { return name === 'clients' ? 'bookingId' : 'id'; }
-function read_(name) {
-  var sh = sheet_(name), last = sh.getLastRow(); if (last < 3) return [];
-  var keys = keys_(sh), vals = sh.getRange(3, 1, last - 2, keys.length).getValues(), out = [];
+// 12 Nov: lastN reads only the newest rows (the audit sheet grew past 20,000 rows and was read in full on every pull).
+function read_(name, lastN) {
+  if (!lastN && READ_CACHE_[name]) return JSON.parse(READ_CACHE_[name]);   // a fresh copy: callers change what they get
+  var sh = sheet_(name), keys, vals;
+  if (lastN) {
+    var last = sh.getLastRow(); if (last < 3) return [];
+    var start = last - 2 > lastN ? last - lastN + 1 : 3;
+    keys = keys_(sh); vals = sh.getRange(start, 1, last - start + 1, keys.length).getValues();
+  } else {
+    var all = sh.getDataRange().getValues();   // one call instead of four
+    if (all.length < 3) { READ_CACHE_[name] = '[]'; return []; }
+    keys = all[1].map(String); vals = all.slice(2);
+  }
+  var out = [];
   vals.forEach(function (r) {
     if (r.join('') === '') return;
     var o = {};
@@ -188,15 +204,18 @@ function read_(name) {
     if (o.id !== undefined) o.id = String(o.id);
     out.push(o);
   });
+  if (!lastN) READ_CACHE_[name] = JSON.stringify(out);
   return out;
 }
 function writeAll_(name, list) {
+  delete READ_CACHE_[name];
   var sh = sheet_(name), keys = keys_(sh);
   if (sh.getLastRow() > 2) sh.getRange(3, 1, sh.getLastRow() - 2, sh.getLastColumn()).clearContent();
   if (!list.length) return;
   sh.getRange(3, 1, list.length, keys.length).setValues(list.map(function (r) { return rowOf_(keys, r); }));
 }
 function upsert_(name, rec) {
+  delete READ_CACHE_[name];
   var sh = sheet_(name), keys = keys_(sh), last = sh.getLastRow(), ik = keys.indexOf(idKey_(name));
   if (ik < 0) ik = keys.indexOf('id');
   var id = String(rec[idKey_(name)] || rec.id);
@@ -206,12 +225,85 @@ function upsert_(name, rec) {
 }
 function find_(name, id) { return read_(name).filter(function (x) { return String(x.id) === String(id) || String(x.bookingId) === String(id); })[0] || null; }
 function delete_(name, id) {
+  delete READ_CACHE_[name];
   var sh = sheet_(name), keys = keys_(sh), last = sh.getLastRow(); if (last < 3) return;
   var ik = Math.max(0, keys.indexOf(idKey_(name)));
   var ids = sh.getRange(3, ik + 1, last - 2, 1).getValues();
   for (var i = ids.length - 1; i >= 0; i--) if (String(ids[i][0]) === String(id)) sh.deleteRow(i + 3);
 }
-function audit_(u, coll, id, action) { upsert_('audit', { id: 'A-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: now_(), by: u ? u.name : 'system', coll: coll, recId: id, action: action }); }
+// 12 Nov: audit rows are always new, so they are appended without reading the whole ID column first (that read took
+// longer as the sheet grew). Inside push_ they are collected and written in one go at the end.
+var AUDIT_BUF_ = null;
+function audit_(u, coll, id, action) {
+  var rec = { id: 'A-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: now_(), by: u ? u.name : 'system', coll: coll, recId: id, action: action };
+  if (AUDIT_BUF_) { AUDIT_BUF_.push(rec); return; }
+  delete READ_CACHE_.audit; var sh = sheet_('audit'); sh.appendRow(rowOf_(keys_(sh), rec));
+}
+function flushAudit_() {
+  var list = AUDIT_BUF_ || []; AUDIT_BUF_ = null; if (!list.length) return;
+  delete READ_CACHE_.audit;
+  var sh = sheet_('audit'), keys = keys_(sh);
+  sh.getRange(Math.max(sh.getLastRow(), 2) + 1, 1, list.length, keys.length).setValues(list.map(function (r) { return rowOf_(keys, r); }));
+}
+/** 12 Nov: moves to notificationsArchive (1) notifications read more than `days` ago (default 30) and (2) repeated
+    follow-up reminders: the same person, same interaction, still unread, where only the newest one is kept. */
+function tidyNotifications(days) {
+  days = Number(days) || 30;
+  var lock = LockService.getScriptLock(); if (!lock.tryLock(30000)) return 'busy';
+  try {
+    var sh = sheet_('notifications'), last = sh.getLastRow(); if (last < 3) return 'nothing to move';
+    var w = sh.getLastColumn(), vals = sh.getRange(3, 1, last - 2, w).getValues(), keys = keys_(sh);
+    var K = function (k) { return keys.indexOf(k); }, cut = new Date(Date.now() - days * 864e5).toISOString();
+    var newest = {};
+    vals.forEach(function (r, i) { if (r[K('kind')] === 'followup' && !r[K('readAt')]) { var g = r[K('to')] + '|' + r[K('link')]; if (newest[g] === undefined || String(r[K('createdAt')]) >= String(vals[newest[g]][K('createdAt')])) newest[g] = i; } });
+    var keep = [], move = [];
+    vals.forEach(function (r, i) {
+      var g = r[K('to')] + '|' + r[K('link')];
+      var old = r[K('readAt')] && String(r[K('readAt')]) < cut, repeat = r[K('kind')] === 'followup' && !r[K('readAt')] && newest[g] !== i;
+      (old || repeat ? move : keep).push(r);
+    });
+    if (!move.length) return 'nothing to move';
+    var ss = SpreadsheetApp.getActive(), ar = ss.getSheetByName('notificationsArchive');
+    if (!ar) { ar = ss.insertSheet('notificationsArchive'); ar.getRange(1, 1, 2, w).setValues(sh.getRange(1, 1, 2, w).getValues()); ar.setFrozenRows(2); }
+    ar.getRange(Math.max(ar.getLastRow(), 2) + 1, 1, move.length, w).setValues(move);
+    sh.getRange(3, 1, vals.length, w).clearContent();
+    if (keep.length) sh.getRange(3, 1, keep.length, w).setValues(keep);
+    delete READ_CACHE_.notifications;
+    return 'moved ' + move.length + ' rows, kept ' + keep.length;
+  } finally { lock.releaseLock(); }
+}
+/** 12 Nov: one-time tidy after updating to 3.7.0. Run this once from the editor. */
+function consolidateOnce() { Logger.log('audit: ' + archiveAudit(14)); Logger.log('notifications: ' + tidyNotifications(30)); }
+/** 12 Nov: moves audit rows older than `days` (default 14) to the auditArchive tab, which Accord never reads.
+    Runs every night with nightlyBackup; run it once by hand after updating to clear the backlog. */
+function archiveAudit(days) {
+  days = Number(days) || 14;
+  var lock = LockService.getScriptLock(); if (!lock.tryLock(30000)) return 'busy';
+  try {
+    var sh = sheet_('audit'), last = sh.getLastRow(); if (last < 3) return 'nothing to move';
+    var w = sh.getLastColumn(), vals = sh.getRange(3, 1, last - 2, w).getValues(), keys = keys_(sh), ai = keys.indexOf('at');
+    // Moved: rows older than `days`; the experience-session re-saves from the 5 to 11 Nov loop; and the same change
+    // logged again by the same person within the same minute (the double and triple pushes). Nothing is deleted.
+    var cut = new Date(Date.now() - days * 864e5).toISOString();
+    var bi = keys.indexOf('by'), ci = keys.indexOf('coll'), ri = keys.indexOf('recId'), xi = keys.indexOf('action');
+    var seen = {}, keep = [], move = [];
+    vals.forEach(function (r) {
+      var sig = [r[bi], r[ci], r[ri], r[xi], String(r[ai]).slice(0, 16)].join('|');
+      var noise = r[ci] === 'accordSessions' && r[xi] === 'saved';
+      if (String(r[ai]) < cut || noise || seen[sig]) move.push(r); else keep.push(r);
+      seen[sig] = 1;
+    });
+    if (!move.length) return 'nothing to move';
+    var ss = SpreadsheetApp.getActive(), ar = ss.getSheetByName('auditArchive');
+    if (!ar) { ar = ss.insertSheet('auditArchive'); ar.getRange(1, 1, 2, w).setValues(sh.getRange(1, 1, 2, w).getValues()); ar.setFrozenRows(2); }
+    ar.getRange(Math.max(ar.getLastRow(), 2) + 1, 1, move.length, w).setValues(move);
+    sh.getRange(3, 1, vals.length, w).clearContent();
+    if (keep.length) sh.getRange(3, 1, keep.length, w).setValues(keep);
+    if (sh.getMaxRows() > keep.length + 50) sh.deleteRows(keep.length + 3, sh.getMaxRows() - keep.length - 3);
+    delete READ_CACHE_.audit;
+    return 'moved ' + move.length + ' rows, kept ' + keep.length;
+  } finally { lock.releaseLock(); }
+}
 
 /* ───────────────────────── sign-in: authenticator app, two devices, sessions ───────────────────────── */
 function hex_(bytes) { return bytes.map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join(''); }
@@ -440,7 +532,8 @@ function payState_(c, recv, s, calls) {
 }
 function pull_(u) {
   var db = {};
-  COLLECTIONS.forEach(function (c) { db[c] = read_(c); });
+  // 12 Nov: the audit log is only shown to admins, and only its newest 1,000 rows
+  COLLECTIONS.forEach(function (c) { db[c] = c === 'audit' ? (u.appRole === 'admin' ? read_('audit', 1000) : []) : read_(c); });
   db.users = db.users.map(function (x) { var y = strip_(x, ['pwSalt','pwHash','failed','lockedUntil','totpSecret','totpPending','totpLast']); y.hasPassword = !!x.pwHash; y.mfa = x.totpSecret ? 'Set' : 'Not set'; if (u.appRole !== 'admin') { delete y.devices; } return y; });
   if (u.appRole === 'consultant') return { db: consultantView_(db, u), serverTime: now_(), user: publicUser_(u), version: VERSION };
   if (u.appRole === 'bank') return { db: bankView_(db, u), serverTime: now_(), user: publicUser_(u), version: VERSION };
@@ -517,12 +610,15 @@ function bankView_(db, u) {
 /* ───────────────────────── writes ───────────────────────── */
 function can_(u, coll) { var w = WRITE[coll] || []; return u.appRole === 'admin' || w.indexOf('*') >= 0 || w.indexOf(u.appRole) >= 0 || extras_(u).some(function (k) { return GRANTS[k].indexOf(coll) >= 0; }); }
 function push_(u, ops) {
-  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  var lock = LockService.getScriptLock(); lock.waitLock(25000);
+  AUDIT_BUF_ = [];
   try {
-    var done = 0, refused = [];
+    var done = 0, refused = [], renamed = [], remap = {};
     ops.forEach(function (op) {
       var c = op.coll;
       if (COLLECTIONS.indexOf(c) < 0 || !can_(u, c)) { refused.push(c); return; }
+      if (op.op === 'delete' && remap[op.id]) op.id = remap[op.id];
+      if (op.rec) { remapRefs_(op.rec, remap); newId_(u, c, op, remap, renamed); }
       if (op.op === 'delete') { if (u.appRole !== 'admin' && ['tasks','notifications'].indexOf(c) < 0) { refused.push(c + ' delete'); return; } delete_(c, op.id); audit_(u, c, op.id, 'deleted'); done++; return; }
       var rec = op.rec || {};
       rec.updatedAt = now_(); rec.updatedBy = u.name;
@@ -554,14 +650,38 @@ function push_(u, ops) {
       if (c !== 'notifications') audit_(u, c, rec.id || rec.bookingId, (op.action || 'saved') + (isTest ? ' (demo mode)' : ''));
       done++;
     });
-    return { ok: true, done: done, refused: refused, serverTime: now_() };
-  } finally { lock.releaseLock(); }
+    return { ok: true, done: done, refused: refused, renamed: renamed, serverTime: now_() };
+  } finally { try { flushAudit_(); } catch (e) { Logger.log('audit write failed: ' + e); } lock.releaseLock(); }
 }
 /* 2 Nov: who needs to know about a change. New people responsible for a lead or client, everyone when the rate card or
    settings change (with what changed), and the advisor's manager plus admins for a client complaint. */
 // 7 Nov: payment edits. Fields compared, their labels, and the ones that make an edit HIGH.
 var PAY_EDIT_FIELDS = { date: 'Date', amount: 'Amount', tds: 'TDS', unit: 'Residence', payer: 'Received from', towards: 'Towards', mode: 'Mode', instrument: 'Reference', instrumentDate: 'Instrument date', bank: 'Bank', counted: 'Counted in totals', demandLetter: 'Demand letter', thirdParty: 'Paid by', realisation: 'Realisation', note: 'Note' };
 var PAY_HIGH = ['amount', 'tds', 'unit', 'counted', 'demandLetter'];
+/* 12 Nov: numbered IDs (I-0266, YSC-L-0212, Q-0080, L-0160, CS-0002) are made in the browser from the records that
+   person can see. Advisors see only their own interactions and leads, so two of them could pick the same next number,
+   and the later save replaced the earlier one (42 interactions were lost this way, 3 to 11 Nov). A new record whose
+   number is already taken by a different record now gets the next free number here, and the browser is told. */
+var RENUMBER_ = { interactions: 1, leads: 1, issues: 1, payments: 1, costSheets: 1, tasks: 1, viewings: 1, quotes: 1, demandLetters: 1, messages: 1 };
+function pad_(n, w) { n = String(n); while (n.length < w) n = '0' + n; return n; }
+function remapRefs_(rec, remap) {
+  if (!Object.keys(remap).length) return;
+  Object.keys(rec).forEach(function (k) {
+    var v = rec[k];
+    if (typeof v === 'string') { if (remap[v]) rec[k] = remap[v]; else if (v.indexOf('i:') === 0 && remap[v.slice(2)]) rec[k] = 'i:' + remap[v.slice(2)]; }
+  });
+}
+function newId_(u, c, op, remap, renamed) {
+  var rec = op.rec; if (!RENUMBER_[c] || !op.isNew || !rec.id) return;
+  var list = read_(c), cur = list.filter(function (x) { return String(x.id) === String(rec.id); })[0];
+  if (!cur) return;
+  var same = cur._cid ? cur._cid === rec._cid : (rec._cid ? false : (cur.updatedBy === u.name));   // the same record sent twice is not a clash
+  if (same) return;
+  var m = String(rec.id).match(/^(.*?)(\d+)$/); if (!m) return;
+  var max = 0; list.forEach(function (x) { var k = String(x.id); if (k.indexOf(m[1]) === 0) { var n = Number(k.slice(m[1].length)); if (n > max) max = n; } });
+  var nid = m[1] + pad_(max + 1, m[2].length);
+  remap[rec.id] = nid; renamed.push({ coll: c, from: rec.id, to: nid }); rec.id = nid;
+}
 function paymentChanges_(before, rec) {
   return Object.keys(PAY_EDIT_FIELDS).filter(function (k) { return String(before[k] == null ? '' : before[k]) !== String(rec[k] == null ? '' : rec[k]); })
     .map(function (k) { return { field: k, label: PAY_EDIT_FIELDS[k], from: before[k] == null ? '' : before[k], to: rec[k] == null ? '' : rec[k] }; });
@@ -967,4 +1087,6 @@ function nightlyBackup() {
   var files = [], it = f.getFiles(); while (it.hasNext()) files.push(it.next());
   files.sort(function (a, b) { return b.getDateCreated() - a.getDateCreated(); }).slice(30).forEach(function (x) { x.setTrashed(true); });
   try { exportXlsx_(); } catch (e) { Logger.log('Excel export failed: ' + e); }
+  try { archiveAudit(14); } catch (e) { Logger.log('Audit archive failed: ' + e); }
+  try { tidyNotifications(30); } catch (e) { Logger.log('Notification tidy failed: ' + e); }
 }
