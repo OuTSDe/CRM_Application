@@ -9,6 +9,7 @@ import { getLocation, geoCheck } from '../lib/geo.js'
 import { notificationTarget } from '../lib/links.js'
 import { listDrafts, clearDraft, clearAllDrafts, draftTime, DRAFT_EVENT } from '../lib/drafts.js'
 import { cx, Button, Modal } from './ui.jsx'
+import { useLogo } from '../lib/logo.js'
 
 // Navigation per platform. [path, label, module, exact]
 export const NAV = {
@@ -51,6 +52,7 @@ export function useWorkspace() {
 
 export default function Layout() {
   const { user, logout, sync, backend, punchedIn, myDay, punch, notify, db, markRead, demo, toggleDemo, settings, backendOld, serverVersion } = useStore()
+  const logoSrc = useLogo(settings.brand?.logo)
   const nav = useNavigate()
   const loc = useLocation()
   const [ws, setWs, wsAll] = useWorkspace()
@@ -97,7 +99,7 @@ export default function Layout() {
           <button className="icon-btn hamb" onClick={() => setMenu(!menu)} aria-label="Menu" aria-expanded={menu}><svg width="16" height="16" viewBox="0 0 16 16" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" /></svg></button>
           {loc.pathname !== '/' && <button type="button" className="icon-btn go-back" onClick={() => ((window.history.state?.idx ?? 0) > 0 ? nav(-1) : nav('/'))} aria-label="Go back" title="Go back (anything you typed is kept as a draft)">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="M10 3L5 8l5 5" /></svg></button>}
-          <button type="button" className="top-brand" onClick={() => nav('/')} aria-label="Accord: Sky City Edition, home">{settings.brand?.logo ? <img className="top-logo" src={settings.brand.logo} alt="" /> : <span className="mark">A</span>}<span className="top-name">Accord<span className="top-ed">: Sky City Edition</span></span></button>
+          <button type="button" className="top-brand" onClick={() => nav('/')} aria-label="Accord: Sky City Edition, home">{logoSrc ? <img className="top-logo" src={logoSrc} alt="" /> : <span className="mark">A</span>}<span className="top-name">Accord<span className="top-ed">: Sky City Edition</span></span></button>
           <div className="crumb">{WORKSPACES[ws]?.label}</div>
           <div className="top-right">
             {myDay && <PunchStatus day={myDay} punch={punch} notify={notify} />}

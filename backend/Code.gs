@@ -39,7 +39,9 @@
  *  - Records made in demo mode carry _test = Yes: they send no reminders and are listed for clean-up.
  */
 
-var VERSION = '3.8.1';   // 12 Nov (b): shared read cache and delta pulls. Was:
+var VERSION = '3.8.3';   // 12 Nov (d): the logo lives on Drive (Accord_Data / Brand); settings keep only its link.
+// 3.8.2: long values over the 50,000-character cell limit; one bad change no longer blocks a push.
+// 3.8.1: shared read cache and delta pulls. Was:
 // var VERSION = '3.8.0';   // 12 Nov: Accord People (HR, leave, KRAs, knowledge base by grade). See ACCORD_CHANGES_2026-11-12_PEOPLE.md
 var DATA_PATH = 'Accord_CRM_Application/Accord_Data';   // inside My Drive of the account that runs this script
 var TEMP_PASSWORD = 'Accord2026';                        // first sign-in only, to link the authenticator
@@ -72,6 +74,7 @@ var SCHEMA = {
   // 8 Nov: car parking from the architect's drawings (slot = level + drawing number, e.g. L1-072A)
   parking: [['id','Slot'],['level','Level'],['levelCode','Level code'],['no','Drawing no.'],['kind','Kind'],['pair','Tandem partner'],['walk','Walk to lobby (m)'],['type','Type'],['ev','EV'],['zone','Held for band'],['status','Status'],['allotStatus','Allotment'],['unit','Unit No.'],['bookingId','Booking ID'],['clientId','Client ID'],['name','Client'],['assignedOn','Allotted on'],['assignedBy','Allotted by'],['allotNote','Why'],['locked','Letter issued'],['letterOn','Letter date'],['letterNo','Letter No.'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   audit: [['id','ID'],['at','When'],['by','By'],['coll','Collection'],['recId','Record'],['action','Action']],
+  bigCells: [['id','ID'],['key','Value of'],['part','Part'],['text','Text']],   // 12 Nov (c): values too long for one cell
   // 12 Nov: Accord People
   hrProfiles: [['id','Profile ID'],['userId','Member ID'],['name','Name'],['empCode','Employee code'],['position','Position'],['grade','Grade'],['department','Department'],['employment','Employment'],['doj','Date of joining'],['probationEnd','Probation ends'],['confirmedOn','Confirmed on'],['status','Status'],['resignedOn','Resigned on'],['lastDay','Last working day'],['workLocation','Work location'],['onboarding','Onboarding checklist'],['exit','Exit checklist'],['opening','Opening leave balances'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   leaves: [['id','Leave ID'],['userId','Member ID'],['name','Name'],['type','Type'],['from','From'],['to','To'],['half','Half day'],['days','Days'],['reason','Reason'],['cover','Cover'],['status','Status'],['approver','Approver'],['appliedAt','Applied at'],['decidedBy','Decided by'],['decidedAt','Decided at'],['decisionNote','Decision note'],['updatedAt','Updated at']],
@@ -141,6 +144,7 @@ function doPost(e) {
       case 'enrolConfirm': return out_(enrolConfirm_(auth_(req.token, true), req));
       case 'changePassword': return out_(changePassword_(auth_(req.token), req));
       case 'pull': return out_(delta_(pull_(auth_(req.token)), req.have));
+      case 'logo': auth_(req.token); return out_(logoData_());
       case 'push': return out_(push_(auth_(req.token), req.ops || []));
       case 'punch': return out_(punch_(auth_(req.token), req));
       case 'setPassword': return out_(setPassword_(auth_(req.token), req));
@@ -247,11 +251,41 @@ function parse_(v) {
   if (typeof v === 'string' && (v.charAt(0) === '[' || v.charAt(0) === '{')) { try { return JSON.parse(v); } catch (e) {} }
   return v;
 }
-function rowOf_(keys, rec) {
+function rowOf_(keys, rec, name) {
   var extra = {}, known = {};
   keys.forEach(function (k) { known[k] = 1; });
   Object.keys(rec).forEach(function (k) { if (!known[k]) extra[k] = rec[k]; });
-  return keys.map(function (k) { return k === '_extra' ? (Object.keys(extra).length ? JSON.stringify(extra) : '') : cell_(rec[k]); });
+  return keys.map(function (k) {
+    var v = k === '_extra' ? (Object.keys(extra).length ? JSON.stringify(extra) : '') : cell_(rec[k]);
+    if (typeof v === 'string' && v.length > BIG_) {   // 12 Nov (c): a Google Sheets cell holds at most 50,000 characters
+      if (!name || name === 'bigCells') return v.slice(0, BIG_);
+      var key = name + ':' + String(rec[idKey_(name)] || rec.id) + ':' + k;
+      bigPut_(key, v); return BIG_MARK_ + key;
+    }
+    return v;
+  });
+}
+/* 12 Nov (c): a value longer than one cell allows (a photo with the other extra fields, a long thread, a long document)
+   is kept in the bigCells tab in parts, and its cell holds only a pointer (@@big:<tab>:<id>:<field>). read_ puts it back
+   together, so the rest of Accord never sees the difference. Each part starts with ~ (removed on reading) so Sheets never
+   reads a part as a number, a date or a formula. */
+var BIG_ = 45000, BIG_MARK_ = '@@big:', BIG_MAP_ = null;
+function bigPut_(key, text) {
+  var sh = sheet_('bigCells'), keys = keys_(sh), last = sh.getLastRow(), ki = keys.indexOf('key');
+  if (last > 2 && ki >= 0) { var col = sh.getRange(3, ki + 1, last - 2, 1).getValues(); for (var i = col.length - 1; i >= 0; i--) if (String(col[i][0]) === key) sh.deleteRow(i + 3); }
+  var rows = [], n = Math.ceil(text.length / BIG_);
+  for (var p = 0; p < n; p++) rows.push(keys.map(function (k) { return k === 'id' ? key + '#' + p : k === 'key' ? key : k === 'part' ? p : k === 'text' ? '~' + text.slice(p * BIG_, (p + 1) * BIG_) : ''; }));
+  sh.getRange(Math.max(sh.getLastRow(), 2) + 1, 1, rows.length, keys.length).setValues(rows);
+  BIG_MAP_ = null; bump_('bigCells');
+}
+function bigGet_(v) {
+  if (!BIG_MAP_) {
+    BIG_MAP_ = {}; var parts = {};
+    read_('bigCells').forEach(function (r) { (parts[r.key] = parts[r.key] || []).push(r); });
+    Object.keys(parts).forEach(function (k) { BIG_MAP_[k] = parts[k].sort(function (a, b) { return Number(a.part) - Number(b.part); }).map(function (r) { return String(r.text == null ? '' : r.text).slice(1); }).join(''); });
+  }
+  var key = String(v).slice(BIG_MARK_.length);
+  return BIG_MAP_[key] !== undefined ? BIG_MAP_[key] : '';
 }
 function idKey_(name) { return name === 'clients' ? 'bookingId' : 'id'; }
 // 12 Nov: lastN reads only the newest rows (the audit sheet grew past 20,000 rows and was read in full on every pull).
@@ -273,6 +307,7 @@ function read_(name, lastN) {
   var out = [];
   vals.forEach(function (r) {
     if (r.join('') === '') return;
+    if (name !== 'bigCells' && r.some(function (x) { return typeof x === 'string' && x.indexOf(BIG_MARK_) === 0; })) r = r.map(function (x) { return typeof x === 'string' && x.indexOf(BIG_MARK_) === 0 ? bigGet_(x) : x; });
     var o = {};
     keys.forEach(function (k, i) { if (k === '_extra') { if (r[i]) { try { var x = JSON.parse(r[i]); Object.keys(x).forEach(function (kk) { o[kk] = x[kk]; }); } catch (e) {} } } else if (r[i] !== '') o[k] = TEXT_KEYS[k] ? (r[i] instanceof Date ? Utilities.formatDate(r[i], TZ, /^(time|nextTime|in|out|shiftStart|shiftEnd)$/.test(k) ? 'HH:mm' : 'yyyy-MM-dd') : String(r[i])) : parse_(r[i]); });
     if (name === 'clients' && !o.id) o.id = o.bookingId;
@@ -286,7 +321,7 @@ function writeAll_(name, list) {
   delete READ_CACHE_[name];
   var sh = sheet_(name), keys = keys_(sh);
   if (sh.getLastRow() > 2) sh.getRange(3, 1, sh.getLastRow() - 2, sh.getLastColumn()).clearContent();
-  if (list.length) sh.getRange(3, 1, list.length, keys.length).setValues(list.map(function (r) { return rowOf_(keys, r); }));
+  if (list.length) sh.getRange(3, 1, list.length, keys.length).setValues(list.map(function (r) { return rowOf_(keys, r, name); }));
   bump_(name);
 }
 function upsert_(name, rec) {
@@ -295,7 +330,7 @@ function upsert_(name, rec) {
   if (ik < 0) ik = keys.indexOf('id');
   var id = String(rec[idKey_(name)] || rec.id);
   var ids = last > 2 ? sh.getRange(3, ik + 1, last - 2, 1).getValues().map(function (r) { return String(r[0]); }) : [];
-  var i = ids.indexOf(id), row = rowOf_(keys, rec);
+  var i = ids.indexOf(id), row = rowOf_(keys, rec, name);
   if (i >= 0) sh.getRange(i + 3, 1, 1, keys.length).setValues([row]); else sh.appendRow(row);
   bump_(name);
 }
@@ -838,7 +873,13 @@ function push_(u, ops) {
   AUDIT_BUF_ = [];
   try {
     var done = 0, refused = [], renamed = [], remap = {};
-    ops.forEach(function (op) {
+    ops.forEach(function (op) { try { pushOne_(op); } catch (err) {
+      // 12 Nov (c): one change that cannot be saved no longer fails the whole push (the app used to resend it forever)
+      var what = op.coll + ' ' + ((op.rec && (op.rec.id || op.rec.bookingId)) || op.id || '');
+      Logger.log('push failed: ' + what + ' · ' + err + ' · by ' + u.name);
+      refused.push(what + ' (not saved: ' + String(err && err.message || err).slice(0, 120) + ')');
+    } });
+    function pushOne_(op) {
       var c = op.coll;
       if (COLLECTIONS.indexOf(c) < 0 || !can_(u, c)) { refused.push(c); return; }
       if (HR_COLLS.indexOf(c) >= 0) { var hrNo = hrCheck_(u, c, op); if (hrNo) { refused.push(hrNo); return; } }
@@ -857,6 +898,7 @@ function push_(u, ops) {
       if (c === 'users') { var cu = find_('users', rec.id); ['pwSalt','pwHash','failed','lockedUntil','totpSecret','totpPending','totpLast','devices'].forEach(function (k) { rec[k] = cu ? cu[k] : (k === 'devices' ? [] : ''); }); rec.mfa = cu && cu.totpSecret ? 'Set' : 'Not set'; delete rec.hasPassword; }
       if (c === 'notifications' && rec.to !== u.name && !op.create) { var cn = find_('notifications', rec.id); if (cn && cn.to !== u.name && u.appRole !== 'admin') { refused.push('notifications'); return; } }
       var before = (c === 'leads' || c === 'clients' || c === 'settings' || c === 'payments' || c === 'demandLetters') ? find_(c, rec.bookingId || rec.id) : null;
+      if (c === 'settings') settingsLogo_(rec, before);   // 12 Nov (d)
       if (c === 'clients' && !before && rec.unit) {   // 2 Nov: no double booking, checked on the server too
         var clash = read_('clients').filter(function (x) { return String(x.unit) === String(rec.unit) && ['Cancelled', 'Transferred'].indexOf(x.status) < 0; })[0];
         if (clash) { refused.push('booking (residence ' + rec.unit + ' is already booked by ' + clash.name + ')'); return; }
@@ -875,7 +917,7 @@ function push_(u, ops) {
       if (c === 'tasks' && !isTest && rec.owner && rec.owner !== u.name && op.isNew) notify_(rec.owner, 'task', 'New task from ' + u.name, rec.title, '#/people/tasks', rec.due ? rec.due + 'T10:00' : '', u.name);
       if (c !== 'notifications') audit_(u, c, rec.id || rec.bookingId, (op.action || 'saved') + (isTest ? ' (demo mode)' : ''));
       done++;
-    });
+    }
     return { ok: true, done: done, refused: refused, renamed: renamed, serverTime: now_() };
   } finally { try { flushAudit_(); } catch (e) { Logger.log('audit write failed: ' + e); } lock.releaseLock(); }
 }
@@ -1176,10 +1218,50 @@ function upload_(u, req) {
     // 2 Nov: what the card check read. Aadhaar is never kept in full, only the last 4 digits.
     kyc: String(m.kyc || '').slice(0, 80), kycNumber: kycSafe_(m.kycNumber), kycName: String(m.kycName || '').slice(0, 80), kycDob: String(m.kycDob || '').slice(0, 12) };
   upsert_('files', rec); audit_(u, 'files', rec.id, 'uploaded ' + name);
-  if (m.kind === 'brand') { var s = read_('settings')[0] || { id: 'main' }; s.logoFileId = file.getId(); upsert_('settings', s); }
-  return { ok: true, url: rec.url, id: rec.driveId, name: name, file: rec, folderUrl: f.getUrl() };
+  var logoUrl = '';
+  if (m.kind === 'brand') { var s = read_('settings')[0] || { id: 'main' }; logoUrl = publishLogo_(file, s); upsert_('settings', s); }
+  return { ok: true, url: logoUrl || rec.url, logoUrl: logoUrl, id: rec.driveId, name: name, file: rec, folderUrl: f.getUrl() };
 }
 
+/* 12 Nov (d): the logo is a file in Accord_Data / Brand. Settings keep only a link to it (brand.logo), so the settings
+   record stays small and every device loads the picture straight from Google. The file is shared as "anyone with the
+   link can view" (it is the public brand mark). If the account does not allow link sharing, brand.logo is 'drive:<id>'
+   and the site asks the backend for the picture once (action 'logo') and keeps it on the device. */
+function publishLogo_(file, s) {
+  var url = '';
+  try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); url = 'https://lh3.googleusercontent.com/d/' + file.getId(); } catch (e) { Logger.log('logo link sharing not allowed: ' + e); }
+  s.logoFileId = file.getId(); s.brand = s.brand || {}; s.brand.logo = url || 'drive:' + file.getId();
+  return s.brand.logo;
+}
+function logoFromData_(s, dataUrl) {   // a logo sent as data:image/...;base64 becomes a Drive file
+  var mm = String(dataUrl).match(/^data:(image\/[a-z0-9.+-]+);base64,(.*)$/i); if (!mm) return;
+  var ext = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/svg+xml': '.svg', 'image/gif': '.gif' }[mm[1].toLowerCase()] || '.png';
+  var f = folder_('Brand'), name = 'Yamuna Sky City logo · ' + today_() + ext, n = 1;
+  while (f.getFilesByName(name).hasNext()) name = 'Yamuna Sky City logo · ' + today_() + '_' + (++n) + ext;
+  var file = f.createFile(Utilities.newBlob(Utilities.base64Decode(mm[2]), mm[1], name));
+  file.setDescription('Logo from Accord settings, moved out of the sheet on ' + now_());
+  publishLogo_(file, s);
+}
+function settingsLogo_(rec, before) {   // on every settings save: never keep the picture itself in the sheet
+  rec.brand = rec.brand || {};
+  if (/^data:image\//i.test(String(rec.brand.logo || ''))) logoFromData_(rec, rec.brand.logo);
+  else if (!rec.logoFileId && before && before.logoFileId && rec.brand.logo) rec.logoFileId = before.logoFileId;
+  if (!rec.brand.logo) delete rec.logoFileId;   // logo removed in settings: e-mails go back to the name
+}
+function logoData_() {
+  var s = read_('settings')[0] || {}; if (!s.logoFileId) return { ok: true, data: '' };
+  var blob = DriveApp.getFileById(s.logoFileId).getBlob();
+  return { ok: true, id: s.logoFileId, mime: blob.getContentType(), data: Utilities.base64Encode(blob.getBytes()) };
+}
+/** 12 Nov (d): one-time. Moves a logo stored inside the settings record to Drive / Brand and keeps only its link. */
+function moveLogoToDrive() {
+  var s = read_('settings')[0]; if (!s) return 'no settings';
+  var was = String((s.brand || {}).logo || '');
+  if (!/^data:image\//i.test(was)) { Logger.log('logo is already a link: ' + was.slice(0, 80)); return 'nothing to move'; }
+  logoFromData_(s, was); upsert_('settings', s);
+  Logger.log('logo moved: ' + s.brand.logo + ' (' + was.length + ' characters out of the sheet)');
+  return s.brand.logo;
+}
 /* Branded e-mail: the Yamuna Sky City header (logo from Drive / Brand), the message, the sender's signature. */
 function brandHtml_(title, bodyText, footer) {
   var s = read_('settings')[0] || {}, co = s.company || {}, b = s.brand || {}, accent = b.accent || '#7A1C2E';

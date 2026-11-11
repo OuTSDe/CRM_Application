@@ -9,22 +9,30 @@ import { DEFAULT_RULES, rulesOf } from '../../lib/schedule.js'
 import { getLocation } from '../../lib/geo.js'
 import { deviceId } from '../../lib/crypto.js'
 import { Link } from 'react-router-dom'
+import { useLogo } from '../../lib/logo.js'
 
 function BrandCard({ s, setS }) {
   const { upload, online, notify } = useStore()
   const b = s.brand || {}
+  const logo = useLogo(b.logo)
   const set = (k, v) => setS({ ...s, brand: { ...b, [k]: v } })
   const onLogo = async (f) => {
     if (!f) return
     if (f.size > 400 * 1024) return notify('Use a logo under 400 KB (PNG or SVG works best)', 'bad')
+    // 12 Nov (d): with the shared database the picture goes to Drive / Brand and settings keep only its link
+    // (a picture inside the settings record went over the 50,000-character limit of a sheet cell)
+    if (online) {
+      try { const link = await upload(f, 'Brand', 'Yamuna Sky City logo', { kind: 'brand', doc: 'Logo' }); if (link) setS({ ...s, brand: { ...b, logo: link } }); notify('Logo saved to Drive / Brand') }
+      catch (e) { notify('Logo not saved: ' + e.message, 'bad') }
+      return
+    }
     const url = await new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(f) })
-    setS({ ...s, brand: { ...b, logo: url } })
-    if (online) { try { await upload(f, 'Brand', 'Yamuna Sky City logo', { kind: 'brand', doc: 'Logo' }); notify('Logo saved to Drive / Brand for e-mails') } catch (e) { notify('Logo kept for documents; Drive copy failed: ' + e.message, 'warn') } }
+    setS({ ...s, brand: { ...b, logo: url } })   // no shared database: the logo stays on this device
   }
   return <Card title="Brand on documents and e-mails">
     <p className="small" style={{ marginTop: 0 }}>The Yamuna Sky City header printed on the cost sheet, receipts, payment summary, booking form and lead sheet, and at the top of every e-mail Accord sends.</p>
     <div className="row" style={{ alignItems: 'center', marginBottom: 12 }}>
-      <div className="logo-box">{b.logo ? <img src={b.logo} alt="Logo" /> : <span className="small muted">No logo yet</span>}</div>
+      <div className="logo-box">{logo ? <img src={logo} alt="Logo" /> : <span className="small muted">No logo yet</span>}</div>
       <label className="btn">Upload logo<input type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp" hidden onChange={(e) => onLogo(e.target.files[0])} /></label>
       {b.logo && <Button variant="ghost" onClick={() => set('logo', '')}>Remove</Button>}
     </div>
