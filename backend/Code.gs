@@ -39,7 +39,8 @@
  *  - Records made in demo mode carry _test = Yes: they send no reminders and are listed for clean-up.
  */
 
-var VERSION = '3.7.0';   // 12 Nov: faster audit writes and pulls (see ACCORD_CHANGES_2026-11-12.md)
+var VERSION = '3.8.1';   // 12 Nov (b): shared read cache and delta pulls. Was:
+// var VERSION = '3.8.0';   // 12 Nov: Accord People (HR, leave, KRAs, knowledge base by grade). See ACCORD_CHANGES_2026-11-12_PEOPLE.md
 var DATA_PATH = 'Accord_CRM_Application/Accord_Data';   // inside My Drive of the account that runs this script
 var TEMP_PASSWORD = 'Accord2026';                        // first sign-in only, to link the authenticator
 // The team, created by setup() when the Users tab is empty, so the first admin can sign in (temporary password, then the authenticator).
@@ -70,14 +71,26 @@ var SCHEMA = {
   leadInbox: [['id','Inbox ID'],['at','Received'],['source','Source'],['name','Name'],['phone','Mobile'],['email','Email'],['city','City'],['config','Interest'],['message','Message'],['status','Status'],['leadId','Lead ID'],['by','Handled by'],['handledAt','Handled at']],
   // 8 Nov: car parking from the architect's drawings (slot = level + drawing number, e.g. L1-072A)
   parking: [['id','Slot'],['level','Level'],['levelCode','Level code'],['no','Drawing no.'],['kind','Kind'],['pair','Tandem partner'],['walk','Walk to lobby (m)'],['type','Type'],['ev','EV'],['zone','Held for band'],['status','Status'],['allotStatus','Allotment'],['unit','Unit No.'],['bookingId','Booking ID'],['clientId','Client ID'],['name','Client'],['assignedOn','Allotted on'],['assignedBy','Allotted by'],['allotNote','Why'],['locked','Letter issued'],['letterOn','Letter date'],['letterNo','Letter No.'],['updatedAt','Updated at'],['updatedBy','Updated by']],
-  audit: [['id','ID'],['at','When'],['by','By'],['coll','Collection'],['recId','Record'],['action','Action']]
+  audit: [['id','ID'],['at','When'],['by','By'],['coll','Collection'],['recId','Record'],['action','Action']],
+  // 12 Nov: Accord People
+  hrProfiles: [['id','Profile ID'],['userId','Member ID'],['name','Name'],['empCode','Employee code'],['position','Position'],['grade','Grade'],['department','Department'],['employment','Employment'],['doj','Date of joining'],['probationEnd','Probation ends'],['confirmedOn','Confirmed on'],['status','Status'],['resignedOn','Resigned on'],['lastDay','Last working day'],['workLocation','Work location'],['onboarding','Onboarding checklist'],['exit','Exit checklist'],['opening','Opening leave balances'],['updatedAt','Updated at'],['updatedBy','Updated by']],
+  leaves: [['id','Leave ID'],['userId','Member ID'],['name','Name'],['type','Type'],['from','From'],['to','To'],['half','Half day'],['days','Days'],['reason','Reason'],['cover','Cover'],['status','Status'],['approver','Approver'],['appliedAt','Applied at'],['decidedBy','Decided by'],['decidedAt','Decided at'],['decisionNote','Decision note'],['updatedAt','Updated at']],
+  kras: [['id','Sheet ID'],['userId','Member ID'],['name','Name'],['position','Position'],['manager','Manager'],['cycle','Cycle'],['status','Status'],['items','KRAs'],['selfComment','Self comment'],['mgrComment','Manager comment'],['score','Score'],['band','Band'],['closedBy','Closed by'],['closedAt','Closed on'],['updatedAt','Updated at']],
+  hrComp: [['id','ID'],['userId','Member ID'],['name','Name'],['effective','Effective from'],['gross','Monthly gross'],['basic','Basic + DA'],['hra','HRA'],['special','Special'],['employerPf','Employer PF'],['variable','Variable (yearly)'],['note','Note'],['updatedAt','Updated at'],['updatedBy','Updated by']],
+  holidays: [['id','ID'],['date','Date'],['name','Holiday'],['type','Type'],['note','Note']],
+  hrTickets: [['id','Request ID'],['at','Raised'],['by','By'],['userId','Member ID'],['category','About'],['subject','Subject'],['details','Details'],['status','Status'],['owner','With'],['thread','Replies'],['updatedAt','Updated at']],
+  assets: [['id','Asset ID'],['tag','Tag'],['type','Type'],['description','Description'],['serial','Serial'],['issuedToId','Member ID'],['issuedTo','With'],['issuedOn','Issued'],['returnedOn','Returned'],['condition','Condition'],['status','Status'],['updatedAt','Updated at']],
+  kbDocs: [['id','Doc ID'],['code','Code'],['title','Title'],['category','Category'],['version','Version'],['status','Status'],['owner','Owner'],['approver','Approver'],['effective','Effective'],['review','Next review'],['ack','Acknowledge?'],['rev','Revision'],['ackCarry','Earlier acks valid from rev'],['audience','Audience'],['summary','Summary'],['body','Text'],['related','Related'],['history','History'],['approvedBy','Approved by'],['approvedAt','Approved on'],['updatedAt','Updated at'],['updatedBy','Updated by']],
+  kbAcks: [['id','ID'],['docId','Doc ID'],['code','Code'],['version','Version'],['rev','Revision'],['userId','Member ID'],['name','Name'],['at','Acknowledged at']]
 };
 var COLLECTIONS = ['settings','users','units','clients','payments','leads','interactions','documents','issues','clpStages','demandCalls','costSheets','parking',
   'messages','templates','attendance','timeEvents','tasks','notifications','viewings','brochure','vendors','trips','stops','quotes','samples','projects','rooms',
-  'packages','boq','accordSessions','clientForms','files','leadInbox','demandLetters','partners','paymentEdits','audit'];
+  'packages','boq','accordSessions','clientForms','files','leadInbox','demandLetters','partners','paymentEdits',
+  'hrConfig','hrProfiles','hrComp','leaves','holidays','kras','hrTickets','assets','kbDocs','kbAcks','audit'];
+var HR_COLLS = ['hrConfig','hrProfiles','hrComp','leaves','holidays','kras','hrTickets','assets','kbDocs','kbAcks'];
 
 /* ───────────────────────── roles ───────────────────────── */
-var ALL = ['admin','senior','sales','finance','design','sourcing','viewer','consultant','bank'];
+var ALL = ['admin','senior','sales','finance','design','sourcing','viewer','consultant','bank','hr'];
 var WRITE = {
   leads:['admin','senior','sales'], interactions:['admin','senior','sales','finance'], clients:['admin','senior','sales','finance'], payments:['admin','finance'],
   documents:['admin','senior','sales'], issues:['admin','senior','sales'], costSheets:['admin','senior','sales'], parking:['admin','senior'],
@@ -85,14 +98,18 @@ var WRITE = {
   messages:['admin','senior','sales','finance'], viewings:['admin','senior','sales','design'], brochure:['admin','senior','design'],
   vendors:['admin','design','sourcing'], trips:['admin','design','sourcing'], stops:['admin','design','sourcing'], quotes:['admin','design','sourcing'],
   samples:['admin','design','sourcing'], projects:['admin','design'], rooms:['admin','design'], packages:['admin','design','sourcing'], boq:['admin','design','sourcing'],
-  clientForms:['admin','senior','sales'], files:['admin','senior','sales','finance','design','sourcing'], leadInbox:['admin','senior','sales'], demandLetters:['admin','finance'], partners:['admin','senior'], tasks:['*'], notifications:['*'], accordSessions:['*'], attendance:['admin'], timeEvents:[], audit:[]
+  clientForms:['admin','senior','sales'], files:['admin','senior','sales','finance','design','sourcing'], leadInbox:['admin','senior','sales'], demandLetters:['admin','finance'], partners:['admin','senior'],
+  // 12 Nov: Accord People. '*' here means "checked record by record in hrCheck_".
+  hrConfig:['admin','hr'], holidays:['admin','hr'], assets:['admin','hr'], hrComp:['admin','hr'], kbDocs:['admin','hr'],
+  hrProfiles:['*'], leaves:['*'], kras:['*'], hrTickets:['*'], kbAcks:['*'], tasks:['*'], notifications:['*'], accordSessions:['*'], attendance:['admin'], timeEvents:[], audit:[]
 };
 var MONEY_FIELDS = ['tc','adjustment','adjType','adjReason','receivedPerCollections','outstandingPerCollections','loanAmount','rate','total','customPlan','cancelCalc','waivers','refunds'];
 // 4 Nov: extra access an admin ticks for one person (Users and access › Pages and permissions). Same list as perms.js.
 var GRANTS = { leads: ['leads','leadInbox','interactions'], clients: [], interactions: ['interactions'], payments: [], documents: ['documents','files'], messages: ['messages'],
   issues: ['issues'], costSheet: ['costSheets'], inventory: [], viewings: ['viewings'], brochure: [], experience: [], time: [], tasks: [], team: [], performance: [],
   analyticsLeads: [], analyticsFinance: [], analyticsOverall: [], projects: ['projects','rooms','packages','boq'], residences: [], showcase: [], sourcing: ['trips','stops','quotes','samples'],
-  vendors: ['vendors'], partners: ['partners'], seeAll: [], money: [], recordPayments: ['payments','demandCalls','demandLetters'], construction: ['clpStages'], templates: ['templates'], assign: [] };
+  vendors: ['vendors'], partners: ['partners'], seeAll: [],
+  hrSelf: [], kb: [], hrDesk: ['hrProfiles','hrConfig','holidays','assets','leaves','kras','hrTickets'], hrComp: ['hrComp'], kbEdit: ['kbDocs'], money: [], recordPayments: ['payments','demandCalls','demandLetters'], construction: ['clpStages'], templates: ['templates'], assign: [] };
 function extras_(u) { var x = u.extraAccess; if (typeof x === 'string') { try { x = JSON.parse(x); } catch (e) { x = x.split(/[,\s]+/); } } return (x || []).filter(function (k) { return GRANTS.hasOwnProperty(k); }); }
 var seesMoney_ = function (u) { var x = extras_(u); return ['admin','senior','finance','consultant','bank'].indexOf(u.appRole) >= 0 || x.indexOf('money') >= 0 || x.indexOf('recordPayments') >= 0; };
 var seesAll_ = function (u) { return ['admin','senior','finance','viewer'].indexOf(u.appRole) >= 0 || extras_(u).indexOf('seeAll') >= 0; };
@@ -123,7 +140,7 @@ function doPost(e) {
       case 'enrolStart': return out_(enrolStart_(auth_(req.token, true)));
       case 'enrolConfirm': return out_(enrolConfirm_(auth_(req.token, true), req));
       case 'changePassword': return out_(changePassword_(auth_(req.token), req));
-      case 'pull': return out_(pull_(auth_(req.token)));
+      case 'pull': return out_(delta_(pull_(auth_(req.token)), req.have));
       case 'push': return out_(push_(auth_(req.token), req.ops || []));
       case 'punch': return out_(punch_(auth_(req.token), req));
       case 'setPassword': return out_(setPassword_(auth_(req.token), req));
@@ -153,6 +170,60 @@ function cols_(name) { return (SCHEMA[name] || [['id','ID'],['updatedAt','Update
 // 12 Nov: sheets and sheet contents are remembered for the length of one request. A push of 40 changes used to read the
 // same tabs (users, leads, notifications) dozens of times. Every write below clears the remembered copy of its tab.
 var SHEETS_ = {}, READ_CACHE_ = {};
+/* 12 Nov (b): a second, shared cache that lasts between requests (CacheService, up to 6 hours). Every tab has a version
+   token; every write through Accord gives that tab a new token, and onEdit does the same when someone types in the sheet
+   by hand. A pull then reads a tab from the sheet only if it changed since anyone last read it: with 49 tabs and every
+   person pulling every 30 seconds, most pulls no longer touch the spreadsheet at all. */
+var CACHE_TTL_ = 21600, CHUNK_ = 30000, VERS_ = null;
+function scache_() { return CacheService.getScriptCache(); }
+function vers_(names) {   // tokens for several tabs in one call; missing ones are created
+  VERS_ = VERS_ || {};
+  var need = names.filter(function (n) { return !VERS_[n]; });
+  if (need.length) {
+    var got = {}; try { got = scache_().getAll(need.map(function (n) { return 'v:' + n; })); } catch (e) {}
+    var fresh = {};
+    need.forEach(function (n) { var v = got['v:' + n]; if (!v) { v = Utilities.getUuid().slice(0, 8); fresh['v:' + n] = v; } VERS_[n] = v; });
+    if (Object.keys(fresh).length) { try { scache_().putAll(fresh, CACHE_TTL_); } catch (e) {} }
+  }
+  var o = {}; names.forEach(function (n) { o[n] = VERS_[n]; }); return o;
+}
+function bump_(name) {   // after a write: a new token, so no request reads the old copy again
+  delete READ_CACHE_[name];
+  var v = Utilities.getUuid().slice(0, 8); VERS_ = VERS_ || {}; VERS_[name] = v;
+  try { scache_().put('v:' + name, v, CACHE_TTL_); } catch (e) {}
+}
+function shared_(key) {   // the cached JSON for key, or null
+  try {
+    var c = scache_(), n = c.get(key + '#n'); if (!n) return null;
+    var parts = [], keys = []; for (var i = 0; i < Number(n); i++) keys.push(key + '#' + i);
+    var got = c.getAll(keys); for (var j = 0; j < keys.length; j++) { if (got[keys[j]] == null) return null; parts.push(got[keys[j]]); }
+    return parts.join('');
+  } catch (e) { return null; }
+}
+function share_(key, json) {
+  try {
+    var o = {}, n = Math.max(1, Math.ceil(json.length / CHUNK_));
+    for (var i = 0; i < n; i++) o[key + '#' + i] = json.slice(i * CHUNK_, (i + 1) * CHUNK_);
+    if (n > 60) return;   // over about 1.8 MB: leave it to the sheet
+    scache_().putAll(o, CACHE_TTL_); scache_().put(key + '#n', String(n), CACHE_TTL_);
+  } catch (e) {}
+}
+function preload_(rks) {   // fills READ_CACHE_ for many tabs with two cache calls (instead of two per tab)
+  try {
+    var names = rks.map(function (k) { return k.split('@')[0]; }), V = vers_(names), c = scache_();
+    var base = {}; rks.forEach(function (k, i) { if (!READ_CACHE_[k]) base[k] = 'd:' + k + ':' + V[names[i]]; });
+    var heads = c.getAll(Object.keys(base).map(function (k) { return base[k] + '#n'; })), want = [];
+    Object.keys(base).forEach(function (k) { var n = Number(heads[base[k] + '#n'] || 0); for (var i = 0; i < n; i++) want.push(base[k] + '#' + i); });
+    var got = want.length ? c.getAll(want) : {};
+    Object.keys(base).forEach(function (k) {
+      var n = Number(heads[base[k] + '#n'] || 0), parts = []; if (!n) return;
+      for (var i = 0; i < n; i++) { var x = got[base[k] + '#' + i]; if (x == null) return; parts.push(x); }
+      READ_CACHE_[k] = parts.join('');
+    });
+  } catch (e) {}
+}
+/** Simple trigger: a change typed straight into the sheet makes Accord read that tab again. */
+function onEdit(e) { try { var n = e.range.getSheet().getName(); if (COLLECTIONS.indexOf(n) >= 0) scache_().remove('v:' + n); } catch (x) {} }
 function sheet_(name) {
   if (SHEETS_[name]) return SHEETS_[name];
   var ss = SpreadsheetApp.getActive(), sh = ss.getSheetByName(name);
@@ -169,7 +240,8 @@ function sheet_(name) {
 function keys_(sh) { var w = sh.getLastColumn(); return w ? sh.getRange(2, 1, 1, w).getValues()[0].map(String) : []; }
 function cell_(v) { if (v === null || v === undefined) return ''; if (typeof v === 'object') return JSON.stringify(v); return v; }
 // Columns that hold text even when they look like numbers (Sheets turns 9845012345 into a number; Accord needs it back as text).
-var TEXT_KEYS = { no: 1, nextTime: 1, kycNumber: 1, kycDob: 1, phone: 1, phone2: 1, whatsapp: 1, coPhone: 1, pan: 1, coPan: 1, aadhaar4: 1, receiptNo: 1, instrument: 1, account: 1, ifsc: 1, pincode: 1, username: 1, name: 1, title: 1, email: 1, designation: 1, shiftStart: 1, shiftEnd: 1, time: 1, in: 1, out: 1, gstin: 1 };
+var TEXT_KEYS = { no: 1, nextTime: 1, kycNumber: 1, kycDob: 1, phone: 1, phone2: 1, whatsapp: 1, coPhone: 1, pan: 1, coPan: 1, aadhaar4: 1, receiptNo: 1, instrument: 1, account: 1, ifsc: 1, pincode: 1, username: 1, name: 1, title: 1, email: 1, designation: 1, shiftStart: 1, shiftEnd: 1, time: 1, in: 1, out: 1, gstin: 1,
+  version: 1, code: 1, empCode: 1, bankAccount: 1, uan: 1, esic: 1, tag: 1, serial: 1, personalPhone: 1, emergencyPhone: 1 };   // 12 Nov: Accord People ('1.0' must stay '1.0')
 function parse_(v) {
   if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
   if (typeof v === 'string' && (v.charAt(0) === '[' || v.charAt(0) === '{')) { try { return JSON.parse(v); } catch (e) {} }
@@ -184,15 +256,18 @@ function rowOf_(keys, rec) {
 function idKey_(name) { return name === 'clients' ? 'bookingId' : 'id'; }
 // 12 Nov: lastN reads only the newest rows (the audit sheet grew past 20,000 rows and was read in full on every pull).
 function read_(name, lastN) {
-  if (!lastN && READ_CACHE_[name]) return JSON.parse(READ_CACHE_[name]);   // a fresh copy: callers change what they get
+  var rk = lastN ? name + '@' + lastN : name;
+  if (READ_CACHE_[rk]) return JSON.parse(READ_CACHE_[rk]);   // a fresh copy: callers change what they get
+  var skey = 'd:' + rk + ':' + vers_([name])[name], hit = shared_(skey);
+  if (hit) { READ_CACHE_[rk] = hit; return JSON.parse(hit); }
   var sh = sheet_(name), keys, vals;
   if (lastN) {
-    var last = sh.getLastRow(); if (last < 3) return [];
+    var last = sh.getLastRow(); if (last < 3) { READ_CACHE_[rk] = '[]'; return []; }
     var start = last - 2 > lastN ? last - lastN + 1 : 3;
     keys = keys_(sh); vals = sh.getRange(start, 1, last - start + 1, keys.length).getValues();
   } else {
     var all = sh.getDataRange().getValues();   // one call instead of four
-    if (all.length < 3) { READ_CACHE_[name] = '[]'; return []; }
+    if (all.length < 3) { READ_CACHE_[rk] = '[]'; share_(skey, '[]'); return []; }
     keys = all[1].map(String); vals = all.slice(2);
   }
   var out = [];
@@ -204,15 +279,15 @@ function read_(name, lastN) {
     if (o.id !== undefined) o.id = String(o.id);
     out.push(o);
   });
-  if (!lastN) READ_CACHE_[name] = JSON.stringify(out);
+  READ_CACHE_[rk] = JSON.stringify(out); share_(skey, READ_CACHE_[rk]);
   return out;
 }
 function writeAll_(name, list) {
   delete READ_CACHE_[name];
   var sh = sheet_(name), keys = keys_(sh);
   if (sh.getLastRow() > 2) sh.getRange(3, 1, sh.getLastRow() - 2, sh.getLastColumn()).clearContent();
-  if (!list.length) return;
-  sh.getRange(3, 1, list.length, keys.length).setValues(list.map(function (r) { return rowOf_(keys, r); }));
+  if (list.length) sh.getRange(3, 1, list.length, keys.length).setValues(list.map(function (r) { return rowOf_(keys, r); }));
+  bump_(name);
 }
 function upsert_(name, rec) {
   delete READ_CACHE_[name];
@@ -222,6 +297,7 @@ function upsert_(name, rec) {
   var ids = last > 2 ? sh.getRange(3, ik + 1, last - 2, 1).getValues().map(function (r) { return String(r[0]); }) : [];
   var i = ids.indexOf(id), row = rowOf_(keys, rec);
   if (i >= 0) sh.getRange(i + 3, 1, 1, keys.length).setValues([row]); else sh.appendRow(row);
+  bump_(name);
 }
 function find_(name, id) { return read_(name).filter(function (x) { return String(x.id) === String(id) || String(x.bookingId) === String(id); })[0] || null; }
 function delete_(name, id) {
@@ -230,6 +306,7 @@ function delete_(name, id) {
   var ik = Math.max(0, keys.indexOf(idKey_(name)));
   var ids = sh.getRange(3, ik + 1, last - 2, 1).getValues();
   for (var i = ids.length - 1; i >= 0; i--) if (String(ids[i][0]) === String(id)) sh.deleteRow(i + 3);
+  bump_(name);
 }
 // 12 Nov: audit rows are always new, so they are appended without reading the whole ID column first (that read took
 // longer as the sheet grew). Inside push_ they are collected and written in one go at the end.
@@ -237,13 +314,14 @@ var AUDIT_BUF_ = null;
 function audit_(u, coll, id, action) {
   var rec = { id: 'A-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: now_(), by: u ? u.name : 'system', coll: coll, recId: id, action: action };
   if (AUDIT_BUF_) { AUDIT_BUF_.push(rec); return; }
-  delete READ_CACHE_.audit; var sh = sheet_('audit'); sh.appendRow(rowOf_(keys_(sh), rec));
+  var sh = sheet_('audit'); sh.appendRow(rowOf_(keys_(sh), rec)); bump_('audit');
 }
 function flushAudit_() {
   var list = AUDIT_BUF_ || []; AUDIT_BUF_ = null; if (!list.length) return;
   delete READ_CACHE_.audit;
   var sh = sheet_('audit'), keys = keys_(sh);
   sh.getRange(Math.max(sh.getLastRow(), 2) + 1, 1, list.length, keys.length).setValues(list.map(function (r) { return rowOf_(keys, r); }));
+  bump_('audit');
 }
 /** 12 Nov: moves to notificationsArchive (1) notifications read more than `days` ago (default 30) and (2) repeated
     follow-up reminders: the same person, same interaction, still unread, where only the newest one is kept. */
@@ -268,7 +346,7 @@ function tidyNotifications(days) {
     ar.getRange(Math.max(ar.getLastRow(), 2) + 1, 1, move.length, w).setValues(move);
     sh.getRange(3, 1, vals.length, w).clearContent();
     if (keep.length) sh.getRange(3, 1, keep.length, w).setValues(keep);
-    delete READ_CACHE_.notifications;
+    bump_('notifications');
     return 'moved ' + move.length + ' rows, kept ' + keep.length;
   } finally { lock.releaseLock(); }
 }
@@ -300,7 +378,7 @@ function archiveAudit(days) {
     sh.getRange(3, 1, vals.length, w).clearContent();
     if (keep.length) sh.getRange(3, 1, keep.length, w).setValues(keep);
     if (sh.getMaxRows() > keep.length + 50) sh.deleteRows(keep.length + 3, sh.getMaxRows() - keep.length - 3);
-    delete READ_CACHE_.audit;
+    bump_('audit');
     return 'moved ' + move.length + ' rows, kept ' + keep.length;
   } finally { lock.releaseLock(); }
 }
@@ -530,11 +608,31 @@ function payState_(c, recv, s, calls) {
   var days = Math.round((new Date() - dueOn) / 864e5);
   return days > 60 ? 'Overdue 60+ days' : days > 0 ? 'Overdue' : days > -7 ? 'Due this week' : 'Not yet due';
 }
+/* 12 Nov (b): the browser sends the tokens of what it already has (`have`); collections whose token matches are left out
+   of the answer. A collection's token is its tab's version plus the versions of the tabs that decide what this person
+   may see of it (users, settings, clients, leads, payments, demand calls, HR profiles and HR settings), the person and
+   the date (payment states change with the date). Consultants and bank contacts always get everything. */
+var DEPS_ = ['users','settings','clients','leads','payments','demandCalls','hrConfig','hrProfiles'];
+var PULL_TOK_ = null;
+function delta_(res, have) {
+  if (!res || !res.db || !PULL_TOK_) return res;
+  var tok = PULL_TOK_; res.tok = tok;
+  if (have && typeof have === 'object') Object.keys(res.db).forEach(function (c) { if (tok[c] && have[c] === tok[c]) delete res.db[c]; });
+  return res;
+}
 function pull_(u) {
   var db = {};
+  var V = vers_(COLLECTIONS);
+  preload_(COLLECTIONS.map(function (c) { return c === 'audit' ? 'audit@1000' : c; }).filter(function (k) { return k !== 'audit@1000' || u.appRole === 'admin'; }));
+  if (u.appRole !== 'consultant' && u.appRole !== 'bank') {
+    var deps = seesAll_(u) && u.appRole !== 'viewer' ? ['users','hrConfig','hrProfiles'] : DEPS_;   // full views depend only on people and HR settings
+    var dep = sha_(deps.map(function (c) { return V[c]; }).join('.') + '|' + u.id + '|' + u.appRole + '|' + JSON.stringify(extras_(u)) + '|' + today_() + '|' + VERSION).slice(0, 10);
+    PULL_TOK_ = {}; COLLECTIONS.forEach(function (c) { PULL_TOK_[c] = V[c] + '.' + dep; });
+  }
   // 12 Nov: the audit log is only shown to admins, and only its newest 1,000 rows
   COLLECTIONS.forEach(function (c) { db[c] = c === 'audit' ? (u.appRole === 'admin' ? read_('audit', 1000) : []) : read_(c); });
   db.users = db.users.map(function (x) { var y = strip_(x, ['pwSalt','pwHash','failed','lockedUntil','totpSecret','totpPending','totpLast']); y.hasPassword = !!x.pwHash; y.mfa = x.totpSecret ? 'Set' : 'Not set'; if (u.appRole !== 'admin') { delete y.devices; } return y; });
+  hrScope_(db, u);   // 12 Nov: Accord People, for every role
   if (u.appRole === 'consultant') return { db: consultantView_(db, u), serverTime: now_(), user: publicUser_(u), version: VERSION };
   if (u.appRole === 'bank') return { db: bankView_(db, u), serverTime: now_(), user: publicUser_(u), version: VERSION };
   if (seesAll_(u) && u.appRole !== 'viewer') return { db: db, serverTime: now_(), user: publicUser_(u), version: VERSION };
@@ -572,6 +670,132 @@ function pull_(u) {
   db.audit = [];
   db.demandCalls = db.demandCalls.map(function (k) { return { id: k.id, stage: k.stage, description: k.description, raisedOn: k.raisedOn }; });
   return { db: db, serverTime: now_(), user: publicUser_(u), version: VERSION };
+}
+
+
+/* ───────────────────────── 12 Nov: Accord People ─────────────────────────
+   Who sees what (the same rules as scopeHr in perms.js):
+   - everyone: holidays, HR settings, their own profile, leave, goal sheets, assets, acknowledgements, requests and pay;
+   - a manager: the leave and goal sheets of everyone below them in "Reports to", and their profiles without personal fields;
+   - HR (role hr) and admins: everything, except pay at or above the grade line in HR settings (admins only) and POSH complaints;
+   - POSH complaints: only the person who raised one and the Internal Committee named in HR settings, whatever their role;
+   - knowledge-base documents: by lowest grade, positions and teams; drafts only to their owner; HR and admins see all.  */
+var PERSONAL_ = ['personalPhone','personalEmail','address','emergencyName','emergencyPhone','emergencyRelation','bloodGroup','dob','bankName','bankAccount','ifsc','pan','aadhaar4','uan','esic','opening'];
+var SELF_ = ['personalPhone','personalEmail','address','emergencyName','emergencyPhone','emergencyRelation','bloodGroup','dob'];
+var POSH_ = 'POSH complaint (confidential)';
+function gRank_(g) { var m = String(g || '').match(/(\d+)/); return m ? Number(m[1]) : 0; }
+function isHr_(u) { return u.appRole === 'admin' || u.appRole === 'hr'; }
+function hrCfg_() { return read_('hrConfig')[0] || {}; }
+function teamOf_(users, name) { var out = {}, fr = [name]; for (var i = 0; i < 8 && fr.length; i++) { var nx = []; users.forEach(function (x) { if (fr.indexOf(x.reportsTo) >= 0 && !out[x.name] && x.name !== name) { out[x.name] = 1; nx.push(x.name); } }); fr = nx; } return out; }
+function profOf_(userId) { return read_('hrProfiles').filter(function (p) { return p.userId === userId; })[0] || {}; }
+function kbVisible_(d, u, prof) {
+  if (isHr_(u) || extras_(u).indexOf('kbEdit') >= 0) return true;
+  if (d.status === 'Retired') return false;
+  if (d.status === 'Draft') return d.owner === u.name;
+  var a = d.audience || {}, grade = prof.grade || 'G1';
+  if (gRank_(grade) < gRank_(a.minGrade || 'G1')) return false;
+  if ((a.roles || []).length && a.roles.indexOf(u.appRole) < 0) return false;
+  if ((a.positions || []).length && prof.position && a.positions.indexOf(prof.position) < 0) return false;   // no profile yet: grade G1, any position
+  if ((a.teams || []).length && a.teams.indexOf(prof.department || u.team) < 0) return false;
+  return true;
+}
+function hrScope_(db, u) {
+  HR_COLLS.forEach(function (c) { db[c] = db[c] || []; });
+  if (u.appRole === 'consultant' || u.appRole === 'bank') { HR_COLLS.forEach(function (c) { if (c !== 'holidays') db[c] = []; }); return; }
+  var me = u.name, cfg = db.hrConfig[0] || {}, ic = cfg.icMembers || [], hr = isHr_(u);
+  var profOf = {}; db.hrProfiles.forEach(function (p) { profOf[p.userId] = p; });
+  var nameOf = {}; db.users.forEach(function (x) { nameOf[x.id] = x.name; });
+  var mine = profOf[u.id] || {}; if (u.appRole === 'admin') mine = Object.assign({}, mine, { grade: 'G6' });
+  db.hrTickets = db.hrTickets.filter(function (t) { return t.category === POSH_ ? (t.by === me || ic.indexOf(me) >= 0) : (hr || t.by === me); });
+  db.kbDocs = db.kbDocs.filter(function (d) { return kbVisible_(d, u, mine); });
+  if (hr) {
+    var line = gRank_(cfg.compBelow || 'G5'), canPay = u.appRole === 'admin' || extras_(u).indexOf('hrComp') >= 0 || u.appRole === 'hr';
+    db.hrComp = db.hrComp.filter(function (c) { return u.appRole === 'admin' || c.userId === u.id || (canPay && gRank_((profOf[c.userId] || {}).grade) < line); });
+    return;
+  }
+  var team = teamOf_(db.users, me);
+  var DIR = ['id','userId','name','position','department','doj','status'];
+  db.hrProfiles = db.hrProfiles.map(function (p) {
+    if (p.userId === u.id) return p;
+    if (team[nameOf[p.userId]]) return strip_(p, PERSONAL_);
+    var o = {}; DIR.forEach(function (k) { if (p[k] !== undefined) o[k] = p[k]; }); return o;
+  });
+  db.leaves = db.leaves.filter(function (l) { return l.userId === u.id || team[l.name]; });
+  db.kras = db.kras.filter(function (k) { return k.userId === u.id || team[k.name]; });
+  db.assets = db.assets.filter(function (a) { return a.issuedToId === u.id; });
+  db.kbAcks = db.kbAcks.filter(function (a) { return a.userId === u.id; });
+  db.hrComp = db.hrComp.filter(function (c) { return c.userId === u.id; });
+}
+// Returns a refusal message, or '' to allow. May rewrite op.rec to keep fields the person may not change.
+function hrCheck_(u, c, op) {
+  if (u.appRole === 'consultant' || u.appRole === 'bank') return c + ' (no HR access)';
+  var rec = op.rec || {}, hr = isHr_(u), me = u.name, cfg = hrCfg_();
+  if (op.op === 'delete') return '';
+  if (c === 'hrComp' && hr && u.appRole !== 'admin') {
+    if (gRank_(profOf_(rec.userId).grade) >= gRank_(cfg.compBelow || 'G5')) return 'pay (at or above ' + (cfg.compBelow || 'G5') + ': admins only)';
+    return '';
+  }
+  if (c === 'hrTickets') {
+    var t0 = find_('hrTickets', rec.id), ic = (cfg.icMembers || []).indexOf(me) >= 0, owner = t0 ? t0.by : me;
+    if (!t0) { rec.by = me; rec.userId = u.id; return ''; }
+    if (t0.category === POSH_) return (owner === me || ic) ? '' : 'request (confidential)';
+    return (owner === me || hr) ? '' : 'request (not yours)';
+  }
+  if (hr) return '';
+  var users = read_('users'), team = teamOf_(users, me);
+  if (c === 'kbAcks') return rec.userId === u.id ? '' : 'acknowledgement (only your own)';
+  if (c === 'hrProfiles') {
+    if (rec.userId !== u.id) return 'profile (only your own)';
+    var cur = find_('hrProfiles', rec.id) || { id: rec.id, userId: u.id, name: me };
+    var keep = JSON.parse(JSON.stringify(cur)); SELF_.forEach(function (k) { if (rec[k] !== undefined) keep[k] = rec[k]; });
+    op.rec = keep; return '';
+  }
+  if (c === 'leaves') {
+    var before = find_('leaves', rec.id), target = (before || rec).name;
+    if ((before || rec).userId === u.id) {
+      if (!before) { if (rec.status !== 'Applied') return 'leave (new leave starts as Applied)'; rec.name = me; return ''; }
+      if (rec.status !== before.status && rec.status !== 'Cancelled') return 'leave (you cannot approve your own)';
+      return '';
+    }
+    if (!team[target]) return 'leave (not in your team)';
+    if (!before) return '';   // a manager applying on behalf of a reportee
+    var keepL = JSON.parse(JSON.stringify(before)); ['status','decidedBy','decidedAt','decisionNote'].forEach(function (k) { if (rec[k] !== undefined) keepL[k] = rec[k]; });
+    op.rec = keepL; return '';
+  }
+  if (c === 'kras') {
+    var b = find_('kras', rec.id), who = (b || rec).name;
+    if ((b || rec).userId === u.id) {
+      if (rec.status === 'Closed' || (b && b.status !== 'Draft' && rec.status === 'Agreed' && b.status !== 'Agreed')) return 'goal sheet (your manager or HR moves it on)';
+      if (b) {   // keep the manager's ratings and comment; targets only change in Draft
+        var items0 = {}; (b.items || []).forEach(function (x) { items0[x.id] = x; });
+        rec.items = (rec.items || []).map(function (x) { var o = items0[x.id]; if (!o) return b.status === 'Draft' ? x : null; var y = JSON.parse(JSON.stringify(x)); y.mgr = o.mgr; if (b.status !== 'Draft') { y.kra = o.kra; y.kpi = o.kpi; y.weight = o.weight; y.target = o.target; } return y; }).filter(function (x) { return x; });
+        rec.mgrComment = b.mgrComment;
+        if (b.status === 'Draft' && rec.status === 'Agreed') return 'goal sheet (your manager agrees the targets)';
+      }
+      return '';
+    }
+    if (!team[who]) return 'goal sheet (not in your team)';
+    if (rec.status === 'Closed') return 'goal sheet (HR closes it)';
+    return '';
+  }
+  return c + ' (HR only)';
+}
+// Notifications for HR events (the site sends these itself only when there is no backend)
+function hrNotify_(u, c, rec, op) {
+  var cfg = hrCfg_(), hrName = cfg.hrName || '';
+  if (c === 'leaves') {
+    if (op.isNew && rec.status === 'Applied') {
+      var appr = rec.approver || hrName; if (appr && appr !== u.name) notify_(appr, 'leave', 'Leave request from ' + rec.name, rec.type + ', ' + rec.days + ' day(s) from ' + rec.from, '#/hr/leave?tab=approve', '', u.name);
+      if (Number(rec.days) > Number(cfg.longLeaveDays || 5) && hrName && hrName !== appr) notify_(hrName, 'leave', 'Long leave: ' + rec.name, rec.days + ' days from ' + rec.from, '#/hr/leave?tab=all', '', u.name);
+    } else if (['Approved','Rejected','Cancelled'].indexOf(rec.status) >= 0 && rec.name !== u.name) notify_(rec.name, 'leave', 'Leave ' + String(rec.status).toLowerCase(), rec.type + ' from ' + rec.from + (rec.decisionNote ? ': ' + rec.decisionNote : ''), '#/hr/leave', '', u.name);
+  }
+  if (c === 'kras' && op.action && /goal sheet (agreed|self review|manager review|closed|draft)/i.test(op.action)) {
+    var to = rec.name === u.name ? (rec.manager || hrName) : rec.name; if (to && to !== u.name) notify_(to, 'kra', 'Goal sheet: ' + rec.name, rec.cycle + ' is now ' + rec.status, '#/hr/kra/' + rec.id, '', u.name);
+  }
+  if (c === 'hrTickets' && op.isNew) {
+    var list = rec.category === POSH_ ? (cfg.icMembers || []) : [hrName];
+    list.forEach(function (n) { if (n && n !== u.name) notify_(n, 'hr', rec.category === POSH_ ? 'Confidential complaint received' : 'HR request from ' + u.name, rec.category === POSH_ ? 'Open Accord People > HR requests' : rec.subject, '#/hr/requests', '', u.name); });
+  }
 }
 
 /* 5 Nov: consultants see the business, never the people (they also consult for other developers): no phone, e-mail,
@@ -617,9 +841,10 @@ function push_(u, ops) {
     ops.forEach(function (op) {
       var c = op.coll;
       if (COLLECTIONS.indexOf(c) < 0 || !can_(u, c)) { refused.push(c); return; }
+      if (HR_COLLS.indexOf(c) >= 0) { var hrNo = hrCheck_(u, c, op); if (hrNo) { refused.push(hrNo); return; } }
       if (op.op === 'delete' && remap[op.id]) op.id = remap[op.id];
       if (op.rec) { remapRefs_(op.rec, remap); newId_(u, c, op, remap, renamed); }
-      if (op.op === 'delete') { if (u.appRole !== 'admin' && ['tasks','notifications'].indexOf(c) < 0) { refused.push(c + ' delete'); return; } delete_(c, op.id); audit_(u, c, op.id, 'deleted'); done++; return; }
+      if (op.op === 'delete') { if (u.appRole !== 'admin' && ['tasks','notifications'].indexOf(c) < 0 && !(u.appRole === 'hr' && ['holidays','assets','kbDocs','kras'].indexOf(c) >= 0)) { refused.push(c + ' delete'); return; } delete_(c, op.id); audit_(u, c, op.id, 'deleted'); done++; return; }
       var rec = op.rec || {};
       rec.updatedAt = now_(); rec.updatedBy = u.name;
       var editAll = extras_(u).indexOf('seeAll') >= 0;   // 4 Nov: ticked "See and edit every client and lead"
@@ -646,6 +871,7 @@ function push_(u, ops) {
       if (rec._test !== 'Yes') afterSave_(u, c, rec, before);
       var isTest = rec._test === 'Yes';
       if (c === 'interactions' && !isTest) notifyFollowUp_(u, rec);
+      if (!isTest && HR_COLLS.indexOf(c) >= 0) hrNotify_(u, c, rec, op);
       if (c === 'tasks' && !isTest && rec.owner && rec.owner !== u.name && op.isNew) notify_(rec.owner, 'task', 'New task from ' + u.name, rec.title, '#/people/tasks', rec.due ? rec.due + 'T10:00' : '', u.name);
       if (c !== 'notifications') audit_(u, c, rec.id || rec.bookingId, (op.action || 'saved') + (isTest ? ' (demo mode)' : ''));
       done++;

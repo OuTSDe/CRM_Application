@@ -8,6 +8,8 @@ import { STATE_LABEL } from '../components/Layout.jsx'
 import { sessionsFor, projectsFor } from '../lib/designLink.js'
 import { escalationsFor } from '../lib/escalate.js'
 import MiniCalendar from '../components/MiniCalendar.jsx'
+import { HrDesk, MyHr } from '../modules/hr/HR.jsx'
+import { hasAccess } from '../lib/perms.js'
 import { d, today, cr, lakh, pct, hm12 } from '../lib/format.js'
 
 const greet = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening' }
@@ -17,8 +19,11 @@ export default function Home() {
   const { ws } = useOutletContext() || {}
   if (ws === 'design') return <DesignHome />
   if (ws === 'vendors') return <VendorsHome />
+  if (ws === 'hr') return <HrHome />
   return <SalesHome />
 }
+
+function HrHome() { const { user } = useStore(); return hasAccess(user, 'hrDesk') ? <HrDesk /> : <MyHr /> }
 
 function useFollowUps() {
   const { db, user } = useStore()

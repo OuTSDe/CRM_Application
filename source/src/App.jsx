@@ -37,6 +37,8 @@ import { Trips, TripDetail, Quotes, Compare, Samples } from './modules/sourcing/
 import { Projects, ProjectDetail } from './modules/accord/Accord.jsx'
 import { Residences } from './modules/crm/Inventory.jsx'
 import { AdminSettings, AdminUsers, AdminData } from './modules/admin/Admin.jsx'
+import { MyHr, Leave, Kras, KraSheet, HrDesk, People as HrPeople, PersonHr, Register, Assets, Holidays, Requests, HrSettings } from './modules/hr/HR.jsx'
+import { Kb, KbDoc, KbEdit, KbAcks } from './modules/kb/KB.jsx'
 
 function Gate({ mod, children }) {
   const { user } = useStore()
@@ -111,6 +113,23 @@ function Main() {
         <Route path="accord" element={G('projects', <Projects />)} />
         <Route path="accord/residences" element={G('residences', <Residences />)} />
         <Route path="accord/:id" element={G('projects', <ProjectDetail />)} />
+        <Route path="hr" element={G('hrSelf', <MyHr />)} />
+        <Route path="hr/leave" element={G('hrSelf', <Leave />)} />
+        <Route path="hr/kra" element={G('hrSelf', <Kras />)} />
+        <Route path="hr/kra/:id" element={G('hrSelf', <KraSheet />)} />
+        <Route path="hr/holidays" element={G('hrSelf', <Holidays />)} />
+        <Route path="hr/requests" element={G('hrSelf', <Requests />)} />
+        <Route path="hr/assets" element={G('hrSelf', <Assets />)} />
+        <Route path="hr/desk" element={G('hrDesk', <HrDesk />)} />
+        <Route path="hr/people" element={G('hrDesk', <HrPeople />)} />
+        <Route path="hr/people/:userId" element={G('hrDesk', <PersonHr />)} />
+        <Route path="hr/attendance" element={G('hrDesk', <Register />)} />
+        <Route path="hr/settings" element={G('hrDesk', <HrSettings />)} />
+        <Route path="kb" element={G('kb', <Kb />)} />
+        <Route path="kb/acks" element={G('kbEdit', <KbAcks />)} />
+        <Route path="kb/new" element={G('kbEdit', <KbEdit />)} />
+        <Route path="kb/:id" element={G('kb', <KbDoc />)} />
+        <Route path="kb/:id/edit" element={G('kbEdit', <KbEdit />)} />
         <Route path="admin" element={G('admin', <AdminSettings />)} />
         <Route path="admin/users" element={G('admin', <AdminUsers />)} />
         <Route path="admin/data" element={G('admin', <AdminData />)} />

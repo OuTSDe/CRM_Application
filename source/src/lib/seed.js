@@ -3,11 +3,15 @@
 // (Accord_Data / Starting data, never on GitHub) and from then on live only in the Google Sheet.
 import crm from '../seed/crm.public.json'
 import * as ops from '../seed/ops.js'
+import { KB_DOCS } from '../seed/kb.js'
+import { HOLIDAYS_START } from '../seed/hrStart.js'
+import { DEFAULT_HR_CONFIG } from './hr.js'
 
 // Each collection is an array of records with a string `id`.
 export const COLLECTIONS = ['settings', 'users', 'units', 'clients', 'payments', 'leads', 'interactions', 'documents', 'issues', 'clpStages', 'demandCalls',
   'costSheets', 'parking', 'messages', 'templates', 'attendance', 'tasks', 'viewings', 'brochure', 'vendors', 'trips', 'stops', 'quotes', 'samples',
-  'projects', 'rooms', 'packages', 'boq', 'audit', 'timeEvents', 'notifications', 'accordSessions', 'clientForms', 'files', 'leadInbox', 'demandLetters', 'partners', 'paymentEdits']
+  'projects', 'rooms', 'packages', 'boq', 'audit', 'timeEvents', 'notifications', 'accordSessions', 'clientForms', 'files', 'leadInbox', 'demandLetters', 'partners', 'paymentEdits',
+  'hrConfig', 'hrProfiles', 'hrComp', 'leaves', 'holidays', 'kras', 'hrTickets', 'assets', 'kbDocs', 'kbAcks']
 
 export const META = { lists: crm.lists, docTypes: crm.docTypes }
 // 7 Nov: the cancellation protocol's statuses and the interest line on receipts
@@ -59,6 +63,10 @@ export function buildSeed() {
   db.rooms = ops.ROOMS
   db.packages = ops.PACKAGES
   db.boq = ops.BOQ
+  // 12 Nov: Accord People starting content (HR loads it into the shared sheet from the HR desk)
+  db.hrConfig = [DEFAULT_HR_CONFIG]
+  db.holidays = HOLIDAYS_START
+  db.kbDocs = KB_DOCS
   return db
 }
 export const OPS = ops

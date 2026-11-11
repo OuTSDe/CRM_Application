@@ -29,6 +29,14 @@ export const NAV = {
     { label: 'Team', items: [['/people', 'Time', 'time', true], ['/people/tasks', 'Tasks', 'tasks'], ['/help', 'Help centre', 'help']] },
   ],
 }
+// 12 Nov: Accord People. HR and admins work in it as a workspace; everyone else gets "People and policies" in their own menu.
+NAV.hr = [
+  { label: 'People', items: [['/', 'Overview', 'hrDesk', true], ['/hr/people', 'People', 'hrDesk'], ['/hr/leave', 'Leave', 'hrSelf'], ['/hr/attendance', 'Attendance and leave register', 'hrDesk'], ['/hr/kra', 'KRAs and reviews', 'hrSelf']] },
+  { label: 'Policies', items: [['/kb', 'Knowledge base', 'kb'], ['/kb/acks', 'Acknowledgements', 'kbEdit'], ['/hr/holidays', 'Holidays', 'hrSelf']] },
+  { label: 'Desk', items: [['/hr/requests', 'HR requests', 'hrSelf'], ['/hr/assets', 'Assets', 'hrDesk'], ['/hr/settings', 'HR settings', 'hrDesk']] },
+  { label: 'Me', items: [['/hr', 'My HR', 'hrSelf', true], ['/people', 'Time', 'time', true], ['/people/tasks', 'Tasks', 'tasks'], ['/help', 'Help centre', 'help']] },
+]
+const PEOPLE = { label: 'People and policies', items: [['/hr', 'My HR', 'hrSelf', true], ['/hr/leave', 'Leave', 'hrSelf'], ['/hr/kra', 'KRAs and reviews', 'hrSelf'], ['/kb', 'Knowledge base', 'kb'], ['/hr/holidays', 'Holidays', 'hrSelf'], ['/hr/requests', 'HR requests', 'hrSelf']] }
 const ADMIN = { label: 'Admin', items: [['/admin', 'Settings', 'admin', true], ['/admin/users', 'Users and access', 'admin'], ['/admin/data', 'Data and sync', 'admin'], ['/admin/cleanup', 'Data clean-up', 'admin']] }
 export const STATE_LABEL = { office: 'In office', break: 'On break', site: 'Site visit', remote: 'Remote', out: 'Punched out' }
 const hm = (m) => `${Math.floor((m || 0) / 60)}h ${String((m || 0) % 60).padStart(2, '0')}m`
@@ -48,7 +56,7 @@ export default function Layout() {
   const [ws, setWs, wsAll] = useWorkspace()
   const [menu, setMenu] = useState(false)
   const [theme, setT] = useState(document.documentElement.dataset.theme)
-  const groups = useMemo(() => [...(NAV[ws] || []), ...(user?.appRole === 'admin' ? [ADMIN] : [])].map((g) => ({ ...g, items: g.items.filter((i) => canPage(user, i[2])) })).filter((g) => g.items.length), [ws, user])
+  const groups = useMemo(() => [...(NAV[ws] || []), ...(ws !== 'hr' ? [PEOPLE] : []), ...(user?.appRole === 'admin' ? [ADMIN] : [])].map((g) => ({ ...g, items: g.items.filter((i) => canPage(user, i[2])) })).filter((g) => g.items.length), [ws, user])
   const toggleTheme = () => setT(setTheme(theme === 'light' ? 'dark' : 'light'))
   useEffect(() => { setMenu(false) }, [loc.pathname])
   // the menu is a drawer now (31 Oct): hidden until the menu button is pressed; Escape or a click outside closes it

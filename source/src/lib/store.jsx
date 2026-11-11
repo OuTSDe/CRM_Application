@@ -16,7 +16,7 @@ export const EXP_UNITS = 'accord.units.status'             // read by the Accord
 const Ctx = createContext(null)
 // The backend address is published with the site (accord.config.js), so every device connects to the same Drive database.
 // 4 Nov: the backend version this site needs (backend/Code.gs VERSION). An older one means Code.gs was not redeployed.
-export const NEEDS_BACKEND = '3.7.0'   // 12 Nov: reminds admins to redeploy Code.gs (faster audit and pulls)
+export const NEEDS_BACKEND = '3.8.0'   // 12 Nov: Accord People (HR collections, leave and KRA checks, knowledge base by grade)
 const verLess = (a, b) => { const x = String(a).match(/\d+/g)?.map(Number), y = String(b).split('.').map(Number); if (!x) return true; for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0) } return false }
 const SITE_BACKEND = (typeof window !== 'undefined' && window.ACCORD_CONFIG?.backendUrl) || ''
 const uid = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
@@ -110,6 +110,10 @@ export function StoreProvider({ children }) {
   // 12 Nov: only one push at a time (the 8-second timer and the save timer used to send the same changes twice),
   // at most 40 changes per push, and every change sent is remembered for a minute so a pull that started before the
   // server saved it cannot put the old version back on screen.
+  // 12 Nov (b): what this browser already has, per collection (tokens from the server). The server leaves those out of
+  // its answer unless they changed. Every 20th pull (about 10 minutes) asks for everything again, as a safety net.
+  const pullTok = useRef({}), pullCount = useRef(0)
+  useEffect(() => { pullTok.current = {}; pullCount.current = 0 }, [session?.token])
   const flushing = useRef(false)
   // 12 Nov: the server gave a new record the next free number because its number was taken. Change it here too,
   // everywhere it is mentioned, including changes still waiting to be sent.
@@ -138,6 +142,7 @@ export function StoreProvider({ children }) {
       const sent = new Set(ops)
       queue.current = queue.current.filter((o) => !sent.has(o))
       if (r.renamed?.length) applyRenames(r.renamed, ops)
+      if (r.refused?.length || r.renamed?.length) pullTok.current = {}   // 12 Nov (b): fetch everything next time, so a refused change does not linger
       safeSet(QKEY, JSON.stringify(queue.current))
       const now = Date.now(); recent.current = [...recent.current.filter((x) => now - x.at < 60000), ...ops.map((op) => ({ op, at: now }))]
       setSync({ state: 'synced', at: new Date().toISOString(), error: r.refused?.length ? 'Not allowed: ' + [...new Set(r.refused)].join(', ') : null })
@@ -153,8 +158,10 @@ export function StoreProvider({ children }) {
     const startedAt = Date.now()
     try {
       setSync((s) => ({ ...s, state: 'syncing' }))
-      const j = await call({ action: 'pull', token: session.token })
+      const full = pullCount.current++ % 20 === 0
+      const j = await call({ action: 'pull', token: session.token, have: full ? null : pullTok.current })
       setServerVersion(j.version || 'older than 3.4.0')
+      pullTok.current = j.tok ? (full ? { ...j.tok } : { ...pullTok.current, ...j.tok }) : {}
       setRaw((cur) => {
         const next = { ...cur }
         let changed = false
@@ -458,7 +465,7 @@ export function StoreProvider({ children }) {
   }, [online, session, call, demo])
   const toggleDemo = useCallback((on) => {
     if (on && !trainingSnap.current) { trainingSnap.current = rawRef.current; setDemoState(true); notify('Training mode on. Nothing you enter now is saved.', 'warn') }
-    else if (!on && trainingSnap.current) { const snap = trainingSnap.current; trainingSnap.current = null; setRaw(snap); setDemoState(false); notify('Training mode off. Practice entries discarded.'); setTimeout(() => pull(), 300) }
+    else if (!on && trainingSnap.current) { const snap = trainingSnap.current; trainingSnap.current = null; pullTok.current = {}; pullCount.current = 0; setRaw(snap); setDemoState(false); notify('Training mode off. Practice entries discarded.'); setTimeout(() => pull(), 300) }
   }, [notify, pull])
   const exportNow = useCallback(async () => call({ action: 'exportNow', token: session.token }), [session, call])
   // The CRM master extract (Accord_Data / Starting data / accord-starting-data.json) loaded into this device, ready to seed the sheet.

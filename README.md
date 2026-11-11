@@ -375,6 +375,10 @@ Founding privilege, approval status and internal notes stay on the Build screen 
 
 **Commitments of 4 or more car parks.** Building and parking → Car parking → Rules and drawings → *Commitments*. Each residence keeps its own car park, so 249 covered car parks are spare today. A promise of 4 uses 3 of them (two tandem pairs), 5 uses 4, 6 uses 5. The most the building can carry on top of today's bookings: **83** promises of 4, **62** of 5 or **49** of 6, and that leaves nothing to sell. Record each promise on the client (Client 360 → Edit → Car parks entitled), then Plan allotment.
 
+## 7f. Accord People: HRMS and the knowledge base (12 November, backend 3.8.0)
+
+A fourth workspace, **Accord People**, for HR (new access role *HR and admin*) and admins, and a **People and policies** menu for everyone else: My HR, leave with approvals by "Reports to", half-yearly KRA sheets from each position's template, HR requests (with confidential POSH complaints seen only by the Internal Committee), assets, holidays, the monthly attendance and leave register for payroll, and a knowledge base of 33 SOPs, role handbooks, RERA, tax and HR policies. Access follows the person's **position** and **pay grade** (G1 to G6) set on their HR profile, and the server enforces it. Go-live steps and the full rules: `ACCORD_CHANGES_2026-11-12_PEOPLE.md`.
+
 ## 8. What is missing (to fill in before go-live)
 
 1. **Your Excel formats and the logo.** The cost sheet, payment slip, payment and financial summary, booking form and lead entries use the Yamuna Sky City header now. When you share the Excel formats and the header or logo, upload the logo in Settings → Brand, and the layouts can be matched line by line.

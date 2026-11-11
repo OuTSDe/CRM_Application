@@ -783,3 +783,33 @@ mark { background: var(--accent-soft); color: inherit; padding: 0 1px }
   .hg-bubble { left: 12px !important; right: 12px; width: auto !important; bottom: 16px !important; top: auto !important }
 }
 @media print { .help-btn, .help-panel, .help-scrim, .hg { display: none !important } }
+
+/* 12 Nov: Accord People and the knowledge base */
+.hrm-line { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line, rgba(127,127,127,.15)) }
+.hrm-line:last-child { border-bottom: 0 }
+.hrm-msg { border-left: 2px solid var(--accent-line); padding: 4px 10px; margin: 8px 0 }
+.hrm-cal th, .hrm-cal td { text-align: center; padding: 4px 3px; min-width: 24px; font-size: 11px }
+.hrm-cal td:first-child, .hrm-cal th:first-child { text-align: left; min-width: 110px; font-size: 13px }
+.hrm-cal .off { background: rgba(127,127,127,.14); color: var(--fg3) }
+.hrm-cal .hol { background: var(--purple-soft); color: var(--purple) }
+.hrm-cal .on { background: var(--accent-soft); color: var(--accent-2); font-weight: 600 }
+.hrm-cal .pend { box-shadow: inset 0 0 0 1px var(--accent-line); color: var(--accent-2) }
+.hrm-kra td { vertical-align: top } .hrm-kra .input { min-width: 90px } .hrm-kra select.input { min-width: 130px }
+tr.on td { background: var(--accent-soft) }
+.good-t { color: var(--good) }
+.kb-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px } .kb-tools .input { flex: 1; min-width: 240px }
+.kb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px }
+.kb-card { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--line, rgba(127,127,127,.2)); border-radius: 6px; color: inherit; text-decoration: none; background: var(--card, transparent) }
+.kb-card:hover { border-color: var(--accent-line) }
+.kb-card h3 { margin: 0; font-size: 15px; line-height: 1.3 } .kb-card p { margin: 0; flex: 1 }
+.kb-card-top, .kb-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px }
+.kb-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start }
+@media (max-width: 900px) { .kb-layout { grid-template-columns: 1fr } }
+.kb-banner { padding: 8px 12px; margin-bottom: 12px; border-left: 3px solid var(--warn); background: var(--warn-soft); font-size: 13px }
+.kb-body { line-height: 1.6; font-size: 14px } .kb-body p { margin: 0 0 10px }
+.kb-h2 { font-size: 17px; margin: 22px 0 8px } .kb-h2:first-child { margin-top: 0 } .kb-h3 { font-size: 15px; margin: 16px 0 6px }
+.kb-ul, .kb-ol { margin: 0 0 12px; padding-left: 22px } .kb-ul li, .kb-ol li { margin: 3px 0 }
+.kb-check { list-style: none; padding-left: 4px; margin: 0 0 12px } .kb-check li::before { content: '☐  '; color: var(--accent-2) }
+.kb-note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 8px 12px; margin: 0 0 12px } .kb-note p { margin: 0 }
+.kb-table { margin-bottom: 12px } .kb-table td, .kb-table th { vertical-align: top; font-size: 13px }
+@media print { .kb-layout aside, .kb-tools { display: none } .kb-layout { display: block } }

@@ -6,6 +6,7 @@ export const ROLES = {
   senior: 'Senior sales',
   sales: 'Client advisor',
   finance: 'Finance',
+  hr: 'HR and admin',
   design: 'Design',
   sourcing: 'Sourcing',
   viewer: 'View only',
@@ -18,6 +19,7 @@ export const ROLE_NOTES = {
   senior: 'All leads, clients, cold calls and interactions; money read-only; performance; templates; assigns tasks.',
   sales: 'Own clients, own leads and own interaction log. No rupee figures, no performance board, no payment recording.',
   finance: 'Records payments and receipts, demand calls, outstanding by client.',
+  hr: 'Accord People: HR profiles, leave approvals, attendance register, KRA cycle, assets, holidays, HR requests and the knowledge base. No CRM. Sees pay only below the grade set in HR settings.',
   design: 'Accord Design: projects, BOQ, showcase, sourcing; vendors.',
   sourcing: 'Accord Vendors: vendor directory, onboarding, quotes and samples.',
   viewer: 'Reads the CRM; changes nothing.',
@@ -30,8 +32,9 @@ export const WORKSPACES = {
   sales: { label: 'Accord Sales', sub: 'CRM · e-Brochure · client sessions', color: 'var(--accent)' },
   design: { label: 'Accord Design', sub: 'Experience · projects · BOQ', color: 'var(--good)' },
   vendors: { label: 'Accord Vendors', sub: 'Vendors · sourcing · quotes', color: 'var(--warn)' },
+  hr: { label: 'Accord People', sub: 'HR · leave · KRAs · knowledge base', color: 'var(--purple)' },
 }
-const DEFAULT_WS = { admin: ['sales', 'design', 'vendors'], senior: ['sales'], sales: ['sales'], finance: ['sales'], design: ['design', 'vendors'], sourcing: ['vendors'], viewer: ['sales'], consultant: ['sales'], bank: ['sales'] }
+const DEFAULT_WS = { admin: ['sales', 'design', 'vendors', 'hr'], hr: ['hr'], senior: ['sales'], sales: ['sales'], finance: ['sales'], design: ['design', 'vendors'], sourcing: ['vendors'], viewer: ['sales'], consultant: ['sales'], bank: ['sales'] }
 export const workspacesOf = (u) => {
   if (!u) return []
   const w = Array.isArray(u.workspaces) ? u.workspaces : String(u.workspaces || '').split(/[,\s]+/).filter(Boolean)
@@ -42,7 +45,8 @@ export const workspacesOf = (u) => {
 
 const MODULES = {
   crm: ['admin', 'senior', 'sales', 'finance', 'viewer', 'consultant', 'bank'],
-  people: ['admin', 'senior', 'sales', 'finance', 'design', 'sourcing', 'viewer'],
+  people: ['admin', 'senior', 'sales', 'finance', 'design', 'sourcing', 'viewer', 'hr'],
+  hr: ['admin', 'senior', 'sales', 'finance', 'design', 'sourcing', 'viewer', 'hr'],
   performance: ['admin', 'senior'],
   presales: ['admin', 'senior', 'sales', 'design'],
   brochure: ['admin', 'senior', 'sales', 'design'],
@@ -53,8 +57,9 @@ const MODULES = {
   admin: ['admin'],
   analytics: ['admin', 'senior', 'sales', 'finance', 'consultant'],
   reports: ['admin', 'senior', 'sales', 'finance', 'consultant'],
-  help: ['admin', 'senior', 'sales', 'finance', 'design', 'sourcing', 'viewer', 'consultant', 'bank'],
+  help: ['admin', 'senior', 'sales', 'finance', 'design', 'sourcing', 'viewer', 'consultant', 'bank', 'hr'],
 }
+const HR_STAFF = ['admin', 'senior', 'sales', 'finance', 'design', 'sourcing', 'viewer', 'hr']
 const WRITE = {
   leads: ['admin', 'senior', 'sales'],
   interactions: ['admin', 'senior', 'sales', 'finance'],
@@ -80,6 +85,10 @@ const WRITE = {
   demandLetters: ['admin', 'finance'],
   paymentEdits: ['admin', 'finance'],
   partners: ['admin', 'senior'],
+  // 12 Nov: Accord People. Staff write their own leave, goal sheets, requests and acknowledgements; the server checks
+  // whose record it is (own, a reportee's, or HR) before saving. Profiles: own personal details only, unless HR.
+  leaves: HR_STAFF, kras: HR_STAFF, hrTickets: HR_STAFF, kbAcks: HR_STAFF, hrProfiles: HR_STAFF,
+  hrConfig: ['admin', 'hr'], holidays: ['admin', 'hr'], assets: ['admin', 'hr'], hrComp: ['admin', 'hr'], kbDocs: ['admin', 'hr'],
 }
 // 4 Nov: access by page. Each role has its default pages (from the lists above); an admin can tick extra pages or
 // powers for one person (user.extraAccess). Admin pages are never given out this way. The server applies the same list.
@@ -112,6 +121,13 @@ export const ACCESS = [
     { key: 'reports', label: 'Reports: own report', mod: 'reports', roles: ['admin', 'senior', 'sales', 'finance', 'consultant'], writes: [] },
     { key: 'reportsAll', label: 'Reports: anyone and the whole team', mod: 'reports', roles: ['admin', 'senior', 'consultant'], writes: [] },
   ] },
+  { group: 'Accord People (HR)', ws: '', items: [
+    { key: 'hrSelf', label: 'My HR, leave, KRAs and HR requests', mod: 'hr', roles: HR_STAFF, writes: [] },
+    { key: 'kb', label: 'Knowledge base (SOPs and policies, by grade and position)', mod: 'hr', roles: HR_STAFF, writes: [] },
+    { key: 'hrDesk', label: 'HR desk: people, attendance register, assets, holidays, HR settings', mod: 'hr', roles: ['admin', 'hr'], writes: ['hrProfiles', 'hrConfig', 'holidays', 'assets', 'leaves', 'kras', 'hrTickets'], ws: 'hr' },
+    { key: 'hrComp', label: 'See and change pay (below the grade set in HR settings)', mod: 'hr', roles: ['admin', 'hr'], writes: ['hrComp'] },
+    { key: 'kbEdit', label: 'Write and approve knowledge-base documents', mod: 'hr', roles: ['admin', 'hr'], writes: ['kbDocs'] },
+  ] },
   { group: 'Accord Design and Vendors', ws: 'design', items: [
     { key: 'projects', label: 'Projects and BOQ', mod: 'accord', roles: R('accord'), writes: ['projects', 'rooms', 'packages', 'boq'] },
     { key: 'residences', label: 'Residences (design view)', mod: 'accord', roles: R('accord'), writes: [] },
@@ -140,6 +156,7 @@ export const canWrite = (u, coll) => {
   if (!u) return false
   if (u.appRole === 'admin') return true
   if (['tasks', 'notifications', 'audit', 'accordSessions', 'timeEvents'].includes(coll)) return true
+  if (['consultant', 'bank'].includes(u.appRole) && HR_COLLS.includes(coll)) return false
   return (WRITE[coll] || []).includes(u.appRole) || extrasOf(u).some((k) => ITEM[k].writes.includes(coll))
 }
 export const isAdmin = (u) => u?.appRole === 'admin'
@@ -155,7 +172,48 @@ export const MONEY_FIELDS = ['tc', 'adjustment', 'adjType', 'adjReason', 'receiv
 // 5 Nov: what a consultant and a bank contact may never receive
 export const CONTACT_FIELDS = ['phone', 'phone2', 'whatsapp', 'email', 'address', 'pan', 'coPan', 'aadhaar4', 'dob', 'coPhone', 'coEmail', 'employer', 'income', 'familyProfile', 'remarks', 'notes', 'referredBy', 'partnerPhone']
 export const isLoanClient = (c) => /loan/i.test(String(c?.funding || ''))
-export function scopeDb(db, u, derive) {
+export const HR_COLLS = ['hrConfig', 'hrProfiles', 'hrComp', 'leaves', 'holidays', 'kras', 'hrTickets', 'assets', 'kbDocs', 'kbAcks']
+export function scopeDb(db, u, derive) { return u ? scopeHr(scopeCore(db, u, derive), db, u) : db }
+// 12 Nov: Accord People. The same rules as hrScope_ in Code.gs: own records, reportees' leave and goal sheets, HR sees all
+// (pay only below the grade line), POSH complaints only to the Internal Committee, documents by grade and position.
+const PERSONAL = ['personalPhone', 'personalEmail', 'address', 'emergencyName', 'emergencyPhone', 'emergencyRelation', 'bloodGroup', 'dob', 'bankName', 'bankAccount', 'ifsc', 'pan', 'aadhaar4', 'uan', 'esic', 'opening']
+const gRank = (g) => Number(String(g || '').replace(/\D/g, '')) || 0
+export function scopeHr(out, full, u) {
+  const blank = Object.fromEntries(HR_COLLS.map((c) => [c, []]))
+  if (['consultant', 'bank'].includes(u.appRole)) return { ...out, ...blank, holidays: full.holidays || [] }
+  const users = full.users || [], me = u.name
+  const team = new Set(); let fr = [me]
+  for (let i = 0; i < 8 && fr.length; i++) { const nx = users.filter((x) => fr.includes(x.reportsTo) && !team.has(x.name) && x.name !== me).map((x) => x.name); nx.forEach((n) => team.add(n)); fr = nx }
+  const nameOf = Object.fromEntries(users.map((x) => [x.id, x.name]))
+  const profs = full.hrProfiles || [], profOf = Object.fromEntries(profs.map((p) => [p.userId, p]))
+  const mine = profOf[u.id] || {}
+  const cfg = (full.hrConfig || [])[0] || {}
+  const isHr = u.appRole === 'admin' || u.appRole === 'hr'
+  const ic = cfg.icMembers || []
+  const grade = u.appRole === 'admin' ? 'G6' : mine.grade || 'G1'
+  const vis = (d) => { if (isHr || extrasOf(u).includes('kbEdit')) return true; if (d.status === 'Retired') return false; if (d.status === 'Draft') return d.owner === me
+    const a = d.audience || {}; if (gRank(grade) < gRank(a.minGrade || 'G1')) return false
+    if ((a.roles || []).length && !a.roles.includes(u.appRole)) return false
+    if ((a.positions || []).length && mine.position && !a.positions.includes(mine.position)) return false   // no profile yet: grade G1, any position
+    if ((a.teams || []).length && !a.teams.includes(mine.department || u.team)) return false
+    return true }
+  const tickets = (full.hrTickets || []).filter((t) => (t.category === 'POSH complaint (confidential)' ? t.by === me || ic.includes(me) : isHr || t.by === me))
+  const base = { ...out, hrConfig: full.hrConfig || [], holidays: full.holidays || [], hrTickets: tickets, kbDocs: (full.kbDocs || []).filter(vis) }
+  if (isHr) {
+    const line = gRank(cfg.compBelow || 'G5')
+    return { ...base, hrProfiles: profs, leaves: full.leaves || [], kras: full.kras || [], assets: full.assets || [], kbAcks: full.kbAcks || [],
+      hrComp: (full.hrComp || []).filter((c) => u.appRole === 'admin' || c.userId === u.id || (hasAccess(u, 'hrComp') && gRank(profOf[c.userId]?.grade) < line)) }
+  }
+  const DIRP = ['id', 'userId', 'name', 'position', 'department', 'doj', 'status']
+  return { ...base,
+    hrProfiles: profs.map((p) => (p.userId === u.id ? p : team.has(nameOf[p.userId]) ? Object.fromEntries(Object.entries(p).filter(([k]) => !PERSONAL.includes(k))) : Object.fromEntries(DIRP.filter((k) => p[k] !== undefined).map((k) => [k, p[k]])))),
+    leaves: (full.leaves || []).filter((l) => l.userId === u.id || team.has(l.name)),
+    kras: (full.kras || []).filter((k) => k.userId === u.id || team.has(k.name)),
+    assets: (full.assets || []).filter((a) => a.issuedToId === u.id),
+    kbAcks: (full.kbAcks || []).filter((a) => a.userId === u.id),
+    hrComp: (full.hrComp || []).filter((c) => c.userId === u.id) }
+}
+function scopeCore(db, u, derive) {
   if (u?.appRole === 'consultant') return redactForConsultant(db, u)
   if (u?.appRole === 'bank') return scopeForBank(db, u)
   if (!u || seesAll(u) && u.appRole !== 'viewer') return db
