@@ -361,6 +361,8 @@ On the ground there are also 3 accessible bays (G-H1 to G-H3), 36 visitor bays (
 
 **Decisions for you.** The rate card gives every type 1 car park while the building has 543. If 4 and 5 BHK residences are meant to have 2, change *Car parks for 4 BHK / 5 BHK* in Admin → Settings → Rate card (it also changes the cost sheet) before planning; they will then get tandem pairs.
 
+**12 Nov: incomplete load fixed.** The first *Load the inventory* (7 Nov) stopped after 260 of the 703 slots: the ground floor and 87 of the 142 on the 1st floor podium. The 2nd and 3rd floor podium decks and the open bays never reached the sheet. Car parking now shows a level-by-level check whenever slots are missing, with **Load the missing slots**. Plan allotment stays off until the inventory is complete, and cost sheets always plan on every slot in the drawings. The levels are named Ground floor and Podium 1st, 2nd and 3rd floor (codes G, L1, L2, L3 unchanged).
+
 ## 7e. Cost sheet client pack and parking commitments (8 November, later)
 
 **Cost sheet.** Follows *Yamuna_Sky_City_Cost_Sheet_Master_Template_YHD.xlsx*. The A4 preview (and print / PDF) is the client pack, three pages:

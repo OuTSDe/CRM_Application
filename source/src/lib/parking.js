@@ -50,7 +50,23 @@ export function inventoryRecords() {
   }))
 }
 // A stored record joined with its drawing position.
-export const withDef = (p) => ({ ...SLOT_DEF[p.id], ...p, levelCode: p.levelCode || SLOT_DEF[p.id]?.level })
+export const withDef = (p) => { const code = p.levelCode || SLOT_DEF[p.id]?.level; return { ...SLOT_DEF[p.id], ...p, levelCode: code, level: LEVEL[code]?.name || p.level } }
+
+// 12 Nov: what of the drawing is actually in the sheet. The first load on 7 Nov stopped after 260 of 703 slots
+// (ground and part of the 1st floor podium), so check level by level and say what is missing.
+export function inventoryStatus(parking) {
+  const have = new Set((parking || []).map((p) => p.id))
+  const rows = [...LEVELS.map((l) => ({ code: l.code, name: l.name, kinds: COVERED })), { code: 'OPEN', name: 'Open bays (visitor, surface, two-wheeler)', kinds: OPEN_KINDS }]
+    .map((r) => { const defs = SLOT_DEFS.filter((s) => r.kinds.includes(s.kind) && (r.code === 'OPEN' || s.level === r.code))
+      return { ...r, expected: defs.length, loaded: defs.filter((s) => have.has(s.id)).length } })
+  const missing = rows.reduce((a, r) => a + r.expected - r.loaded, 0)
+  return { rows, missing, complete: missing === 0, loaded: SLOT_DEFS.length - missing, total: SLOT_DEFS.length }
+}
+// Every slot on the drawings, using the sheet's record where there is one, so a quote never runs short because a load stopped.
+export function fullInventory(parking) {
+  const by = Object.fromEntries((parking || []).map((p) => [p.id, p]))
+  return inventoryRecords().map((r) => by[r.id] || r)
+}
 
 export function slotScore(s, rules) {
   const lv = LEVEL_ORDER.indexOf(s.levelCode || s.level)
@@ -193,7 +209,7 @@ export const slotsOfUnit = (parking, unit) => parking.filter((p) => String(p.uni
 // 8 Nov (2): the slots a cost sheet can promise. The residence is planned as if it were booked today, after every
 // existing booking, so the answer is what the allotment would give it now. Indicative until the booking is allotted.
 export function proposeForUnit({ parking, clients, units, settings, unit, count, clientId = 'QUOTE' }) {
-  const inv = parking?.some((p) => SLOT_DEF[p.id]) ? parking : inventoryRecords()
+  const inv = fullInventory(parking)
   const u = units.find((x) => String(x.unit) === String(unit))
   if (!u || !(Number(count) > 0)) return { slots: [], note: '' }
   const own = clients.find((c) => String(c.unit) === String(unit) && (BOOKED.includes(c.status) || c.status === 'To verify'))

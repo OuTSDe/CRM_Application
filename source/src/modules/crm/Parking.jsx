@@ -9,7 +9,7 @@ import DocHeader from '../../components/DocHeader.jsx'
 import { d, today, fullName, inr } from '../../lib/format.js'
 import { PARKING_SOURCE } from '../../lib/parkingData.js'
 import {
-  LEVELS, LEVEL, LEVEL_ORDER, SLOT_DEFS, PARKING_FIXES, PARKING_DRAWING, RELEASE, inventoryRecords, withDef, planAllotment, applyPlan,
+  inventoryStatus, LEVELS, LEVEL, LEVEL_ORDER, SLOT_DEFS, PARKING_FIXES, PARKING_DRAWING, RELEASE, inventoryRecords, withDef, planAllotment, applyPlan,
   parkingRules, PARKING_DEFAULTS, entitlementOf, capacity, isTandem, isCovered, bandShort, slotsOfUnit, levelName,
 } from '../../lib/parking.js'
 
@@ -97,6 +97,7 @@ export default function Parking() {
   const [assign, setAssign] = useState(null)
   const [zoom, setZoom] = useState(() => (typeof window !== 'undefined' && window.innerWidth > 1000 ? 1.6 : 1))
 
+  const inv = useMemo(() => inventoryStatus(db.parking), [db.parking])
   const covered = recs.filter(isCovered)
   const stats = {
     singles: covered.filter((p) => p.kind === 'Single').length, pairs: covered.filter((p) => p.kind === 'Tandem front').length,
@@ -158,6 +159,13 @@ export default function Parking() {
 
   return (
     <>
+      {!inv.complete && <Card title="The parking inventory is incomplete" className="pk-missing">
+        <p className="small" style={{ marginTop: 0 }}>The drawings have car parks on the ground floor and the 1st, 2nd and 3rd floor podium decks. Only {inv.loaded} of the {inv.total} slots are in the sheet, so allotments and cost sheets cannot use the rest yet.</p>
+        <table className="table dense"><thead><tr><th>Level</th><th className="right">On the drawings</th><th className="right">In the sheet</th><th /></tr></thead>
+          <tbody>{inv.rows.map((r) => <tr key={r.code}><td>{r.code === 'OPEN' ? r.name : `${r.code} · ${r.name}`}</td><td className="right">{r.expected}</td><td className="right">{r.loaded}</td><td>{r.loaded < r.expected ? <Badge tone="warn">{r.expected - r.loaded} missing</Badge> : <Badge tone="good">Complete</Badge>}</td></tr>)}</tbody></table>
+        {can ? <div className="row gap-s wrap" style={{ marginTop: 10 }}><Button variant="primary" onClick={load}>Load the {inv.missing} missing slots</Button><span className="small muted">They go to the sheet in batches of 40; keep Accord open until the sync dot settles.</span></div>
+          : <p className="small muted">An admin or Anuradha loads the missing slots.</p>}
+      </Card>}
       <Grid cols={5}>
         <Stat label="Covered car parks" value={stats.singles + stats.pairs * 2} sub={`${stats.singles} single · ${stats.pairs} tandem pairs`} />
         <Stat label="Allotted" value={stats.allotted} sub={`${stats.prov} provisional · ${stats.locked} with letters`} tone="accent" />
@@ -168,22 +176,23 @@ export default function Parking() {
       <div className="row between wrap" style={{ margin: '12px 0' }}>
         <Seg options={[{ value: 'plan', label: 'Plan' }, { value: 'slots', label: 'Slots' }, { value: 'residences', label: 'Residences' }, { value: 'logic', label: 'Rules and drawings' }]} value={view} onChange={setView} />
         <div className="row gap-s wrap">
-          {can && <Button variant="primary" onClick={runPlan}>Plan allotment</Button>}
+          {can && <Button variant="primary" onClick={runPlan} disabled={!inv.complete} title={inv.complete ? '' : 'Load the missing slots first'}>Plan allotment</Button>}
           <Link className="btn" to="/crm/parking/register">Print register</Link>
-          {can && SLOT_DEFS.length > db.parking.filter((p) => SLOT_DEFS.some((s) => s.id === p.id)).length && <Button onClick={load}>Load missing slots</Button>}
+
         </div>
       </div>
 
       {view === 'plan' && <div className="pk-wrap">
         <Card pad={false}>
           <div className="pk-tools">
-            <Seg options={LEVELS.map((l) => ({ value: l.code, label: `${l.code}${hlLevels.includes(l.code) ? ' •' : ''}` }))} value={level} onChange={(v) => { setLevel(v); setSel(null) }} />
+            <Seg options={LEVELS.map((l) => { const r = inv.rows.find((x) => x.code === l.code); return { value: l.code, label: `${l.code}${r && r.loaded < r.expected ? ` (${r.loaded}/${r.expected})` : ''}${hlLevels.includes(l.code) ? ' •' : ''}` } })} value={level} onChange={(v) => { setLevel(v); setSel(null) }} />
             <span className="small muted nowrap">{LEVEL[level].name} · FFL {LEVEL[level].ffl}</span>
             <input className="input search" type="search" placeholder="Residence, client or slot" aria-label="Find on the plan" value={q} onChange={(e) => setQ(e.target.value)} />
             <Select options={zones.map((z) => ({ value: z, label: bandShort(z) }))} value={zoneF} placeholder="All zones" onChange={(e) => setZoneF(e.target.value)} />
             <Seg options={[{ value: 1, label: '1×' }, { value: 1.6, label: '1.6×' }, { value: 2.4, label: '2.4×' }]} value={zoom} onChange={setZoom} />
           </div>
           <div className="pk-scroll" ref={box}><div style={{ width: zoom * 100 + '%' }}>
+            {!recs.some((p) => p.levelCode === level) && <p className="note warn small" style={{ margin: 12 }}>No {LEVEL[level].name} slots are in the sheet yet. Load the missing slots (above) to see and allot them.</p>}
             <ParkingPlan level={level} recs={recs} highlight={hl} selected={sel} zoneFilter={zoneF} onPick={(p) => setSel(p.id)} cars="mine" />
           </div></div>
           <Legend />
