@@ -33,3 +33,7 @@ The list shows a row that was saved twice only once.
 At 10:48 the same day, five files were overwritten with an older copy: `site/index.html`, `backend/Code.gs`, `store.jsx`, `Admin.jsx` and `README.md`. That older copy was pushed at 10:50 (commit "changes").
 
 They were restored from commit 0695daf ("Parking updated") before these changes were made.
+
+## Sign-in with a duplicated username (3.8.5)
+
+If a username was on two rows, sign-in used the first row. The temporary password could be on the other row, so the person saw "No temporary password yet". Sign-in now uses the row that has the password or the authenticator. Removing the duplicate (Users and access › Review and remove duplicates) fixes it for good.

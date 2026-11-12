@@ -39,7 +39,8 @@
  *  - Records made in demo mode carry _test = Yes: they send no reminders and are listed for clean-up.
  */
 
-var VERSION = '3.8.4';   // 12 Nov (e): no duplicate user accounts (dedupeUsers, push and seed checks)
+var VERSION = '3.8.5';   // 12 Nov (f): sign-in picks the account row that has the password when a username is duplicated
+// var VERSION = '3.8.4';   // 12 Nov (e): no duplicate user accounts (dedupeUsers, push and seed checks)
 // var VERSION = '3.8.3';   // 12 Nov (d): the logo lives on Drive (Accord_Data / Brand); settings keep only its link.
 // 3.8.2: long values over the 50,000-character cell limit; one bad change no longer blocks a push.
 // 3.8.1: shared read cache and delta pulls. Was:
@@ -474,7 +475,10 @@ function notifyAdmins_(kind, title, body) { read_('users').filter(function (x) {
 
 function login_(req) {
   var uname = String(req.username || '').trim().toLowerCase();
-  var users = read_('users'), u = users.filter(function (x) { return String(x.username || '').toLowerCase() === uname; })[0];
+  // 12 Nov: if a username is on more than one row (a duplicate account), use the one that has a password or an
+  // authenticator, not simply the first row. Users and access › Review and remove duplicates cleans them up.
+  var users = read_('users'), u = users.filter(function (x) { return String(x.username || '').toLowerCase() === uname; })
+    .sort(function (a, b) { return (b.totpSecret ? 2 : 0) + (b.pwHash ? 1 : 0) - (a.totpSecret ? 2 : 0) - (a.pwHash ? 1 : 0); })[0];
   if (!u || u.active === 'No' || u.appRole === 'none') throw new Error('Unknown username or code');
   if (u.lockedUntil && new Date(u.lockedUntil) > new Date()) throw new Error('Too many attempts. Try again after ' + Utilities.formatDate(new Date(u.lockedUntil), TZ, 'HH:mm'));
   var fail = function (msg) { u.failed = Number(u.failed || 0) + 1; if (u.failed >= 5) { u.lockedUntil = new Date(Date.now() + 15 * 60000).toISOString(); u.failed = 0; } upsert_('users', u); throw new Error(msg); };
