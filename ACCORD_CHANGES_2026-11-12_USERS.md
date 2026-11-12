@@ -37,3 +37,13 @@ They were restored from commit 0695daf ("Parking updated") before these changes 
 ## Sign-in with a duplicated username (3.8.5)
 
 If a username was on two rows, sign-in used the first row. The temporary password could be on the other row, so the person saw "No temporary password yet". Sign-in now uses the row that has the password or the authenticator. Removing the duplicate (Users and access › Review and remove duplicates) fixes it for good.
+
+## Delete a user (12 Nov)
+
+In Users and access, open a person and use **Delete user**, bottom left. Only admins see it, and never on their own account.
+
+Accord asks for confirmation first. The account is removed, so the person can no longer sign in. Their leads, clients and history stay, because records keep the person's name.
+
+To stop someone signing in but keep the account, set **Active** to **No** instead.
+
+This needs no backend change: admins could already delete records on the server.
