@@ -5,25 +5,34 @@ import RecordForm from '../../components/RecordForm.jsx'
 import { Page, Card, Button, Badge, Field, Input, Textarea, Select, Modal, Confirm, Chips, Seg } from '../../components/ui.jsx'
 import DataTable from '../../components/DataTable.jsx'
 import { d, inr } from '../../lib/format.js'
+import { DEFAULT_RULES, rulesOf } from '../../lib/schedule.js'
 import { getLocation } from '../../lib/geo.js'
 import { deviceId } from '../../lib/crypto.js'
 import { Link } from 'react-router-dom'
+import { useLogo } from '../../lib/logo.js'
 
 function BrandCard({ s, setS }) {
   const { upload, online, notify } = useStore()
   const b = s.brand || {}
+  const logo = useLogo(b.logo)
   const set = (k, v) => setS({ ...s, brand: { ...b, [k]: v } })
   const onLogo = async (f) => {
     if (!f) return
     if (f.size > 400 * 1024) return notify('Use a logo under 400 KB (PNG or SVG works best)', 'bad')
+    // 12 Nov (d): with the shared database the picture goes to Drive / Brand and settings keep only its link
+    // (a picture inside the settings record went over the 50,000-character limit of a sheet cell)
+    if (online) {
+      try { const link = await upload(f, 'Brand', 'Yamuna Sky City logo', { kind: 'brand', doc: 'Logo' }); if (link) setS({ ...s, brand: { ...b, logo: link } }); notify('Logo saved to Drive / Brand') }
+      catch (e) { notify('Logo not saved: ' + e.message, 'bad') }
+      return
+    }
     const url = await new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(f) })
-    setS({ ...s, brand: { ...b, logo: url } })
-    if (online) { try { await upload(f, 'Brand', 'Yamuna Sky City logo', { kind: 'brand', doc: 'Logo' }); notify('Logo saved to Drive / Brand for e-mails') } catch (e) { notify('Logo kept for documents; Drive copy failed: ' + e.message, 'warn') } }
+    setS({ ...s, brand: { ...b, logo: url } })   // no shared database: the logo stays on this device
   }
   return <Card title="Brand on documents and e-mails">
     <p className="small" style={{ marginTop: 0 }}>The Yamuna Sky City header printed on the cost sheet, receipts, payment summary, booking form and lead sheet, and at the top of every e-mail Accord sends.</p>
     <div className="row" style={{ alignItems: 'center', marginBottom: 12 }}>
-      <div className="logo-box">{b.logo ? <img src={b.logo} alt="Logo" /> : <span className="small muted">No logo yet</span>}</div>
+      <div className="logo-box">{logo ? <img src={logo} alt="Logo" /> : <span className="small muted">No logo yet</span>}</div>
       <label className="btn">Upload logo<input type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp" hidden onChange={(e) => onLogo(e.target.files[0])} /></label>
       {b.logo && <Button variant="ghost" onClick={() => set('logo', '')}>Remove</Button>}
     </div>
@@ -45,6 +54,7 @@ function SignInCard({ s, setS }) {
     <div className="form fc2">
       <Field label="Sign-in" hint="Authenticator: a 6-digit code from an app on the phone. Password: the old way."><Select options={[{ value: 'authenticator', label: 'Authenticator app (recommended)' }, { value: 'password', label: 'Password' }]} value={s.authMode || 'authenticator'} onChange={(e) => setS({ ...s, authMode: e.target.value })} /></Field>
       <Field label="Devices per person" hint="Admins have no limit"><Input value="One computer and one phone" disabled /></Field>
+      <Field label="No phone to hand: sign in with an e-mailed code" hint="A 6-digit code to the e-mail on the person's record, valid 10 minutes. Admins are told each time."><Select options={[{ value: 'Yes', label: 'Allowed' }, { value: 'No', label: 'Off' }]} value={s.allowEmailCode === 'No' ? 'No' : 'Yes'} onChange={(e) => setS({ ...s, allowEmailCode: e.target.value })} /></Field>
       <Field label="Location check at punch-in" hint="Office and Site count only at Sky City; elsewhere it is logged as remote"><Select options={['On', 'Off']} value={s.geofence || 'On'} onChange={(e) => setS({ ...s, geofence: e.target.value })} /></Field>
       <Field label="Trusted device: skip the code for (days)" hint="0 turns it off. Each person ticks it on their own device at sign-in."><Input type="number" min={0} max={30} value={s.trustDays ?? 3} onChange={(e) => setS({ ...s, trustDays: Number(e.target.value) })} /></Field>
       <Field label="Sign out after no activity (minutes)" hint="0 turns it off. The e-brochure never signs out by itself."><Input type="number" min={0} value={s.idleMinutes ?? 30} onChange={(e) => setS({ ...s, idleMinutes: Number(e.target.value) })} /></Field>
@@ -88,12 +98,13 @@ export function AdminSettings() {
   const co = (k, v) => setS({ ...s, company: { ...s.company, [k]: v } })
   const rc = (k, v) => setS({ ...s, rateCard: { ...s.rateCard, [k]: v } })
   const planSum = (p) => (s.plans[p] || []).reduce((a, x) => a + Number(x.pct || 0), 0)
-  const save = () => { for (const p of Object.keys(s.plans)) if (Math.abs(planSum(p) - 1) > 0.001) return notify(`${p} plan adds up to ${(planSum(p) * 100).toFixed(1)}%, not 100%`, 'bad'); setSettings(s); notify('Settings saved') }
+  const clpSum = (s.clpMaster || []).reduce((a, x) => a + Number(x.pct || 0), 0)
+  const save = () => { if ((s.clpMaster || []).length && Math.abs(clpSum - 1) > 0.001) return notify(`The master CLP schedule adds up to ${(clpSum * 100).toFixed(1)}%, not 100%`, 'bad'); for (const p of Object.keys(s.plans)) if (Math.abs(planSum(p) - 1) > 0.001) return notify(`${p} plan adds up to ${(planSum(p) * 100).toFixed(1)}%, not 100%`, 'bad'); setSettings(s); notify('Settings saved') }
   return (
     <Page title="Settings" back="/" backLabel="Dashboard" subtitle="Company details, the rate card and payment plans that drive cost sheets and receipts, and the workday for the time tracker." actions={<Button variant="primary" onClick={save}>Save settings</Button>}>
       <div className="grid g2">
-        <Card title="Company (receipts and cost sheets)"><div className="form fc2">{[['name', 'Company'], ['project', 'Project'], ['location', 'Location'], ['address', 'Address'], ['gstin', 'GSTIN'], ['rera', 'RERA number'], ['bank', 'Bank'], ['account', 'Account no.'], ['ifsc', 'IFSC'], ['branch', 'Branch'], ['contact', 'Contact number']].map(([k, l]) =>
-          <Field key={k} label={l} span={k === 'address' || k === 'rera' ? 'all' : undefined}><Input value={s.company[k]} onChange={(e) => co(k, e.target.value)} /></Field>)}</div></Card>
+        <Card title="Company (receipts and cost sheets)"><div className="form fc2">{[['name', 'Company'], ['project', 'Project'], ['location', 'Location'], ['address', 'Address'], ['gstin', 'GSTIN'], ['rera', 'RERA number'], ['bank', 'Bank'], ['account', 'Account no.'], ['ifsc', 'IFSC'], ['branch', 'Branch'], ['contact', 'Contact number'], ['cin', 'CIN'], ['regOffice', 'Registered office'], ['crmEmail', 'CRM e-mail (on demand letters)'], ['beneficiary', 'Account name (beneficiary)']].map(([k, l]) =>
+          <Field key={k} label={l} span={k === 'address' || k === 'rera' || k === 'regOffice' ? 'all' : undefined}><Input value={s.company[k]} onChange={(e) => co(k, e.target.value)} /></Field>)}</div></Card>
         <Card title="Rate card"><div className="form fc2">
           {[['baseRate', 'Base rate (₹/sft)'], ['floorRiseStart', 'Floor rise starts above floor'], ['floorRisePerFloor', 'Floor rise per floor (₹/sft)'], ['approvalAbove', 'Approval needed above (% off)'], ['terraceRate', 'Terrace rate (₹/sft)'], ['parkingRate', 'Car park included with the type (₹ each)'], ['parkingExtraRate', 'Additional car park (₹ each)'], ['parkingExtraMax', 'Additional car parks allowed'], ['gst', 'GST (0.05 = 5%)'], ['mwssb', 'MWSSB / MESCOM (₹/sft)'], ['clubhouse', 'Clubhouse (₹)'], ['maintenance', 'Advance maintenance (₹/sft)'], ['sinking', 'Sinking fund (₹/sft)'], ['minBooking', 'Minimum booking (₹)'], ['validityDays', 'Cost sheet validity (days)']].map(([k, l]) =>
             <Field key={k} label={l}><Input type="number" value={s.rateCard[k]} onChange={(e) => rc(k, Number(e.target.value))} /></Field>)}
@@ -103,12 +114,14 @@ export function AdminSettings() {
       </div>
       <div className="grid g2"><SignInCard s={s} setS={setS} /><BrandCard s={s} setS={setS} /></div>
       <DriveCard s={s} setS={setS} />
+      <ScheduleRulesCard s={s} setS={setS} />
       <InboxCard s={s} setS={setS} />
       <div className="grid g2">{Object.keys(s.plans).map((p) => <Card key={p} title={`Payment plan · ${p}`} actions={<Badge tone={Math.abs(planSum(p) - 1) < 0.001 ? 'good' : 'bad'}>{(planSum(p) * 100).toFixed(1)}%</Badge>}>
         {s.plans[p].map((x, k) => <div key={k} className="row gap-s" style={{ marginBottom: 6 }}><input className="input" style={{ flex: 1 }} value={x.stage} onChange={(e) => setS({ ...s, plans: { ...s.plans, [p]: s.plans[p].map((y, j) => (j === k ? { ...y, stage: e.target.value } : y)) } })} />
           <input className="input" type="number" style={{ width: 90 }} value={Math.round(x.pct * 1000) / 10} onChange={(e) => setS({ ...s, plans: { ...s.plans, [p]: s.plans[p].map((y, j) => (j === k ? { ...y, pct: Number(e.target.value) / 100 } : y)) } })} /><span className="small">%</span>
           <Button size="sm" variant="ghost" onClick={() => setS({ ...s, plans: { ...s.plans, [p]: s.plans[p].filter((_, j) => j !== k) } })}>×</Button></div>)}
         <Button size="sm" onClick={() => setS({ ...s, plans: { ...s.plans, [p]: [...s.plans[p], { stage: 'New stage', pct: 0 }] } })}>+ Stage</Button></Card>)}</div>
+      <ClpMasterCard s={s} setS={setS} sum={clpSum} />
       <div className="grid g2">
         <Card title="Cost sheet terms (one per line)"><Textarea rows={9} value={(s.terms || []).join('\n')} onChange={(e) => setS({ ...s, terms: e.target.value.split('\n').filter(Boolean) })} /></Card>
         <Card title="Receipt notes (one per line)"><Textarea rows={9} value={(s.receiptNotes || []).join('\n')} onChange={(e) => setS({ ...s, receiptNotes: e.target.value.split('\n').filter(Boolean) })} /></Card>
@@ -195,51 +208,60 @@ function DevRow({ u, dv }) {
   </div>
 }
 
-// 12 Nov: duplicate accounts. The same person twice (same name or username, ignoring case, spaces and dots). One is kept:
-// the one that is signed in or has its authenticator linked, else the one seen most recently; its gaps are filled from the
-// others, which are then removed. Records point to people by name, so nothing else needs changing.
+// 12 Nov: duplicate accounts. Either the same row saved twice under one member ID, or the same person (same name or
+// username, ignoring case, spaces and dots) under two IDs. One account is kept: the one with the authenticator linked,
+// most devices, or seen most recently; its gaps are filled from the others, which are removed. Records point to people
+// by name, so nothing else needs changing.
 const normName = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '')
 const last10 = (x) => String(x ?? '').replace(/\D/g, '').slice(-10)
+const dupScore = (u) => (u.totpSecret || u.mfa === 'Set' ? 1000 : 0) + (u.devices || []).filter((d) => d.approved).length * 100 + (u.active !== 'No' ? 5 : 0)
 function dupGroups(users) {
-  const by = {}
-  users.forEach((u) => { const k = normName(u.name) || normName(u.username); if (k) (by[k] = by[k] || []).push(u) })
-  users.forEach((u) => { const k = 'u:' + normName(u.username); if (normName(u.username)) (by[k] = by[k] || []).push(u) })
-  const seen = new Set(), out = []
-  Object.values(by).filter((g) => g.length > 1).forEach((g) => { const ids = [...new Set(g.map((u) => u.id))]; if (ids.length < 2) return; const key = ids.sort().join(); if (seen.has(key)) return; seen.add(key); out.push(rankKeep(g.filter((u, i) => g.findIndex((x) => x.id === u.id) === i))) })
-  return out
+  const groups = [], used = new Set()
+  const add = (g) => { const key = g.map((u, i) => u.id + ':' + i).join(); if (used.has(key)) return; used.add(key); groups.push([...g].sort((a, b) => dupScore(b) - dupScore(a) || String(b.lastSeen || '').localeCompare(String(a.lastSeen || '')))) }
+  const by = (f) => { const m = {}; users.forEach((u) => { const k = f(u); if (k) (m[k] = m[k] || []).push(u) }); return Object.values(m).filter((g) => g.length > 1) }
+  by((u) => normName(u.name)).forEach(add)
+  by((u) => normName(u.username)).filter((g) => !groups.some((x) => g.every((u) => x.includes(u)))).forEach(add)
+  return groups
 }
-const score = (u) => (u.totpSecret || u.mfa === 'Set' ? 1000 : 0) + (u.devices || []).filter((d) => d.approved).length * 100 + (u.pwHash ? 10 : 0) + (u.active !== 'No' ? 5 : 0)
-const rankKeep = (g) => [...g].sort((a, b) => score(b) - score(a) || String(b.lastSeen || '').localeCompare(String(a.lastSeen || '')) || String(a.id).localeCompare(String(b.id)))
-function MergeUsers({ open, onClose, groups, me, upsert, remove, notify }) {
+function MergeUsers({ open, onClose, groups, me, upsert, remove, notify, dedupeUsers }) {
   const [keep, setKeep] = useState({})
-  const go = () => {
-    let removed = 0
-    groups.forEach((g) => {
-      const k = g.find((u) => u.id === keep[g[0].id]) || g[0], rest = g.filter((u) => u.id !== k.id)
-      if (rest.some((u) => u.id === me.id)) return notify(`Not removing ${me.name}'s own account you are signed in with; keep that one instead`, 'bad')
-      const filled = { ...k }
-      rest.forEach((u) => { ['email', 'phone', 'designation', 'role', 'reportsTo', 'department', 'employment', 'company', 'shiftStart', 'shiftEnd', 'workDays', 'photo'].forEach((f) => { if (!filled[f] && u[f]) filled[f] = u[f] })
-        filled.extraAccess = [...new Set([...(Array.isArray(filled.extraAccess) ? filled.extraAccess : []), ...(Array.isArray(u.extraAccess) ? u.extraAccess : [])])] })
-      upsert('users', filled, { action: 'duplicates merged' })
-      rest.forEach((u) => { remove('users', u.id); removed++ })
-    })
-    if (removed) notify(`${removed} duplicate account${removed === 1 ? '' : 's'} removed`)
-    onClose()
+  const [busy, setBusy] = useState(false)
+  const go = async () => {
+    setBusy(true)
+    try {
+      let removed = 0
+      if (groups.some((g) => new Set(g.map((u) => u.id)).size < g.length)) removed += await dedupeUsers()   // rows saved twice under one ID
+      groups.forEach((g, gi) => {
+        const ids = [...new Set(g.map((u) => u.id))]; if (ids.length < 2) return
+        const kid = keep[gi] || g[0].id, k = g.find((u) => u.id === kid), rest = ids.filter((id) => id !== kid).map((id) => g.find((u) => u.id === id))
+        if (rest.some((u) => u.id === me.id)) return notify(`Keep the account you are signed in with (${me.name}); it cannot be removed`, 'bad')
+        const filled = { ...k }
+        rest.forEach((u) => { ['email', 'phone', 'designation', 'role', 'reportsTo', 'department', 'employment', 'company', 'shiftStart', 'shiftEnd', 'workDays', 'photo'].forEach((f) => { if (!filled[f] && u[f]) filled[f] = u[f] })
+          filled.extraAccess = [...new Set([...(Array.isArray(filled.extraAccess) ? filled.extraAccess : []), ...(Array.isArray(u.extraAccess) ? u.extraAccess : [])])] })
+        upsert('users', filled, { action: 'duplicates merged' })
+        rest.forEach((u) => { remove('users', u.id); removed++ })
+      })
+      notify(removed ? `${removed} duplicate account${removed === 1 ? '' : 's'} removed` : 'Nothing to remove')
+      onClose()
+    } catch (e) { notify('Not done: ' + e.message, 'bad') } finally { setBusy(false) }
   }
-  return <Modal open={open} onClose={onClose} title="Duplicate accounts" wide footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={go}>Keep the ticked ones, remove the rest</Button></>}>
-    <p className="small muted" style={{ marginTop: 0 }}>The same person has more than one account. Pick the one to keep: the suggested one is the account whose authenticator is linked, or the one used most recently. Details missing on it (e-mail, phone, reports to, extra access…) are copied from the others, then the others are removed.</p>
-    {groups.map((g) => <fieldset key={g[0].id} className="access-group" style={{ marginBottom: 10 }}><legend>{g[0].name}</legend>
-      {g.map((u, i) => <label key={u.id} className="access-item"><input type="radio" name={'k' + g[0].id} checked={(keep[g[0].id] || g[0].id) === u.id} onChange={() => setKeep({ ...keep, [g[0].id]: u.id })} />
-        <span><b>{u.name}</b> · @{u.username} · {u.id} · {ROLES[u.appRole] || u.appRole}<span className="small muted"> · {u.totpSecret || u.mfa === 'Set' ? 'authenticator linked' : 'not linked'} · {(u.devices || []).filter((d) => d.approved).length} device(s){u.lastSeen ? ' · last seen ' + d(String(u.lastSeen).slice(0, 10)) : ''}{u.id === me.id ? ' · you' : ''}{i === 0 ? ' · suggested' : ''}</span></span></label>)}
-    </fieldset>)}
+  return <Modal open={open} onClose={onClose} title="Duplicate accounts" wide footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={busy} onClick={go}>{busy ? 'Removing…' : 'Keep the ticked ones, remove the rest'}</Button></>}>
+    <p className="small muted" style={{ marginTop: 0 }}>The same person appears more than once. Pick the account to keep: the suggested one has the authenticator linked or was used most recently. Missing details (e-mail, phone, reports to, extra access…) are copied from the others, then the others are removed. Rows saved twice under the same member ID are folded into one.</p>
+    {groups.map((g, gi) => { const same = new Set(g.map((u) => u.id)).size === 1
+      return <fieldset key={gi} className="access-group" style={{ marginBottom: 10 }}><legend>{g[0].name}{same ? ' · saved twice under ' + g[0].id : ''}</legend>
+        {same ? <p className="small" style={{ margin: '4px 0' }}>Same member ID {g[0].id} appears {g.length} times. They are folded into one account (the one with the authenticator linked is kept).</p>
+          : g.map((u, i) => <label key={u.id + i} className="access-item"><input type="radio" name={'k' + gi} checked={(keep[gi] || g[0].id) === u.id} onChange={() => setKeep({ ...keep, [gi]: u.id })} />
+            <span><b>{u.name}</b> · @{u.username} · {u.id} · {ROLES[u.appRole] || u.appRole}<span className="small muted"> · {u.totpSecret || u.mfa === 'Set' ? 'authenticator linked' : 'not linked'} · {(u.devices || []).filter((x) => x.approved).length} device(s){u.lastSeen ? ' · last seen ' + d(String(u.lastSeen).slice(0, 10)) : ''}{u.id === me.id ? ' · you' : ''}{i === 0 ? ' · suggested' : ''}</span></span></label>)}
+      </fieldset> })}
   </Modal>
 }
 
 export function AdminUsers() {
-  const { raw, user, upsert, remove, nextId, notify, setUserPassword, approveDevice, releaseDevice, online } = useStore()
+  const { raw, user, upsert, remove, nextId, notify, setUserPassword, approveDevice, releaseDevice, online, dedupeUsers } = useStore()
   const [edit, setEdit] = useState(null)
   const [merge, setMerge] = useState(false)
   const dups = dupGroups(raw.users)
+  const rows = raw.users.filter((u, i) => raw.users.findIndex((x) => x.id === u.id) === i)   // a row saved twice is listed once
   const [pw, setPw] = useState('')
   const pending = raw.users.flatMap((u) => (u.devices || []).filter((dv) => !dv.approved).map((dv) => ({ u, dv })))
   const F = [
@@ -275,10 +297,10 @@ export function AdminUsers() {
       {pending.length > 0 && <Card title="Devices waiting for approval">{pending.map(({ u, dv }) => <div key={u.id + dv.id}><div className="small" style={{ marginTop: 6 }}><b>{u.name}</b></div><DevRow u={u} dv={dv} /></div>)}
         <p className="small muted">Each person can use one computer and one phone. Approving a second phone or computer releases the old one.</p></Card>}
       {dups.length > 0 && <div className="note warn row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <span><b>{dups.reduce((a, g) => a + g.length - 1, 0)} duplicate account{dups.reduce((a, g) => a + g.length - 1, 0) === 1 ? '' : 's'}</b> for {dups.map((g) => g[0].name).join(', ')}. Keep one account per person.</span>
+        <span><b>{dups.reduce((a, g) => a + g.length - 1, 0)} duplicate account{dups.reduce((a, g) => a + g.length - 1, 0) === 1 ? '' : 's'}</b> for {[...new Set(dups.map((g) => g[0].name))].join(', ')}. Keep one account per person.</span>
         <Button size="sm" variant="primary" onClick={() => setMerge(true)}>Review and remove duplicates</Button></div>}
-      <MergeUsers open={merge} onClose={() => setMerge(false)} groups={dups} me={user} upsert={upsert} remove={remove} notify={notify} />
-      <DataTable rows={raw.users} searchKeys={['name', 'username', 'role', 'designation']} onRowClick={(u) => { setPw(''); setEdit({ ...u }) }}
+      <MergeUsers open={merge} onClose={() => setMerge(false)} groups={dups} me={user} upsert={upsert} remove={remove} notify={notify} dedupeUsers={dedupeUsers} />
+      <DataTable rows={rows} searchKeys={['name', 'username', 'role', 'designation']} onRowClick={(u) => { setPw(''); setEdit({ ...u }) }}
         columns={[{ key: 'name', label: 'Name', render: (u) => <div><b>{u.name}</b><div className="small muted">@{u.username || '–'}</div></div> }, { key: 'designation', label: 'Designation' }, { key: 'team', label: 'Team' },
           { key: 'appRole', label: 'Access', render: (u) => <Badge tone={u.appRole === 'admin' ? 'accent' : u.appRole === 'none' ? 'muted' : 'info'}>{ROLES[u.appRole]}</Badge> },
           { key: 'ws', label: 'Platforms', render: (u) => <span className="small">{workspacesOf(u).map((w) => WORKSPACES[w].label.replace('Accord ', '')).join(', ') || '–'}</span> },
@@ -294,6 +316,7 @@ export function AdminUsers() {
           {edit.id && <div className="sheet" style={{ marginTop: 16 }}><div className="sheet-band"><span className="n">6</span><h4>Sign-in and devices</h4><span className="note2">{edit.mfa === 'Set' || edit.totpSecret ? 'Authenticator app linked' : 'Authenticator not linked yet'} · {online ? 'on the server' : 'on this device only'}</span></div>
             <div className="row" style={{ padding: 18 }}><input className="input" style={{ maxWidth: 280 }} type="text" autoComplete="off" placeholder="Temporary password" value={pw} onChange={(e) => setPw(e.target.value)} aria-label="Temporary password" />
               <Button onClick={temp} disabled={pw.length < 8}>Reset sign-in</Button><span className="small muted">New phone or lost phone: set a temporary password (8+ characters, a letter and a number). It unlinks the old app; they use the password once and link the app again.</span></div>
+            <p className="small" style={{ padding: '0 18px', margin: '0 0 12px' }}>{edit.email ? <>No phone to hand? They can sign in with a code e-mailed to <b>{edit.email}</b>.</> : <span className="missing">No e-mail on file, so e-mailed sign-in codes will not work for this person. Add one in the details above.</span>}</p>
             {(() => { const live = raw.users.find((x) => x.id === edit.id) || edit; const list = live.devices || []
               return list.length > 0 ? <div style={{ padding: '0 18px 18px' }}>{list.map((dv) => <DevRow key={dv.id} u={live} dv={dv} />)}</div> : <p className="small muted" style={{ padding: '0 18px 18px', margin: 0 }}>No devices linked.</p> })()}
           </div>}</>}
@@ -349,4 +372,86 @@ export function AdminData() {
           columns={[{ key: 'at', label: 'When', render: (a) => `${d(a.at)} ${new Date(a.at).toTimeString().slice(0, 5)}` }, { key: 'by', label: 'Who' }, { key: 'coll', label: 'Collection' }, { key: 'recId', label: 'Record' }, { key: 'action', label: 'Action' }]} /></div></Card>
     </Page>
   )
+}
+
+// 7 Nov: per-client payment schedules, interest, reminders and notices (Karnataka RERA), demand letter wording and
+// cancellation rules. Every figure is a setting; your registered Agreement for Sale and allotment letter decide them.
+function ScheduleRulesCard({ s, setS }) {
+  const R = rulesOf(s)
+  const put = (k, v) => setS({ ...s, [k]: v })
+  const can = (k, v) => setS({ ...s, cancellation: { ...R.cancellation, ...(s.cancellation || {}), [k]: v } })
+  const dl = (k, v) => setS({ ...s, demandLetter: { ...R.demandLetter, ...(s.demandLetter || {}), [k]: v } })
+  const rates = R.interestRates || []
+  const num = (k, l, hint) => <Field key={k} label={l} hint={hint}><Input type="number" value={R[k]} onChange={(e) => put(k, e.target.value === '' ? '' : Number(e.target.value))} /></Field>
+  return <>
+    <div className="grid g2">
+      <Card title="Payment schedule and interest">
+        <div className="form fc2">
+          <Field label="Demand worked out from" span="all" hint="Check the Payments → Schedule check tab before switching"><Select options={[{ value: 'calls', label: 'Project-wide demand calls (as before)' }, { value: 'client', label: "Each client's own schedule (construction-linked)" }]} value={R.scheduleMode} onChange={(e) => put('scheduleMode', e.target.value)} /></Field>
+          {num('dueDays', 'Days to pay after a demand letter', 'K-RERA model allotment letter: 15-day notice')}
+          {num('interestGraceDays', 'Interest-free days after the due date', 'A business choice; 0 = from the next day')}
+          {num('reminderDaysBefore', 'Reminder this many days before the due date')}
+          {num('noticeAfterDays', 'Notice of default this many days after the due date')}
+          {num('noticePeriodDays', 'The notice gives this many days to pay')}
+          {num('defaultDemands', 'Consecutive unpaid demands that make a default', 'AFS clause 9.3: from your agreement')}
+          {num('defaultMonths', 'Months the default continues before termination', 'AFS clause 9.3: blank in the template, from your agreement')}
+          {num('terminationNoticeDays', "Days' notice before cancelling for default", 'AFS clause 9.3: at least 30')}
+          {num('agreementWithinDays', 'Agreement to be executed within (days of the allotment letter)')}
+        </div>
+        <div className="form-section">Interest rate (SBI highest MCLR + 2%, a year)</div>
+        {rates.map((r, i) => <div key={i} className="row gap-s" style={{ marginBottom: 6 }}><span className="small">From</span><Input type="date" value={r.from} onChange={(e) => put('interestRates', rates.map((x, j) => (j === i ? { ...x, from: e.target.value } : x)))} />
+          <Input type="number" step="0.05" style={{ width: 90 }} value={r.rate} onChange={(e) => put('interestRates', rates.map((x, j) => (j === i ? { ...x, rate: Number(e.target.value) } : x)))} /><span className="small">%</span>
+          <Button size="sm" variant="ghost" onClick={() => put('interestRates', rates.filter((_, j) => j !== i))}>×</Button></div>)}
+        <Button size="sm" onClick={() => put('interestRates', [...rates, { from: new Date().toISOString().slice(0, 10), rate: '' }])}>+ Rate from a date</Button>
+        <p className="small muted">Add a new line whenever SBI changes its MCLR; interest uses the rate in force on each day. No rate entered means no interest is shown.</p>
+      </Card>
+      <Card title="Cancellation rules">
+        <div className="form fc2">
+          <Field label="Before the agreement: charge by days after the allotment letter" span="all" hint="K-RERA model allotment letter clause 8: Nil to 15 days, 1% to 30, 1.5% to 60, 2% after">
+            <div>{(R.cancellation.allotmentSlabs || []).map((x, i) => <div key={i} className="row gap-s" style={{ marginBottom: 4 }}><span className="small">up to day</span><Input type="number" style={{ width: 90 }} value={x.upTo} onChange={(e) => can('allotmentSlabs', R.cancellation.allotmentSlabs.map((y, j) => (j === i ? { ...y, upTo: Number(e.target.value) } : y)))} />
+              <Input type="number" step="0.1" style={{ width: 80 }} value={Math.round(x.pct * 1000) / 10} onChange={(e) => can('allotmentSlabs', R.cancellation.allotmentSlabs.map((y, j) => (j === i ? { ...y, pct: Number(e.target.value) / 100 } : y)))} /><span className="small">% of unit cost</span></div>)}</div></Field>
+          <Field label="Refund within (days), before agreement"><Input type="number" value={R.cancellation.allotmentRefundDays} onChange={(e) => can('allotmentRefundDays', Number(e.target.value))} /></Field>
+          <Field label="Refund within (days), after agreement" hint="AFS clause 7.5: 60"><Input type="number" value={R.cancellation.afterAgreementRefundDays} onChange={(e) => can('afterAgreementRefundDays', Number(e.target.value))} /></Field>
+          <Field label="Booking amount forfeited after agreement (%)" hint="No more than 5% (AFS Schedule C)"><Input type="number" step="0.1" value={Math.round(R.cancellation.bookingAmountPct * 1000) / 10} onChange={(e) => can('bookingAmountPct', Math.min(5, Number(e.target.value)) / 100)} /></Field>
+          <Field label="Refund within (days), developer cancels for default"><Input type="number" value={R.cancellation.defaultRefundDays} onChange={(e) => can('defaultRefundDays', Number(e.target.value))} /></Field>
+          <Field label="GST on cancellation"><Select options={['Credit note', 'Buyer to claim']} value={R.cancellation.gstRefundMode} onChange={(e) => can('gstRefundMode', e.target.value)} /></Field>
+          <Field label="Deduct channel-partner brokerage" hint="Default No: the Karnataka formats allow only the booking amount and interest"><Select options={['No', 'Yes']} value={R.cancellation.brokerageDeducted} onChange={(e) => can('brokerageDeducted', e.target.value)} /></Field>
+          <Field label="Days for the retention call"><Input type="number" value={R.cancellation.coolingDays} onChange={(e) => can('coolingDays', Number(e.target.value))} /></Field>
+          <Field label="Second admin needed above (₹ refund or waiver)"><Input type="number" value={R.cancellation.approvalAbove} onChange={(e) => can('approvalAbove', Number(e.target.value))} /></Field>
+        </div>
+      </Card>
+    </div>
+    <Card title="Demand letter wording">
+      <p className="small muted" style={{ marginTop: 0 }}>Placeholders: {'{units} {project} {location} {company} {stage} {cert} {dueDate} {dueDays} {letterNo} {rate}'}. The amounts, bank details and the client block come from the records.</p>
+      <div className="form fc2">
+        <Field label="Subject" span="all"><Input value={R.demandLetter.subject} onChange={(e) => dl('subject', e.target.value)} /></Field>
+        {[['body', 'Opening paragraph'], ['payNote', 'How to pay'], ['tdsNote', 'TDS note (consideration ₹50 lakh or more)'], ['complianceNote', 'RERA and interest clause'], ['disregardNote', 'Already paid note']].map(([k, l]) =>
+          <Field key={k} label={l} span="all"><Textarea rows={3} value={R.demandLetter[k]} onChange={(e) => dl(k, e.target.value)} /></Field>)}
+        <Field label="Contact person"><Input value={R.demandLetter.contactName} onChange={(e) => dl('contactName', e.target.value)} /></Field>
+        <Field label="Contact phone"><Input value={R.demandLetter.contactPhone} onChange={(e) => dl('contactPhone', e.target.value)} /></Field>
+        <Field label="Signatory name"><Input value={R.demandLetter.signatoryName} onChange={(e) => dl('signatoryName', e.target.value)} /></Field>
+        <Field label="Signatory designation"><Input value={R.demandLetter.signatoryDesignation} onChange={(e) => dl('signatoryDesignation', e.target.value)} /></Field>
+      </div>
+      <Button size="sm" variant="ghost" onClick={() => setS({ ...s, demandLetter: { ...DEFAULT_RULES.demandLetter, contactName: R.demandLetter.contactName, contactPhone: R.demandLetter.contactPhone, signatoryName: R.demandLetter.signatoryName, signatoryDesignation: R.demandLetter.signatoryDesignation } })}>Restore the standard wording</Button>
+    </Card>
+  </>
+}
+
+// 8 Nov: the master construction-linked (CLP) schedule printed on every cost sheet as a general reference for the
+// client. It is separate from Building and parking → Construction, which tracks the real stages and their dates.
+function ClpMasterCard({ s, setS, sum }) {
+  const { db } = useStore()
+  const rows = s.clpMaster || []
+  const set = (rs) => setS({ ...s, clpMaster: rs })
+  const fromStages = () => set([...(db.clpStages || [])].filter((x) => Number(x.pct) > 0).sort((a, b) => Number(a.no) - Number(b.no)).map((x) => ({ stage: x.stage, pct: Number(x.pct), timing: '' })))
+  return <Card title="Master CLP schedule · on every cost sheet" actions={<span className="row gap-s">{rows.length > 0 && <Badge tone={Math.abs(sum - 1) < 0.001 ? 'good' : 'bad'}>{(sum * 100).toFixed(1)}%</Badge>}<Button size="sm" onClick={fromStages}>{rows.length ? 'Reset from construction stages' : 'Start from construction stages'}</Button></span>}>
+    <p className="small muted" style={{ marginTop: 0 }}>The generalised construction-linked payment schedule sent to clients as a reference on page 2 of the cost sheet, with each stage's amount worked out on that residence's grand total. The indicative timing is optional (for example "Month 6" or "Mar 2027"). Until this is filled, the cost sheet uses the construction stages.</p>
+    {!rows.length ? <p className="muted" style={{ margin: 0 }}>Not set yet.</p> : <table className="table dense"><thead><tr><th>#</th><th>Stage</th><th className="right">%</th><th>Indicative timing</th><th /></tr></thead>
+      <tbody>{rows.map((x, k) => <tr key={k}><td className="mono">{k + 1}</td>
+        <td><input className="input" value={x.stage} onChange={(e) => set(rows.map((y, j) => (j === k ? { ...y, stage: e.target.value } : y)))} aria-label={'Stage ' + (k + 1)} /></td>
+        <td className="right"><input className="input" type="number" step="0.5" style={{ width: 80 }} value={Math.round(Number(x.pct) * 1000) / 10} onChange={(e) => set(rows.map((y, j) => (j === k ? { ...y, pct: Number(e.target.value) / 100 } : y)))} aria-label={'Percent for stage ' + (k + 1)} /></td>
+        <td><input className="input" style={{ width: 130 }} value={x.timing || ''} placeholder="optional" onChange={(e) => set(rows.map((y, j) => (j === k ? { ...y, timing: e.target.value } : y)))} aria-label={'Timing for stage ' + (k + 1)} /></td>
+        <td className="nowrap"><Button size="sm" variant="ghost" disabled={k === 0} onClick={() => { const r = [...rows]; [r[k - 1], r[k]] = [r[k], r[k - 1]]; set(r) }} aria-label="Move up">↑</Button><Button size="sm" variant="ghost" onClick={() => set(rows.filter((_, j) => j !== k))} aria-label="Remove">×</Button></td></tr>)}</tbody></table>}
+    <Button size="sm" onClick={() => set([...rows, { stage: 'New stage', pct: 0, timing: '' }])}>+ Stage</Button>
+  </Card>
 }

@@ -96,7 +96,7 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
   - their open leads and follow-ups;
   - client health;
   - payments coming due (names only).
-- **Cyril** (senior sales) sees all leads, clients, cold calls and interactions. He also edits templates, sees performance and assigns tasks.
+- **Cyril** (Sales Lead; senior sales access) sees all leads, clients, cold calls and interactions. He also edits templates, sees performance and assigns tasks.
 - **Client 360** has two tabs:
   - **My clients:** full detail;
   - **All clients:** a directory of who owns which residence and who looks after them.
@@ -227,10 +227,6 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
   - New views: **Missing details** and **No follow-up set**. The dashboard shows how many open leads have no follow-up.
   - **Paste an enquiry**: paste a WhatsApp or 99acres message and Accord fills in the new lead.
   - **Lead inbox**: other tools (website form, WhatsApp tool, 99acres reader, a chatbot) can post enquiries to Accord. They wait in Leads › Inbox to be accepted or rejected. The address and key are in Settings › Lead inbox.
-- **No duplicate users** (12 Nov).
-  - Users and access refuses a second account for the same person (same name, username, e-mail or mobile) and points to the existing one. The server refuses it too.
-  - Existing duplicates are flagged at the top of the page. **Review and remove duplicates** keeps one account per person: by default the one with the authenticator linked, or the one used most recently. Missing details are filled in from the duplicates, which are then removed.
-  - Loading starting data now matches people by ID, username or name, so it no longer creates a second account for someone already in the sheet.
 - **Team hierarchy fits the screen** (5 Nov). The chart shrinks to fit the card, so nobody is cut off on the left or right. On a phone it becomes an indented list.
 - **Backend version check** (4 Nov). If the Google backend is older than the site, admins see a banner at the top until the new `Code.gs` is deployed as a new version. A client someone cannot open now says why, and what to ask an admin for.
 - **Check and delete uploads** (4 Nov).
@@ -309,6 +305,82 @@ Not built yet, as agreed:
 - WhatsApp, Meta and 99acres automation waits until the data is complete. The lead inbox is ready for it.
 - A per-client payment slab waits for the existing cost sheets from Amit.
 
+## 7c. Changes of 7 November (backend 3.6.0)
+
+Paste the new `backend/Code.gs` into Apps Script and deploy a new version (Deploy → Manage deployments → Edit → New version). Until then admins see the "backend needs updating" band.
+
+- **Demand letters in the house style** (from *Demand_Letter_Draft_-_Proposed.docx*, corrected). The letter asks for the instalment due, not the whole balance. It prints a fixed due date (letter date + 15 days), the stage certificate, earlier unpaid demands with interest, receipts to date, TDS and RERA clauses, and the bank details. One client's flats can share one **Combined letter**. Letters can be printed in bulk by date, e-mailed or sent on WhatsApp, and each send is logged. The wording is in **Admin → Settings → Demand letter wording**; CIN, registered office, CRM e-mail and the account name are in **Company**.
+- **Per-client payment schedules.** Each client's own instalments come from the construction stages (Building and parking → Construction), their booking and registered agreement dates, and their demand letters. A stage counts once it is **Completed** and its **completion certificate** is attached (or marked "on file" for stages billed before Accord). Payment is due 15 days from the demand letter. Stages finished before a booking are demanded at the registered agreement, because RERA section 13 caps collection at 10% before it. A negotiated plan is set per client under Client 360 → Payment schedule → Custom plan.
+  - **Payments → Schedule check** compares old and new demand for every client. Switch to per-client schedules there (or in Admin → Settings → Payment schedule) once finance agrees. Until then the old project-wide demand calls stay in force.
+  - **Payments → Raise demand letters** (per-client mode) raises one letter per client for every demandable instalment.
+  - **Payments → Collections forecast** shows money expected by month, from letters and planned stage dates.
+  - **Interest on late payment** (SBI highest MCLR + 2%) uses the rates entered by date in Admin → Settings → Payment schedule. With no rate entered, no interest is shown.
+- **Editing payment entries.** Admin and finance can edit an entry from the receipt or Client 360. A reason is required; the receipt number never changes; the receipt shows "Revised · rev N". Every change is stored in **Payments → Change log** and goes to all admins and the editor's manager in Accord and by e-mail; changes to amount, TDS, flat, counted or demand letter are marked HIGH.
+- **Cancellation protocol.** Request (with the client's written request) → retention call → calculation within the Karnataka RERA caps → admin approval (two admins above the threshold) → documents and refund in parts (lender first for bank-loan clients) → release of the residence and parking. Deduction caps: before agreement, by days after the allotment letter (nil, 1%, 1.5%, 2%); after agreement, the booking amount (max 5%); developer at fault, nil. Developer-side cancellation needs the notice of default and a termination notice at least 30 days earlier. All figures are in Admin → Settings → Cancellation rules; confirm them against your Agreement for Sale.
+- **Drafts and Go back.** Every form keeps what was typed as a draft on that device: new and edited leads, clients, interactions, payments, cost sheets, booking forms, cancellations and new tasks. A **Go back** arrow is in the top bar, and the **Drafts** button next to the bell reopens or discards them.
+- **Notifications open the exact record.** Follow-ups and escalations open the lead or client (and highlight the interaction), client forms open the booking form, payment edits open the receipt.
+- **Sign-in by e-mailed code.** "Don't have your phone? E-mail me a code" on the sign-in page sends a 6-digit code (10 minutes, one use) to the e-mail on the person's record. Admins are told each time. Switch it off in Admin → Settings → Sign-in. Make sure everyone has an e-mail in Users and access.
+- **Reset a sign-in with no admin available.** Open the Accord Database sheet as its owner: menu **Accord → Reset someone's sign-in**, type the username and a temporary password.
+- **Cyril** is now *Sales Lead* (title only; access unchanged). The backend sets it once on the first request after deploying.
+
+## 7d. Car parking from the drawings (8 November)
+
+No backend change is needed (the sheet keeps unknown fields). For readable columns in the **parking** tab, delete the empty *parking* tab in the Accord Database sheet before loading; the next save recreates it with the new headings from `backend/Code.gs`.
+
+**Source.** `YAMUNA - PARKING FLOORS - 24.07.2026.dwg` (A2-01 ground to A2-04 third floor). 4th and 5th floor sheets have no car parks. The parking statement on the drawings agrees with what Accord reads: 543 covered car parks.
+
+| Level | FFL | Single | Tandem pairs | Total |
+|---|---|---|---|---|
+| G, ground floor | +4.860 | 112 | 29 | 170 |
+| L1, first floor | +8.310 | 82 | 30 | 142 |
+| L2, second floor | +11.335 | 80 | 30 | 140 |
+| L3, third floor | +14.360 | 39 | 26 | 91 |
+| **Covered** | | **313** | **115** | **543** |
+
+On the ground there are also 3 accessible bays (G-H1 to G-H3), 36 visitor bays (V-01 to V-36; V-01 to V-20 along the EV charging wall), 26 surface bays (S-01 to S-26) and 95 two-wheeler bays (TW-01 to TW-95).
+
+**Numbering.** Level code + drawing number: `G-012`, `L1-072`, `L1-072A`. The A slot is the rear of a tandem pair and is reached only through the front slot with the same number. Use these numbers on the site signage.
+
+**Labels corrected from the drawings** (send to the architect for the next revision):
+- G: the second 76A and 77A are behind 74 and 73, so they are **74A** and **73A**.
+- L1: the rear row 96, 97, 98, 99 (bottom left) repeats the front numbers; they are **96A to 99A**.
+- L2: "721" is **72A**.
+- L3: "46A" sits behind 44, so it is **44A**; 46 is a single next to the ramp.
+
+**How car parks are allotted** (Building and parking → Car parking → Rules and drawings shows the same):
+1. *Entitlement* is what the booking bought: "Car parks entitled" on the client, otherwise the rate card's number for the type (now 1 for every type).
+2. *Tandem pairs are never split.* One car park is always a single slot. Two car parks are one tandem pair; three are a pair and a single.
+3. *Convenience score* = straight-line walk from the slot to the tower lobby on that level + 30 m for each ramp level above the ground (Edit rules).
+4. *Zones by band.* The best slots are held for the premium bands first (Crown, Signature, Panorama Terrace, Panorama, Sky Duplexes, Sky Residences, Sky Deck, Sub-Sky Deck, then Podium and typical), sized to every residence in the band, sold or not. Unsold residences keep their band's slots for later buyers.
+5. *Inside a band* the earliest booking chooses first; undated bookings come last. A household's further slots, and a client's other residences, go as near as possible.
+6. *Nothing moves.* Planning only fills gaps. **Mark as issued** on the allotment letter locks the slots.
+7. Active, shifted, registered and handed-over bookings are allotted; *To verify* bookings get **Provisional** slots. Cancelling or moving a booking frees its slots.
+8. Accessible, visitor, surface and two-wheeler bays are not auto-allotted. What is left (19 singles and 115 tandem pairs with the current entitlement of 1) is the **sale pool** for additional car parks.
+
+**Steps, once.** Car parking → **Load the inventory from the drawings** → **Plan allotment** (check the list) → **Apply**. Then print each client's **Allotment letter** from Client 360 or the Residences list, and **Print register** for the site office.
+
+**Decisions for you.** The rate card gives every type 1 car park while the building has 543. If 4 and 5 BHK residences are meant to have 2, change *Car parks for 4 BHK / 5 BHK* in Admin → Settings → Rate card (it also changes the cost sheet) before planning; they will then get tandem pairs.
+
+**12 Nov: incomplete load fixed.** The first *Load the inventory* (7 Nov) stopped after 260 of the 703 slots: the ground floor and 87 of the 142 on the 1st floor podium. The 2nd and 3rd floor podium decks and the open bays never reached the sheet. Car parking now shows a level-by-level check whenever slots are missing, with **Load the missing slots**. Plan allotment stays off until the inventory is complete, and cost sheets always plan on every slot in the drawings. The levels are named Ground floor and Podium 1st, 2nd and 3rd floor (codes G, L1, L2, L3 unchanged).
+
+## 7e. Cost sheet client pack and parking commitments (8 November, later)
+
+**Cost sheet.** Follows *Yamuna_Sky_City_Cost_Sheet_Master_Template_YHD.xlsx*. The A4 preview (and print / PDF) is the client pack, three pages:
+1. **Financial summary**: unit particulars (client, date, residence, floor, band, area, car parks, client representative), Part A, Part B, grand total in words, terms, payment details, signatures.
+2. **Payment plan and schedule**: the milestone slab for the funding mode (Admin → Settings → plans) and the 31-stage construction-linked schedule (Building and parking → Construction), both on the grand total, rounding carried in the last line.
+3. **Your residence**: a diagrammatic elevation with the band and floor marked, the floor plan of that floor type with the residence marked (duplexes show both levels), and the car parks with a car drawn in each chosen bay (whole deck and a close-up).
+Founding privilege, approval status and internal notes stay on the Build screen only.
+
+**Car parks on the cost sheet.** The sheet shows the bays the residence would be allotted if booked now (same rules as Plan allotment, after every existing booking). They are saved on the sheet and allotted automatically on **Convert to booking** if still free. Sales can add up to the rate card's extra limit; admins can promise up to 8.
+
+**Cars.** The car plan blocks come from the BMW X5 and Mercedes S-Class drawings; they are drawn only in the chosen or allotted bays (cost sheet, Client 360, allotment letter, and the selected slot on the plan), facing into the bay as on the parking drawings.
+
+**Commitments of 4 or more car parks.** Building and parking → Car parking → Rules and drawings → *Commitments*. Each residence keeps its own car park, so 249 covered car parks are spare today. A promise of 4 uses 3 of them (two tandem pairs), 5 uses 4, 6 uses 5. The most the building can carry on top of today's bookings: **83** promises of 4, **62** of 5 or **49** of 6, and that leaves nothing to sell. Record each promise on the client (Client 360 → Edit → Car parks entitled), then Plan allotment.
+
+## 7f. Accord People: HRMS and the knowledge base (12 November, backend 3.8.0)
+
+A fourth workspace, **Accord People**, for HR (new access role *HR and admin*) and admins, and a **People and policies** menu for everyone else: My HR, leave with approvals by "Reports to", half-yearly KRA sheets from each position's template, HR requests (with confidential POSH complaints seen only by the Internal Committee), assets, holidays, the monthly attendance and leave register for payroll, and a knowledge base of 33 SOPs, role handbooks, RERA, tax and HR policies. Access follows the person's **position** and **pay grade** (G1 to G6) set on their HR profile, and the server enforces it. Go-live steps and the full rules: `ACCORD_CHANGES_2026-11-12_PEOPLE.md`.
+
 ## 8. What is missing (to fill in before go-live)
 
 1. **Your Excel formats and the logo.** The cost sheet, payment slip, payment and financial summary, booking form and lead entries use the Yamuna Sky City header now. When you share the Excel formats and the header or logo, upload the logo in Settings → Brand, and the layouts can be matched line by line.
@@ -333,7 +405,7 @@ Not built yet, as agreed:
    - final copy from the marketing pillar.
 13. **Push to phones while Accord is closed** needs phase 2 (see BACKEND.md). WhatsApp automation needs the WhatsApp Business API.
 14. **Leave and weekly off.** The time log has shifts and working days. Leave and weekly-off requests wait for the HR structure.
-15. **Designations.** Cyril's "Senior Sales Manager" and the other designations were assumed. Correct them in Users and access, because they print under the name in every message.
+15. **Designations.** Cyril is the Sales Lead (7 Nov). The other designations were assumed. Correct them in Users and access, because they print under the name in every message.
 16. **Dashboard figures.** Accord counts 39 live bookings from the CRM statuses; the master sheet's Dashboard tab shows 42. The difference is bookings marked *To verify*, which Accord leaves out until they are confirmed.
 17. **From the 2 and 3 November meetings, still waiting.**
    - The AI chatbot and AI analytics (Grok or another model) need a hosted model. The lead inbox is ready for a bot to post into.
