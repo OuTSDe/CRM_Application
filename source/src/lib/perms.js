@@ -98,10 +98,14 @@ export const ACCESS = [
   { group: 'Accord Sales', ws: 'sales', items: [
     { key: 'leads', label: 'Leads and lead inbox', mod: 'crm', roles: ['admin', 'senior', 'sales'], writes: ['leads', 'leadInbox', 'interactions'] },
     { key: 'partners', label: 'Channel partners', mod: 'crm', roles: ['admin', 'senior', 'sales'], writes: ['partners'] },
+    // 12 Nov (g): the page and the right to add partners were one tick, so an advisor saw the page (by role) but could
+    // not add a partner, and the greyed tick could not be changed. Adding and editing is now its own tick.
+    { key: 'partnersEdit', label: 'Add and edit channel partners', mod: 'crm', roles: ['admin', 'senior'], writes: ['partners'] },
     { key: 'clients', label: 'Client 360', mod: 'crm', roles: R('crm'), writes: [] },
     { key: 'interactions', label: 'Interaction log', mod: 'crm', roles: STAFF, writes: ['interactions'] },
     { key: 'payments', label: 'Payments', mod: 'crm', roles: R('crm'), writes: [] },
     { key: 'documents', label: 'Documents', mod: 'crm', roles: STAFF, writes: ['documents', 'files'] },
+    { key: 'projectDocs', label: 'Add project documents (approvals, legal papers, forms)', mod: 'crm', roles: ['admin', 'senior', 'sales'], writes: ['files'] },
     { key: 'messages', label: 'Messages', mod: 'crm', roles: STAFF, writes: ['messages'] },
     { key: 'issues', label: 'Issues', mod: 'crm', roles: STAFF, writes: ['issues'] },
     { key: 'costSheet', label: 'Cost sheet', mod: 'crm', roles: STAFF, writes: ['costSheets'] },

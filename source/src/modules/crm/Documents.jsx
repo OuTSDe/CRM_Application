@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
 import { useCrm } from '../../lib/calc.js'
-import { canWrite } from '../../lib/perms.js'
+import { canWrite, hasAccess } from '../../lib/perms.js'
 import { META } from '../../lib/seed.js'
 import { Page, Card, Badge, Bar, Select } from '../../components/ui.jsx'
 import DataTable from '../../components/DataTable.jsx'
@@ -91,7 +91,7 @@ function DocTabs({ tab, setTab }) {
 // Project-level papers (1 Nov: "upload all the documents, all the legal forms"): Accord_Data / Project documents / <category>.
 function ProjectDocs({ tab, setTab }) {
   const { db, user, upload, backend, notify } = useStore()
-  const can = canWrite(user, 'documents')
+  const can = hasAccess(user, 'projectDocs')   // 12 Nov (g): its own tick in Users and access
   const [cat, setCat] = useState(PROJECT_CATS[0])
   const [label, setLabel] = useState('')
   const [busy, setBusy] = useState(false)

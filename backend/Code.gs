@@ -39,7 +39,8 @@
  *  - Records made in demo mode carry _test = Yes: they send no reminders and are listed for clean-up.
  */
 
-var VERSION = '3.8.5';   // 12 Nov (f): sign-in picks the account row that has the password when a username is duplicated
+var VERSION = '3.8.6';   // 12 Nov (g): follow-ups close when anyone logs contact; ticks for adding partners and project documents.
+// var VERSION = '3.8.5';   // 12 Nov (f): sign-in picks the account row that has the password when a username is duplicated
 // var VERSION = '3.8.4';   // 12 Nov (e): no duplicate user accounts (dedupeUsers, push and seed checks)
 // var VERSION = '3.8.3';   // 12 Nov (d): the logo lives on Drive (Accord_Data / Brand); settings keep only its link.
 // 3.8.2: long values over the 50,000-character cell limit; one bad change no longer blocks a push.
@@ -113,7 +114,7 @@ var MONEY_FIELDS = ['tc','adjustment','adjType','adjReason','receivedPerCollecti
 var GRANTS = { leads: ['leads','leadInbox','interactions'], clients: [], interactions: ['interactions'], payments: [], documents: ['documents','files'], messages: ['messages'],
   issues: ['issues'], costSheet: ['costSheets'], inventory: [], viewings: ['viewings'], brochure: [], experience: [], time: [], tasks: [], team: [], performance: [],
   analyticsLeads: [], analyticsFinance: [], analyticsOverall: [], projects: ['projects','rooms','packages','boq'], residences: [], showcase: [], sourcing: ['trips','stops','quotes','samples'],
-  vendors: ['vendors'], partners: ['partners'], seeAll: [],
+  vendors: ['vendors'], partners: ['partners'], partnersEdit: ['partners'], projectDocs: ['files'], seeAll: [],
   hrSelf: [], kb: [], hrDesk: ['hrProfiles','hrConfig','holidays','assets','leaves','kras','hrTickets'], hrComp: ['hrComp'], kbEdit: ['kbDocs'], money: [], recordPayments: ['payments','demandCalls','demandLetters'], construction: ['clpStages'], templates: ['templates'], assign: [] };
 function extras_(u) { var x = u.extraAccess; if (typeof x === 'string') { try { x = JSON.parse(x); } catch (e) { x = x.split(/[,\s]+/); } } return (x || []).filter(function (k) { return GRANTS.hasOwnProperty(k); }); }
 var seesMoney_ = function (u) { var x = extras_(u); return ['admin','senior','finance','consultant','bank'].indexOf(u.appRole) >= 0 || x.indexOf('money') >= 0 || x.indexOf('recordPayments') >= 0; };
@@ -136,7 +137,7 @@ function doGet() { return out_({ ok: true, app: 'Accord', version: VERSION, hint
 function doPost(e) {
   try {
     var req = JSON.parse(e.postData.contents);
-    migrate36_();
+    migrate36_(); migrate386_();
     switch (req.action) {
       case 'ping': return out_({ ok: true, version: VERSION, sheet: SpreadsheetApp.getActive().getName(), users: read_('users').length, folder: DATA_PATH, folderUrl: root_().getUrl(), serverTime: now_() });
       case 'login': return out_(login_(req));
@@ -941,10 +942,12 @@ function push_(u, ops) {
         rec.id = before.id; rec.receiptNo = before.receiptNo; rec.ledgerOnly = before.ledgerOnly;
         rec.rev = Number(before.rev || 0) + 1; rec.lastEditedBy = u.name; rec.lastEditedAt = now_();
       }
+      var newLog = c === 'interactions' && !find_('interactions', rec.id);
       upsert_(c, rec);
       if (rec._test !== 'Yes') afterSave_(u, c, rec, before);
       var isTest = rec._test === 'Yes';
       if (c === 'interactions' && !isTest) notifyFollowUp_(u, rec);
+      if (newLog && !isTest) closeEarlierFollowUps_(u, rec);   // 12 Nov (g)
       if (!isTest && HR_COLLS.indexOf(c) >= 0) hrNotify_(u, c, rec, op);
       if (c === 'tasks' && !isTest && rec.owner && rec.owner !== u.name && op.isNew) notify_(rec.owner, 'task', 'New task from ' + u.name, rec.title, '#/people/tasks', rec.due ? rec.due + 'T10:00' : '', u.name);
       if (c !== 'notifications') audit_(u, c, rec.id || rec.bookingId, (op.action || 'saved') + (isTest ? ' (demo mode)' : ''));
@@ -1084,6 +1087,59 @@ function notifyFollowUp_(u, i) {
   var owners = i.nextOwners && i.nextOwners.length ? i.nextOwners : [i.nextOwner || u.name];
   var existing = read_('notifications').filter(function (n) { return n.kind === 'followup' && n.link === 'i:' + i.id; }).map(function (n) { return n.to; });
   owners.forEach(function (o) { if (existing.indexOf(o) < 0) notify_(o, 'followup', 'Follow up: ' + (i.recordName || i.recordId), (i.nextAction || 'Follow up') + ' · logged by ' + u.name, 'i:' + i.id, dueIso_(i.nextDate, i.nextTime), u.name, recordTarget_(i.recordId, i.id)); });
+}
+
+/* 12 Nov (g): a follow-up is done once anyone logs contact with that lead or client. Advisors receive only their own
+   interactions, so Anuradha's browser could not close the follow-up Cyril had set, and it stayed pending on his page.
+   The server sees every interaction, so it closes them here: every open follow-up on the same record logged before
+   this one, whoever set it or owns it. Its reminder is marked read so it is not e-mailed either. */
+var stamp_ = function (i) { return String(i.date || '') + ' ' + String(i.time || '00:00'); };
+function closeEarlierFollowUps_(u, rec) {
+  if (!rec || !rec.recordId) return 0;
+  var at = stamp_(rec), closed = [];
+  read_('interactions').forEach(function (i) {
+    if (i.id === rec.id || i.recordId !== rec.recordId || i.status !== 'Open' || stamp_(i) > at) return;
+    i.status = 'Done'; i.closedBy = u.name; i.closedAt = now_(); i.closedByLog = rec.id;
+    upsert_('interactions', i); closed.push(i.id);
+  });
+  if (closed.length) {
+    var links = closed.map(function (id) { return 'i:' + id; }), t = now_();
+    read_('notifications').forEach(function (n) { if (n.kind === 'followup' && links.indexOf(n.link) >= 0 && !n.readAt) { n.readAt = t; upsert_('notifications', n); } });
+    audit_(u, 'interactions', rec.id, 'closed earlier follow-up' + (closed.length > 1 ? 's ' : ' ') + closed.join(', '));
+  }
+  return closed.length;
+}
+/* 12 Nov (g): one-time clean-up of follow-ups left open by that gap, and two access changes asked for on 12 Nov:
+   Anuradha (channel partners) can add and edit partners; Yakshith (post-sales) can add project documents. */
+function migrate386_() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('migrated386') === 'yes') return;
+  var lock = LockService.getScriptLock(); if (!lock.tryLock(10000)) return;
+  try {
+    if (props.getProperty('migrated386') === 'yes') return;
+    var sys = { name: 'Accord 3.8.6' }, ints = read_('interactions'), latest = {};
+    ints.forEach(function (i) { var k = stamp_(i); if (!latest[i.recordId] || k > latest[i.recordId].k) latest[i.recordId] = { k: k, i: i }; });
+    var closed = [];
+    ints.forEach(function (i) {
+      var L = latest[i.recordId];
+      if (i.status !== 'Open' || !L || L.i.id === i.id || L.k <= stamp_(i)) return;
+      i.status = 'Done'; i.closedBy = L.i.by || ''; i.closedAt = now_(); i.closedByLog = L.i.id; upsert_('interactions', i); closed.push(i.id);
+    });
+    if (closed.length) {
+      var links = closed.map(function (id) { return 'i:' + id; }), t = now_();
+      read_('notifications').forEach(function (n) { if (n.kind === 'followup' && links.indexOf(n.link) >= 0 && !n.readAt) { n.readAt = t; upsert_('notifications', n); } });
+      audit_(sys, 'interactions', '', 'closed ' + closed.length + ' follow-ups already answered by a later interaction');
+    }
+    [['anuradha', 'partnersEdit'], ['yakshith', 'projectDocs']].forEach(function (g) {
+      read_('users').filter(function (v) { return String(v.username || '').toLowerCase() === g[0]; }).forEach(function (x) {   // every row, in case of a duplicate
+      var cur = extras_(x), add = [g[1]];
+      if (g[1] === 'projectDocs' && ['admin','senior','sales','finance','viewer'].indexOf(x.appRole) < 0) add.push('documents');   // the Documents page itself
+      add = add.filter(function (k) { return cur.indexOf(k) < 0; }); if (!add.length) return;
+      x.extraAccess = cur.concat(add); upsert_('users', x); audit_(sys, 'users', x.id, 'extra access: ' + add.join(', '));
+    }); });
+    flushAudit_();
+    props.setProperty('migrated386', 'yes');
+  } finally { lock.releaseLock(); }
 }
 
 /* ───────────────────────── time: server-stamped punch ───────────────────────── */
@@ -1379,7 +1435,7 @@ function escalateOverdue() {
   var ints = read_('interactions');
   var latest = {}; ints.forEach(function (i) { var t = (i.date || '') + (i.time || ''); if (!latest[i.recordId] || t > latest[i.recordId]) latest[i.recordId] = t; });
   ints.filter(function (i) { return i.status === 'Open' && i.nextDate && i.nextDate < d && i._test !== 'Yes'; }).forEach(function (i) {
-    if (latest[i.recordId] > (i.nextDate + '99')) return; // someone has logged contact since the date
+    if (latest[i.recordId] > (i.date || '') + (i.time || '')) return; // 12 Nov (g): anyone has logged contact since this was set
     var late = workingDays_(i.nextDate, d), level = Math.floor(late / N); if (level < 1) return;
     var done = i.escalated || {}, owners = i.nextOwners && i.nextOwners.length ? i.nextOwners : [i.nextOwner || i.by], changed = false;
     owners.forEach(function (o) {
@@ -1416,7 +1472,8 @@ function sendDueReminders() {
 /** 09:05 digest: each person's follow-ups due today and overdue, from the interaction log. */
 function morningDigest() {
   var users = read_('users').filter(function (u) { return u.email && u.active !== 'No'; }), d = today_();
-  var ints = read_('interactions').filter(function (i) { return i.status === 'Open' && i.nextDate && i.nextDate <= d && i._test !== 'Yes'; });
+  var all = read_('interactions'), latest = {}; all.forEach(function (i) { var k = stamp_(i); if (!latest[i.recordId] || k > latest[i.recordId]) latest[i.recordId] = k; });
+  var ints = all.filter(function (i) { return i.status === 'Open' && i.nextDate && i.nextDate <= d && i._test !== 'Yes' && !(latest[i.recordId] > stamp_(i)); });   // 12 Nov (g)
   users.forEach(function (u) {
     var mine = ints.filter(function (i) { return (i.nextOwners || [i.nextOwner || i.by]).indexOf(u.name) >= 0; });
     if (!mine.length) return;

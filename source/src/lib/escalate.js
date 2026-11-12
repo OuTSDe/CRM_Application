@@ -8,7 +8,7 @@ export function escalationsFor(db, me, settings = {}) {
   const latest = {}; db.interactions.forEach((i) => { const k = (i.date || '') + (i.time || ''); if (!latest[i.recordId] || k > latest[i.recordId]) latest[i.recordId] = k })
   const out = []
   db.interactions.filter((i) => i.status === 'Open' && i.nextDate && i.nextDate < t).forEach((i) => {
-    if (latest[i.recordId] > i.nextDate + '99') return
+    if (latest[i.recordId] > (i.date || '') + (i.time || '')) return   // 12 Nov (g): anyone has logged contact since it was set
     const late = workingDaysBetween(i.nextDate, t), level = Math.floor(late / N)
     if (level < 1) return
     const owners = i.nextOwners?.length ? i.nextOwners : [i.nextOwner || i.by]
