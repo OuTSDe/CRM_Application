@@ -352,7 +352,7 @@ export function HrDesk() {
   const makeProfiles = () => { noProfile.forEach(({ u }) => { const pos = SUGGEST[u.name] || 'other'
     upsert('hrProfiles', { id: 'HP-' + u.id, userId: u.id, name: u.name, position: pos, grade: POSITION[pos].grade, department: u.department || POSITION[pos].dept, status: 'Active', toConfirm: 'Yes' }, { silent: true }) })
     notify(`${noProfile.length} profiles made from the suggestions. Confirm each one.`) }
-  return <Page title="HR desk" subtitle={`Accord People · ${cfg.cycle}`} actions={<><Button onClick={() => nav('/hr/people')}>People</Button><Button onClick={() => nav('/hr/attendance')}>Attendance and leave register</Button></>}>
+  return <Page title="HR desk" subtitle={`Accord People · ${cfg.cycle} · Yamuna Sky City staff only (Company in Users and access)`} actions={<><Button onClick={() => nav('/hr/people')}>People</Button><Button onClick={() => nav('/hr/attendance')}>Attendance and leave register</Button></>}>
     {empty && <Card tone="warn" title="Starting HR content is not in the shared sheet yet" actions={<Button variant="primary" onClick={loadStart}>Load starting content</Button>}>
       <p className="small">Adds the HR settings (grades, leave policy, checklists), the national holidays and the {KB_DOCS.length} knowledge-base documents drafted from the Sales and Post-Sales SOP. Everything stays editable; documents start "In review" until approved.</p></Card>}
     {noProfile.length > 0 && <Card tone="info" title={`${noProfile.length} people have no HR profile`} actions={<Button onClick={makeProfiles}>Make profiles from suggestions</Button>}>

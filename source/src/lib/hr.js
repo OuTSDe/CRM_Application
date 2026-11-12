@@ -134,7 +134,13 @@ export const band = (score) => score == null ? '' : score >= 4.5 ? 'Outstanding'
 export const KRA_STATUS = ['Draft', 'Agreed', 'Self review', 'Manager review', 'Closed']
 
 // ---------- people and the chain of command
-export const staffOf = (users) => (users || []).filter((u) => u.appRole !== 'none' && u.active !== 'No' && u.team !== 'External' && !['consultant', 'bank'].includes(u.appRole))
+// 12 Nov: the HR desk is for people on the Yamuna Sky City rolls only. The Company field in Users and access decides;
+// when it is empty, an @outsd-e.com e-mail means OuTSDe and an External team means outside, otherwise Yamuna Sky City.
+export const companyOf = (u) => { const c = String(u?.company || '').trim(); if (c) return c
+  if (/@outsd-?e\.com$/i.test(String(u?.email || '').trim())) return 'OuTSDe'
+  return u?.team === 'External' ? 'External' : 'Yamuna Sky City' }
+export const isYscStaff = (u) => /yamuna/i.test(companyOf(u))
+export const staffOf = (users) => (users || []).filter((u) => u.appRole !== 'none' && u.active !== 'No' && u.team !== 'External' && !['consultant', 'bank'].includes(u.appRole) && isYscStaff(u))
 // everyone who reports to `name`, directly or further down
 export function reportsOf(users, name) {
   const out = new Set(); let frontier = [name]
