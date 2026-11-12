@@ -16,7 +16,7 @@ export const EXP_UNITS = 'accord.units.status'             // read by the Accord
 const Ctx = createContext(null)
 // The backend address is published with the site (accord.config.js), so every device connects to the same Drive database.
 // 4 Nov: the backend version this site needs (backend/Code.gs VERSION). An older one means Code.gs was not redeployed.
-export const NEEDS_BACKEND = '3.8.4'   // 12 Nov: no duplicate users (dedupeUsers). Before: '3.8.0' for Accord People (HR collections, leave and KRA checks, knowledge base by grade)
+export const NEEDS_BACKEND = '3.8.7'   // 12 Nov (h): new users get the next free number. Before: '3.8.4'   // 12 Nov: no duplicate users (dedupeUsers). Before: '3.8.0' for Accord People (HR collections, leave and KRA checks, knowledge base by grade)
 const verLess = (a, b) => { const x = String(a).match(/\d+/g)?.map(Number), y = String(b).split('.').map(Number); if (!x) return true; for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0) } return false }
 const SITE_BACKEND = (typeof window !== 'undefined' && window.ACCORD_CONFIG?.backendUrl) || ''
 const uid = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
@@ -101,8 +101,15 @@ export function StoreProvider({ children }) {
 
   // ---------- backend calls
   const call = useCallback(async (payload, url = backend) => {
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) })
-    const j = await res.json()
+    // 12 Nov: a request that never answers used to block every later save until the page was reloaded; now it gives up after 90 s
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null
+    const timer = ctl && setTimeout(() => ctl.abort(), 90000)
+    let res
+    try { res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload), signal: ctl?.signal }) }
+    catch (e) { throw new Error(e.name === 'AbortError' ? 'The Google backend did not answer in time' : 'Cannot reach the Google backend (' + e.message + ')') }
+    finally { if (timer) clearTimeout(timer) }
+    const text = await res.text()
+    let j; try { j = JSON.parse(text) } catch { throw new Error('The Google backend sent an error page instead of data. Check the Apps Script deployment (Deploy › Manage deployments; access: Anyone).') }
     if (j.error) throw new Error(j.error)
     return j
   }, [backend])
@@ -147,7 +154,7 @@ export function StoreProvider({ children }) {
       const now = Date.now(); recent.current = [...recent.current.filter((x) => now - x.at < 60000), ...ops.map((op) => ({ op, at: now }))]
       setSync({ state: 'synced', at: new Date().toISOString(), error: r.refused?.length ? 'Not allowed: ' + [...new Set(r.refused)].join(', ') : null })
       if (queue.current.length) setTimeout(flush, 300)
-    } catch (e) { setSync({ state: 'error', at: null, error: e.message }); if (/expired|signed in/i.test(e.message)) logout() }
+    } catch (e) { setSync({ state: 'error', at: null, error: `${queue.current.length} change(s) not saved to the sheet yet: ${e.message}` }); if (/expired|signed in/i.test(e.message)) logout() }
     finally { flushing.current = false }
   }, [online, session, call]) // eslint-disable-line
   const [serverVersion, setServerVersion] = useState('')
@@ -183,7 +190,8 @@ export function StoreProvider({ children }) {
         })
         return changed ? next : cur
       })
-      setSync({ state: 'synced', at: new Date().toISOString(), error: null })
+      // 12 Nov: a pull that works no longer hides a push that keeps failing (the bar used to say Synced while changes waited)
+      setSync((s) => (queue.current.length && s.state === 'error' ? s : { state: 'synced', at: new Date().toISOString(), error: null }))
     } catch (e) { setSync({ state: 'error', at: null, error: e.message }); if (/expired|signed in/i.test(e.message)) logout() }
     finally { pulling.current = false }
   }, [online, session, call]) // eslint-disable-line
