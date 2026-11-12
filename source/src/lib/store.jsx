@@ -227,7 +227,8 @@ export function StoreProvider({ children }) {
       const list = cur[coll] || []
       const i = list.findIndex((x) => x.id === r.id)
       isNew = i < 0
-      const next = i >= 0 ? list.map((x, k) => (k === i ? { ...x, ...r } : x)) : [r, ...list]
+      // 12 Nov: a new team member goes to the bottom, the same place the sheet puts them; other lists show newest first
+      const next = i >= 0 ? list.map((x, k) => (k === i ? { ...x, ...r } : x)) : coll === 'users' ? [...list, r] : [r, ...list]
       return { ...cur, [coll]: next }
     })
     enqueue({ coll, op: 'upsert', rec: r, action: opts.action, isNew: opts.isNew ?? !exists })
