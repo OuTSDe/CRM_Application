@@ -310,7 +310,10 @@ export function AdminUsers() {
           { key: 'extra', label: 'Extra access', sortValue: (u) => extrasOf(u).length, render: (u) => { const x = extrasOf(u).filter((k) => !byRole(u, k)); return x.length ? <Badge tone="purple">+{x.length}</Badge> : <span className="small muted">Role only</span> } },
           { key: 'active', label: 'Active', render: (u) => <Badge>{u.active}</Badge> }]} />
       <Card title="What each role can do"><table className="table dense"><tbody>{Object.entries(ROLE_NOTES).map(([k, v]) => <tr key={k}><td style={{ width: 160 }}><b>{ROLES[k]}</b></td><td>{v}</td></tr>)}</tbody></table></Card>
-      <Modal open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? edit.name : 'New member'} wide footer={<><Button onClick={() => setEdit(null)}>Cancel</Button><Button variant="primary" onClick={save}>Save</Button></>}>
+      <Modal open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? edit.name : 'New member'} wide footer={<>
+        {/* 12 Nov: admins can delete an account. Their leads, clients and history stay (records keep the name); setting Active to No keeps the account but stops sign-in. */}
+        {edit?.id && user.appRole === 'admin' && edit.id !== user.id && raw.users.some((x) => x.id === edit.id) && <span style={{ marginRight: 'auto' }}><Confirm variant="ghost" label={`Delete ${edit.name}'s account? They can no longer sign in. Their leads, clients and history stay. This cannot be undone.`} onConfirm={() => { remove('users', edit.id); notify(`${edit.name}'s account deleted`); setEdit(null) }}>Delete user</Confirm></span>}
+        <Button onClick={() => setEdit(null)}>Cancel</Button><Button variant="primary" onClick={save}>Save</Button></>}>
         {edit && <><RecordForm sheet cols={3} fields={F} value={edit} onChange={setEdit} />
           <AccessPicker u={edit} onChange={(extraAccess) => setEdit({ ...edit, extraAccess })} />
           {edit.id && <div className="sheet" style={{ marginTop: 16 }}><div className="sheet-band"><span className="n">6</span><h4>Sign-in and devices</h4><span className="note2">{edit.mfa === 'Set' || edit.totpSecret ? 'Authenticator app linked' : 'Authenticator not linked yet'} · {online ? 'on the server' : 'on this device only'}</span></div>

@@ -47,3 +47,15 @@ Accord asks for confirmation first. The account is removed, so the person can no
 To stop someone signing in but keep the account, set **Active** to **No** instead.
 
 This needs no backend change: admins could already delete records on the server.
+
+## Two admins adding people at the same time (3.8.7)
+
+Kanchana and Sujaya were added on two different computers. Both were given member ID T-14, so the second save overwrote the first in the sheet. That is why the sheet shows Kanchana with Sujaya's e-mail, and why Sujaya appears only in the browser that added her.
+
+The server now gives a new user or channel partner the next free number when its number is already taken (users and partners added to `RENUMBER_`).
+
+To repair the data after deploying 3.8.7:
+
+1. Correct Kanchana's e-mail.
+2. Press Ctrl+F5 so the browser reloads the list from the sheet.
+3. Add Sujaya again. She will get T-15.
