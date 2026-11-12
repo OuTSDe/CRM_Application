@@ -16,7 +16,7 @@ export default function RecordForm({ fields, value, onChange, cols = 3, readOnly
     const ro = readOnly || f.ro || f.auto
     let el
     if (f.render) el = f.render(value || {}, set)
-    else if (f.t === 'select' && !ro) el = <Select options={opts} value={v} onChange={(e) => set(f.k, e.target.value)} />
+    else if (f.t === 'select' && !ro) el = <Select options={opts} value={v} onChange={(e) => set(f.k, e.target.value)} {...(f.ph ? { placeholder: f.ph } : {})} />
     else if (f.t === 'textarea') el = <Textarea value={v} disabled={ro} rows={f.rows || 3} onChange={(e) => set(f.k, e.target.value)} />
     else if (f.t === 'chips') el = <Chips options={opts} value={v || []} onChange={(x) => !ro && set(f.k, x)} />
     else el = <><Input type={ro && f.t === 'select' ? 'text' : f.t || 'text'} spellCheck={!f.t || f.t === 'text' ? !NO_SPELL.test(f.k) : false} autoCapitalize={NO_SPELL.test(f.k) && /email|username|url|website|link/i.test(f.k) ? 'none' : undefined} value={f.fmt ? f.fmt(v) : v} disabled={ro} step={f.step || 'any'} min={f.min} list={f.suggest ? 'dl-' + f.k : f.list} placeholder={f.ph}

@@ -140,7 +140,11 @@ export const companyOf = (u) => { const c = String(u?.company || '').trim(); if 
   if (/@outsd-?e\.com$/i.test(String(u?.email || '').trim())) return 'OuTSDe'
   return u?.team === 'External' ? 'External' : 'Yamuna Sky City' }
 export const isYscStaff = (u) => /yamuna/i.test(companyOf(u))
-export const staffOf = (users) => (users || []).filter((u) => u.appRole !== 'none' && u.active !== 'No' && u.team !== 'External' && !['consultant', 'bank'].includes(u.appRole) && isYscStaff(u))
+// 12 Nov: an admin can override the company rule per person: hrDesk 'Show' always lists them, 'Hide' never does
+export const HR_DESK_OPTS = [{ value: '', label: 'Auto (by company)' }, { value: 'Show', label: 'Show' }, { value: 'Hide', label: 'Hide' }]
+export const autoHrStaff = (u) => u.appRole !== 'none' && u.team !== 'External' && !['consultant', 'bank'].includes(u.appRole) && isYscStaff(u)
+export const onHrDesk = (u) => u.hrDesk === 'Show' ? true : u.hrDesk === 'Hide' ? false : autoHrStaff(u)
+export const staffOf = (users) => (users || []).filter((u) => u.active !== 'No' && onHrDesk(u))
 // everyone who reports to `name`, directly or further down
 export function reportsOf(users, name) {
   const out = new Set(); let frontier = [name]

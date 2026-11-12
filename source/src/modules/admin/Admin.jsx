@@ -270,6 +270,7 @@ export function AdminUsers() {
     { k: 'designation', l: 'Designation', hint: 'Printed under the name in message templates' }, { k: 'team', l: 'Team', t: 'select', o: ['Sales', 'Management', 'Finance', 'Design', 'Sourcing', 'External'] },
     { k: 'department', l: 'Department', suggest: ['Sales', 'CRM', 'Accounts', 'Legal', 'Design', 'Sourcing', 'Marketing', 'HR', 'Admin', 'Management'] }, { k: 'employment', l: 'Employment', t: 'select', o: ['On roll', 'Off roll', 'Consultant', 'Intern'] },
     { k: 'company', l: 'Company', suggest: ['Yamuna Sky City', 'OuTSDe', 'Consultant'], hint: 'Which company this person is on the rolls of' }, { k: 'active', l: 'Active?', t: 'select', o: ['Yes', 'No'] },
+    { k: 'hrDesk', l: 'Show in HR desk', t: 'select', o: ['Show', 'Hide'], ph: 'Auto (by company)', hint: 'Auto lists Yamuna Sky City staff only. Show or Hide overrides that for this person.' },
     { k: 'role', l: 'Responsibilities', span: 'all' },
     { section: 'Contact', n: '2', note: 'E-mail is where follow-up reminders and the morning digest go' },
     { k: 'phone', l: 'Phone', t: 'tel' }, { k: 'email', l: 'Email', t: 'email' }, { k: 'reportsTo', l: 'Reports to', t: 'select', o: raw.users.map((u) => u.name), hint: 'Follow-ups this person leaves open are escalated here' },

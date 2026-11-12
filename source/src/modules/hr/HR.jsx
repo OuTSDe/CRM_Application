@@ -7,7 +7,7 @@ import { hasAccess } from '../../lib/perms.js'
 import { d, today, addDays, inr } from '../../lib/format.js'
 import { Page, Card, Grid, Stat, Badge, Button, Field, Input, Textarea, Select, Modal, Tabs, Empty, KV, Check, Chips, Confirm } from '../../components/ui.jsx'
 import {
-  hrConfigOf, POSITIONS, POSITION, SUGGEST, gradeRank, staffOf, reportsOf, isHr, profileOf, gradeOf, positionOf, kbVisible,
+  hrConfigOf, POSITIONS, POSITION, SUGGEST, gradeRank, staffOf, HR_DESK_OPTS, autoHrStaff, companyOf, reportsOf, isHr, profileOf, gradeOf, positionOf, kbVisible,
   leaveDays, balance, kraTemplate, needsAck, RATING, weighted, band, KRA_STATUS, autoKpi, CYCLE_RANGE, TICKET_CATS, ASSET_TYPES, SELF_FIELDS, ymd,
 } from '../../lib/hr.js'
 import { KB_DOCS } from '../../seed/kb.js'
@@ -331,6 +331,7 @@ export function HrDesk() {
   const { db, user, cfg, staff, upsert, notify, holidays } = useHr()
   const nav = useNavigate()
   const t = today()
+  const [pick, setPick] = useState(false)   // 12 Nov: admin chooses who appears on the HR desk
   const onLeave = (db.leaves || []).filter((l) => l.status === 'Approved' && l.kind !== 'credit' && l.from <= t && (l.to || l.from) >= t)
   const pending = (db.leaves || []).filter((l) => l.status === 'Applied')
   const profs = staff.map((u) => ({ u, p: profileOf(db, u) }))
@@ -352,7 +353,17 @@ export function HrDesk() {
   const makeProfiles = () => { noProfile.forEach(({ u }) => { const pos = SUGGEST[u.name] || 'other'
     upsert('hrProfiles', { id: 'HP-' + u.id, userId: u.id, name: u.name, position: pos, grade: POSITION[pos].grade, department: u.department || POSITION[pos].dept, status: 'Active', toConfirm: 'Yes' }, { silent: true }) })
     notify(`${noProfile.length} profiles made from the suggestions. Confirm each one.`) }
-  return <Page title="HR desk" subtitle={`Accord People · ${cfg.cycle} · Yamuna Sky City staff only (Company in Users and access)`} actions={<><Button onClick={() => nav('/hr/people')}>People</Button><Button onClick={() => nav('/hr/attendance')}>Attendance and leave register</Button></>}>
+  return <Page title="HR desk" subtitle={`Accord People · ${cfg.cycle} · Yamuna Sky City staff only (Company in Users and access)`} actions={<><Button onClick={() => nav('/hr/people')}>People</Button><Button onClick={() => nav('/hr/attendance')}>Attendance and leave register</Button>{user?.appRole === 'admin' && <Button onClick={() => setPick(true)}>Choose who appears</Button>}</>}>
+    {pick && <Modal open title="Who appears on the HR desk" onClose={() => setPick(false)} footer={<Button variant="primary" onClick={() => setPick(false)}>Done</Button>}>
+      <p className="small muted" style={{ marginTop: 0 }}>Auto lists people whose Company is Yamuna Sky City (empty Company counts as Yamuna Sky City unless the e-mail is @outsd-e.com or the team is External). Show or Hide overrides that for one person. Changes save straight away.</p>
+      <table className="table"><thead><tr><th>Name</th><th>Company</th><th>Auto would</th><th>HR desk</th></tr></thead>
+        <tbody>{(db.users || []).filter((u, i, a) => a.findIndex((x) => x.id === u.id) === i && u.active !== 'No').map((u) => <tr key={u.id}>
+          <td><b>{u.name}</b> <span className="small muted">{u.designation || ''}</span></td>
+          <td className="small">{companyOf(u)}</td>
+          <td className="small">{autoHrStaff(u) ? 'Show' : 'Hide'}</td>
+          <td><Select options={HR_DESK_OPTS.slice(1)} placeholder="Auto (by company)" value={u.hrDesk || ''} onChange={(e) => { upsert('users', { ...u, hrDesk: e.target.value }, { action: 'HR desk: ' + (e.target.value || 'auto') }); notify(`${u.name}: ${e.target.value || 'Auto'}`) }} /></td>
+        </tr>)}</tbody></table>
+    </Modal>}
     {empty && <Card tone="warn" title="Starting HR content is not in the shared sheet yet" actions={<Button variant="primary" onClick={loadStart}>Load starting content</Button>}>
       <p className="small">Adds the HR settings (grades, leave policy, checklists), the national holidays and the {KB_DOCS.length} knowledge-base documents drafted from the Sales and Post-Sales SOP. Everything stays editable; documents start "In review" until approved.</p></Card>}
     {noProfile.length > 0 && <Card tone="info" title={`${noProfile.length} people have no HR profile`} actions={<Button onClick={makeProfiles}>Make profiles from suggestions</Button>}>
