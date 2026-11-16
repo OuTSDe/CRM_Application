@@ -82,4 +82,4 @@ export function useLogSaver() {
     return true
   }
 }
-export const OutcomeBadge = ({ v }) => <Badge tone={{ Positive: 'good', 'Payment received': 'good', 'Payment committed': 'good', Negative: 'bad', 'No answer': 'muted', 'Call back requested': 'warn' }[v]}>{v}</Badge>
+export const OutcomeBadge = ({ v }) => <Badge tone={{ Positive: 'good', 'Payment received': 'good', 'Payment committed': 'good', Negative: 'bad', 'No answer': 'muted', 'Switched off': 'muted', 'Line busy': 'muted', 'Call back requested': 'warn' }[v]}>{v}</Badge>

@@ -47,7 +47,7 @@ export const fullName = (r) => (r ? [r.title, r.name].filter(Boolean).join(' ') 
 // How a message opens: "Dear Dr. Rashmi Shenoy" with a title, "Dear Rashmi" without one.
 export const salute = (r) => (!r ? 'Sir/Madam' : r.title ? fullName(r) : (r.name || '').split(' ')[0] || 'Sir/Madam')
 // Cities the team meets most, plus whatever is already on file
-export const CITIES = ['Mangaluru', 'Udupi', 'Bengaluru', 'Mumbai', 'Pune', 'Hyderabad', 'Chennai', 'Kochi', 'Kasaragod', 'Puttur', 'Bantwal', 'Manipal', 'Karkala', 'Kundapura', 'Shivamogga', 'Mysuru', 'Hubballi', 'Belagavi', 'Delhi', 'Dubai', 'Abu Dhabi', 'Sharjah', 'Doha', 'Muscat', 'Kuwait City', 'Riyadh', 'Jeddah', 'Dammam', 'Bahrain', 'Singapore', 'London', 'New York', 'Toronto', 'Sydney', 'Melbourne']
+export const CITIES = ['Mangaluru', 'Udupi', 'Bengaluru', 'Mumbai', 'Pune', 'Ahmedabad', 'Hyderabad', 'Chennai', 'Kochi', 'Kasaragod', 'Puttur', 'Bantwal', 'Manipal', 'Karkala', 'Kundapura', 'Shivamogga', 'Mysuru', 'Hubballi', 'Belagavi', 'Delhi', 'Dubai', 'Abu Dhabi', 'Sharjah', 'Doha', 'Muscat', 'Kuwait City', 'Riyadh', 'Jeddah', 'Dammam', 'Bahrain', 'Singapore', 'London', 'New York', 'Toronto', 'Sydney', 'Melbourne']
 export const addWorkingDays = (iso, k, off = [0]) => { const t = new Date(iso); let left = k; while (left > 0) { t.setDate(t.getDate() + 1); if (!off.includes(t.getDay())) left-- } return t.toISOString().slice(0, 10) }
 export const workingDaysBetween = (a, b = today(), off = [0]) => { if (!a) return null; const s = new Date(String(a).slice(0, 10)), e = new Date(String(b).slice(0, 10)); let k = 0; while (s < e) { s.setDate(s.getDate() + 1); if (!off.includes(s.getDay())) k++ } return k }
 
