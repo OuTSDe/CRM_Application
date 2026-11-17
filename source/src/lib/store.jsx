@@ -88,7 +88,15 @@ export function StoreProvider({ children }) {
   }, [raw])
 
   const settings = raw.settings[0] || {}
-  const user = useMemo(() => (session ? raw.users.find((u) => u.id === session.userId) || null : null), [session, raw.users])
+  const realUser = useMemo(() => (session ? raw.users.find((u) => u.id === session.userId) || null : null), [session, raw.users])
+  // 17 Nov: master access. An admin can look at the CRM exactly as another person sees it (their menu, pages and records),
+  // to check what access they need. It is read-only: nothing can be saved, punched, uploaded or sent while viewing.
+  const [viewAsId, setViewAsId] = useState(null)
+  const viewAs = useMemo(() => (viewAsId && realUser?.appRole === 'admin' ? raw.users.find((u) => u.id === viewAsId) || null : null), [viewAsId, realUser, raw.users])
+  const user = viewAs || realUser
+  const viewRef = useRef(null); viewRef.current = viewAs
+  const lastWarn = useRef(0)
+  const warnView = () => { if (Date.now() - lastWarn.current > 4000) { lastWarn.current = Date.now(); setToast({ msg: `Viewing as ${viewRef.current?.name}: read-only. Nothing was saved.`, tone: 'bad', at: Date.now() }) } }
   const backend = settings.backendUrl || SITE_BACKEND
   // 2 Nov: training mode. Everything entered is kept in this tab only and thrown away when training ends:
   // nothing reaches the Google Sheet, no reminders, no e-mails, no uploads. (Replaces demo mode.)
@@ -223,6 +231,7 @@ export function StoreProvider({ children }) {
     setRaw((cur) => ({ ...cur, audit: [a, ...(cur.audit || [])].slice(0, 3000) }))
   }
   const upsert = useCallback((coll, rec, opts = {}) => {
+    if (viewRef.current) { warnView(); return null }
     if (!opts.system && !canWrite(user, coll)) { notify('Your access does not allow changing ' + coll, 'bad'); return null }
     const r = { ...rec, updatedAt: new Date().toISOString(), updatedBy: user?.name || 'system' }
     ;['mine', 'directoryOnly', 'payState', 'lastPaymentDate', '_mineClients'].forEach((k) => delete r[k])
@@ -244,6 +253,7 @@ export function StoreProvider({ children }) {
     return r
   }, [user, backend, demo]) // eslint-disable-line
   const remove = useCallback((coll, id) => {
+    if (viewRef.current) { warnView(); return }
     if (!canWrite(user, coll)) { notify('Your access does not allow deleting', 'bad'); return }
     setRaw((cur) => ({ ...cur, [coll]: (cur[coll] || []).filter((x) => x.id !== id) }))
     enqueue({ coll, op: 'delete', id }); logAudit(coll, id, 'deleted')
@@ -370,7 +380,7 @@ export function StoreProvider({ children }) {
     if (!backend) throw new Error('E-mailed codes need the shared database. Connect it under Admin, Data and sync.')
     return call({ action: 'emailCode', username: String(username || '').trim().toLowerCase() })
   }, [backend, call])
-  const logout = useCallback(() => { endServerSession(false); setSession(null); try { localStorage.removeItem(SKEY) } catch (e) { /* */ } }, [endServerSession])
+  const logout = useCallback(() => { setViewAsId(null); endServerSession(false); setSession(null); try { localStorage.removeItem(SKEY) } catch (e) { /* */ } }, [endServerSession])
   // closing the tab or the browser, or refreshing: sign out
   useEffect(() => {
     const bye = () => { endServerSession(true); try { localStorage.removeItem(SKEY) } catch (e) { /* */ } }
@@ -418,7 +428,7 @@ export function StoreProvider({ children }) {
   // and the check runs on sign-in and when the experience tab writes, not on every change to the data.
   const importExperience = useCallback(() => {
     const list = readJson(EXP_SESSIONS, [])
-    if (!user || !list.length) return
+    if (!user || !list.length || viewRef.current) return
     list.forEach((s) => {
       const cur = (rawRef.current.accordSessions || []).find((x) => x.id === s.id)
       const stamp = s.updatedAt || ''
@@ -432,6 +442,7 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     if (!user) return
     const tick = () => {
+      if (viewRef.current) return   // 17 Nov: no pop-up reminders for the person being viewed
       const now = new Date().toISOString()
       const shown = readJson('accord.shown', [])
       const due = (raw.notifications || []).filter((n) => n.to === user.name && !n.readAt && (!n.dueAt || n.dueAt <= now) && !shown.includes(n.id))
@@ -499,8 +510,13 @@ export function StoreProvider({ children }) {
   const resetToSeed = useCallback(() => { const s = buildSeed(); s.users = raw.users; s.settings = raw.settings; setRaw(s); notify('Cleared this device back to the empty start') }, [raw.users, raw.settings, notify])
   const seedBackend = useCallback(async (url = backend) => { const r = await call({ action: 'seed', token: online ? session.token : '', db: raw }, url); queue.current = []; safeSet(QKEY, '[]'); holdPull.current = false; setTimeout(() => pull(), 500); return r }, [call, session, raw, online, backend])
 
-  const value = { db, raw, settings, user, session, sync, toast, notify, upsert, remove, setSettings, nextId, login, requestEmailCode, logout, changePassword, setUserPassword, approveDevice, releaseDevice,
-    enrolStart, enrolConfirm, punch, myDay, punchedIn, pushNote, markRead, replaceAll, resetToSeed, upload, fileGet, fileDelete, setPhoto, dedupeUsers, sendEmail, exportNow, loadStartingData, pull, flush, seedBackend,
+  const startViewAs = useCallback((id) => { if (realUser?.appRole !== 'admin' || id === realUser.id) return; setViewAsId(id); try { window.location.hash = '#/' } catch (e) { /* */ } }, [realUser])
+  const stopViewAs = useCallback(() => { setViewAsId(null); try { window.location.hash = '#/admin/users' } catch (e) { /* */ } }, [])
+  const blocked = async () => { warnView(); return null }
+  const ro = (fn) => (viewAs ? blocked : fn)
+  const value = { db, raw, settings, user, realUser, viewAs, startViewAs, stopViewAs, session, sync, toast, notify, upsert, remove, setSettings, nextId, login, requestEmailCode, logout,
+    changePassword: ro(changePassword), setUserPassword: ro(setUserPassword), approveDevice: ro(approveDevice), releaseDevice: ro(releaseDevice),
+    enrolStart: ro(enrolStart), enrolConfirm: ro(enrolConfirm), punch: ro(punch), myDay, punchedIn, pushNote, markRead, replaceAll: ro(replaceAll), resetToSeed: ro(resetToSeed), upload: ro(upload), fileGet, fileDelete: ro(fileDelete), setPhoto: ro(setPhoto), dedupeUsers: ro(dedupeUsers), sendEmail: ro(sendEmail), exportNow, loadStartingData: ro(loadStartingData), pull, flush, seedBackend: ro(seedBackend),
     backend, serverVersion, backendOld: !!serverVersion && verLess(serverVersion, NEEDS_BACKEND), siteBackend: SITE_BACKEND, online, call, today, nowTime, demo, toggleDemo }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

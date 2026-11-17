@@ -257,8 +257,9 @@ function MergeUsers({ open, onClose, groups, me, upsert, remove, notify, dedupeU
 }
 
 export function AdminUsers() {
-  const { raw, user, upsert, remove, nextId, notify, setUserPassword, approveDevice, releaseDevice, online, dedupeUsers } = useStore()
+  const { raw, user, upsert, remove, nextId, notify, setUserPassword, approveDevice, releaseDevice, online, dedupeUsers, startViewAs } = useStore()
   const [edit, setEdit] = useState(null)
+  const [viewPick, setViewPick] = useState('')   // 17 Nov: master access, see the CRM as another person
   const [merge, setMerge] = useState(false)
   const dups = dupGroups(raw.users)
   const rows = raw.users.filter((u, i) => raw.users.findIndex((x) => x.id === u.id) === i)   // a row saved twice is listed once
@@ -295,6 +296,7 @@ export function AdminUsers() {
   const temp = async () => { try { await setUserPassword(edit.id, pw); setEdit((e) => ({ ...e, mfa: 'Not set' })); notify(`Sign-in reset for ${edit.name}. Share the temporary password privately; they use it once to link their authenticator app.`); setPw('') } catch (e) { notify(e.message, 'bad') } }
   return (
     <Page title="Users and access" back="/" backLabel="Dashboard" subtitle="Usernames, passwords, roles, shifts and the platforms each person opens. Passwords are stored as salted hashes; nobody, including admins, can read them." actions={<Button variant="primary" onClick={() => setEdit({ appRole: 'sales', team: 'Sales', active: 'Yes', shiftStart: '09:30', shiftEnd: '18:30', workDays: 'Mon-Sat', remoteAllowed: 'No', deviceLock: 'No', mustChange: 'Yes' })}>Add a member</Button>}>
+      {user.appRole === 'admin' && <Card title="View as another person (master access)"><div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><Select options={raw.users.filter((u, i, a) => u.id !== user.id && u.active !== 'No' && a.findIndex((x) => x.id === u.id) === i).map((u) => ({ value: u.id, label: `${u.name} · ${u.appRole}` }))} placeholder="Choose a person" value={viewPick} onChange={(e) => setViewPick(e.target.value)} style={{ minWidth: 240 }} /><Button disabled={!viewPick} onClick={() => startViewAs(viewPick)}>View the CRM as them</Button><span className="small muted">You see their menu, pages and records exactly as they do, read-only: nothing can be saved. Use "Back to my account" at the top to return.</span></div></Card>}
       {pending.length > 0 && <Card title="Devices waiting for approval">{pending.map(({ u, dv }) => <div key={u.id + dv.id}><div className="small" style={{ marginTop: 6 }}><b>{u.name}</b></div><DevRow u={u} dv={dv} /></div>)}
         <p className="small muted">Each person can use one computer and one phone. Approving a second phone or computer releases the old one.</p></Card>}
       {dups.length > 0 && <div className="note warn row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
@@ -313,7 +315,7 @@ export function AdminUsers() {
       <Card title="What each role can do"><table className="table dense"><tbody>{Object.entries(ROLE_NOTES).map(([k, v]) => <tr key={k}><td style={{ width: 160 }}><b>{ROLES[k]}</b></td><td>{v}</td></tr>)}</tbody></table></Card>
       <Modal open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? edit.name : 'New member'} wide footer={<>
         {/* 12 Nov: admins can delete an account. Their leads, clients and history stay (records keep the name); setting Active to No keeps the account but stops sign-in. */}
-        {edit?.id && user.appRole === 'admin' && edit.id !== user.id && raw.users.some((x) => x.id === edit.id) && <span style={{ marginRight: 'auto' }}><Confirm variant="ghost" label={`Delete ${edit.name}'s account? They can no longer sign in. Their leads, clients and history stay. This cannot be undone.`} onConfirm={() => { remove('users', edit.id); notify(`${edit.name}'s account deleted`); setEdit(null) }}>Delete user</Confirm></span>}
+        {edit?.id && user.appRole === 'admin' && edit.id !== user.id && raw.users.some((x) => x.id === edit.id) && <span style={{ marginRight: 'auto', display: 'flex', gap: 6 }}><Button variant="ghost" onClick={() => { const id = edit.id; setEdit(null); startViewAs(id) }}>View as {edit.name}</Button><Confirm variant="ghost" label={`Delete ${edit.name}'s account? They can no longer sign in. Their leads, clients and history stay. This cannot be undone.`} onConfirm={() => { remove('users', edit.id); notify(`${edit.name}'s account deleted`); setEdit(null) }}>Delete user</Confirm></span>}
         <Button onClick={() => setEdit(null)}>Cancel</Button><Button variant="primary" onClick={save}>Save</Button></>}>
         {edit && <><RecordForm sheet cols={3} fields={F} value={edit} onChange={setEdit} />
           <AccessPicker u={edit} onChange={(extraAccess) => setEdit({ ...edit, extraAccess })} />

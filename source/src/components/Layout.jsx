@@ -51,7 +51,7 @@ export function useWorkspace() {
 }
 
 export default function Layout() {
-  const { user, logout, sync, backend, punchedIn, myDay, punch, notify, db, markRead, demo, toggleDemo, settings, backendOld, serverVersion } = useStore()
+  const { user, logout, sync, backend, punchedIn, myDay, punch, notify, db, markRead, demo, toggleDemo, settings, backendOld, serverVersion, viewAs, realUser, stopViewAs } = useStore()
   const logoSrc = useLogo(settings.brand?.logo)
   const nav = useNavigate()
   const loc = useLocation()
@@ -64,7 +64,7 @@ export default function Layout() {
   // the menu is a drawer now (31 Oct): hidden until the menu button is pressed; Escape or a click outside closes it
   useEffect(() => { if (!menu) return; const k = (e) => e.key === 'Escape' && setMenu(false); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [menu])
   const external = ['consultant', 'bank'].includes(user?.appRole) || user?.team === 'External'   // 5 Nov: outside people do not punch in
-  const gated = !punchedIn && !external
+  const gated = !punchedIn && !external && !viewAs   // 17 Nov: no punch-in gate while an admin is viewing as someone
   useWatchers({ user, myDay, punch, notify, settings, logout: () => { logout(); nav('/') }, path: loc.pathname })
   let k = 0
   return (
@@ -114,6 +114,7 @@ export default function Layout() {
             <UserMenu user={user} logout={() => { logout(); nav('/') }} demo={demo} toggleDemo={toggleDemo} passwords={settings.authMode === 'password'} />
           </div>
         </header>
+        {viewAs && <div className="demo-band" role="alert" style={{ background: '#5b2a86', color: '#fff', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 900, borderTop: '2px solid #3b1a5a' }}><span><b>Viewing as {viewAs.name}</b> ({viewAs.appRole}{viewAs.designation ? ' · ' + viewAs.designation : ''}) · read-only, exactly what they see. Signed in as {realUser?.name}.</span><button style={{ marginLeft: 'auto', background: '#fff', color: '#5b2a86', borderColor: '#fff', fontWeight: 600 }} onClick={stopViewAs}>Back to my account</button></div>}
         {backendOld && user?.appRole === 'admin' && <div className="demo-band" role="alert"><b>The Google backend needs updating</b> · it is version {serverVersion}, this site needs {NEEDS_BACKEND}. Until then, newer features (extra access, deleting files, follow-up times) do not work on the server. In Apps Script: paste the new backend/Code.gs, then Deploy › Manage deployments › Edit › New version.</div>}
         {demo && <div className="demo-band" role="status"><b>Training mode</b> · practise freely: nothing you enter is saved to the database, no reminders or e-mails go out. Leaving training mode discards it all. <button type="button" onClick={() => toggleDemo(false)}>End training</button></div>}
         <main className="content"><Outlet context={{ ws }} /></main>
