@@ -51,7 +51,7 @@ clients = rows('Client Master', 5, {
     'decisionMaker': 'Key decision', 'influencers': 'Influencers', 'otherProps': 'Other properties', 'repeat': 'Existing Yamuna',
     'interestsNote': 'Interests', 'specialDates': 'Special dates', 'source': 'Lead source', 'referredBy': 'Referred by',
     'sourcedBy': 'Sourced by', 'closedBy': 'Closed by', 'owner': 'Relationship owner', 'bookingDate': 'Booking date',
-    'tc': 'Total consideration', 'adjustment': 'Adjustment amount', 'adjType': 'Adjustment type', 'adjReason': 'Adjustment reason',
+    'tc': 'Total consideration',
     'plan': 'Payment plan', 'agreement': 'Agreement for sale', 'agreementDate': 'Agreement registration date',
     'agreementNo': 'Registration document', 'history': 'Previous allottee', 'receivedPerCollections': 'Received per collections',
     'remarks': 'Remarks from source', 'notes': 'Internal notes'}, 'bookingId')

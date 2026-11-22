@@ -23,7 +23,6 @@ const FIELDS = (units = [], letters = []) => [
   { k: 'bank', l: 'Drawn on (bank)' }, { k: 'tds', l: 'TDS deducted (₹)', t: 'number', min: 0, hint: '1% where consideration is ₹50 L or more' }, { k: 'counted', l: 'Counted in totals', t: 'select', o: 'Counted in totals' },
   { k: 'thirdParty', l: 'Paid by someone else? (name)', span: 2 }, { k: 'realisation', l: 'Realisation', t: 'select', o: 'Realisation' },
   { k: 'demandLetter', l: 'Against demand letter', t: 'select', o: letters, hint: letters.length ? 'The receipt says whether this is a part payment of the letter' : 'No open demand letter for this residence' },
-  { k: 'ledgerOnly', l: 'Receipt', t: 'select', o: [{ value: 'No', label: 'Issue a receipt' }, { value: 'Yes', label: 'Ledger entry only, no receipt' }], hint: 'Ledger only: furniture, barter or other adjustments that are not money received' },
   { k: 'note', l: 'Note', t: 'textarea', span: 'all' },
 ]
 export default function PaymentForm({ open, onClose, unit, edit }) {
@@ -39,7 +38,7 @@ export default function PaymentForm({ open, onClose, unit, edit }) {
   useEffect(() => {
     if (open) {
       if (edit) slot.open({ ...edit, unit: String(edit.unit ?? ''), editReason: '' })
-      else { const c0 = crm.byUnit[unit]; slot.open({ unit: unit ? String(unit) : '', payer: c0?.name || '', date: today(), counted: 'Yes', realisation: 'Pending', mode: 'NEFT', towards: 'Construction milestone', ledgerOnly: 'No' }) }
+      else { const c0 = crm.byUnit[unit]; slot.open({ unit: unit ? String(unit) : '', payer: c0?.name || '', date: today(), counted: 'Yes', realisation: 'Pending', mode: 'NEFT', towards: 'Construction milestone' }) }
       setFile(null); setConfirm(null)
     } else if (sv) slot.close()
   }, [open]) // eslint-disable-line
@@ -50,9 +49,9 @@ export default function PaymentForm({ open, onClose, unit, edit }) {
   const openL = useMemo(() => crm.letters.filter((x) => String(x.unit) === String(v.unit) && (!['Paid', 'Withdrawn'].includes(x.state) || x.id === edit?.demandLetter)).sort((a, b) => String(a.date).localeCompare(String(b.date))), [crm.letters, v.unit, edit])
   const base = FIELDS(units, openL.map((x) => ({ value: x.id, label: `${x.id} · ${x.callId} · balance ${inr(x.balance)}` })))
   // 7 Nov: editing keeps the receipt number; a reason is required and goes to the admins with the change
-  const F = edit ? [{ k: 'receiptNo', l: 'Receipt no. (cannot change)', ro: true }, ...base.filter((f) => f.k !== 'ledgerOnly'), { k: 'editReason', l: 'Reason for this change', t: 'textarea', req: true, span: 'all', hint: 'Admins are told about every change, with this reason' }] : base
-  useEffect(() => { if (!edit && sv && openL.length && !v.demandLetter && v.towards !== 'Furniture adjustment') setV((s0) => ({ ...s0, demandLetter: openL[0].id })) }, [v.unit, openL.length]) // eslint-disable-line
-  const change = (x) => { const nu = x.unit !== v.unit ? crm.byUnit[x.unit] : null; if (!edit && x.towards !== v.towards && ['Furniture adjustment'].includes(x.towards)) x = { ...x, ledgerOnly: 'Yes', demandLetter: '' }
+  const F = edit ? [{ k: 'receiptNo', l: 'Receipt no. (cannot change)', ro: true }, ...base, { k: 'editReason', l: 'Reason for this change', t: 'textarea', req: true, span: 'all', hint: 'Admins are told about every change, with this reason' }] : base
+  useEffect(() => { if (!edit && sv && openL.length && !v.demandLetter) setV((s0) => ({ ...s0, demandLetter: openL[0].id })) }, [v.unit, openL.length]) // eslint-disable-line
+  const change = (x) => { const nu = x.unit !== v.unit ? crm.byUnit[x.unit] : null;
     setV(nu ? { ...x, unit: x.unit, payer: edit ? x.payer : nu.name, demandLetter: '' } : x) }
   const checks = () => {
     const miss = missingRequired(F, v); if (miss.length) { notify('Missing: ' + miss.join(', '), 'bad'); return false }
@@ -62,7 +61,7 @@ export default function PaymentForm({ open, onClose, unit, edit }) {
     return true
   }
   const saveEdit = () => {
-    const rec = { ...edit, ...v, id: edit.id, receiptNo: edit.receiptNo, ledgerOnly: edit.ledgerOnly, unit: Number(v.unit), amount: Number(v.amount), tds: v.tds === '' || v.tds == null ? '' : Number(v.tds),
+    const rec = { ...edit, ...v, id: edit.id, receiptNo: edit.receiptNo, unit: Number(v.unit), amount: Number(v.amount), tds: v.tds === '' || v.tds == null ? '' : Number(v.tds),
       rev: Number(edit.rev || 0) + 1, lastEditedBy: user.name, lastEditedAt: new Date().toISOString(), editReason: String(v.editReason || '').trim() }
     const ch = paymentDiff(edit, rec)
     if (!ch.length) { notify('Nothing has changed', 'warn'); return }
@@ -84,12 +83,11 @@ export default function PaymentForm({ open, onClose, unit, edit }) {
     if (!checks()) return
     if (edit) return saveEdit()
     const recNos = db.payments.map((p) => Number(String(p.receiptNo || '').replace(/\D/g, ''))).filter(Boolean)
-    const ledger = v.ledgerOnly === 'Yes'
-    const receiptNo = ledger ? '' : 'YSC-' + String(Math.max(0, ...recNos) + 1).padStart(3, '0')
+    const receiptNo = 'YSC-' + String(Math.max(0, ...recNos) + 1).padStart(3, '0')
     let proofUrl = ''
     if (file && backend) proofUrl = await upload(file, `Clients/${v.unit} ${c?.name || ''}/05 Receipts`.replace(/ \//, '/'), `${v.unit}_${c?.clientId || ''}_payment-proof_${receiptNo}_${v.date}`, { kind: 'client', recordId: c?.bookingId || '', label: `${v.unit} ${c?.name || ''}`, category: 'Payments & Tax', doc: 'payment proof ' + receiptNo }).catch(() => '')
     const r = upsert('payments', { ...v, unit: Number(v.unit), amount: Number(v.amount), id: nextId('payments', 'L-', 4), entryNo: undefined, receiptNo, origUnit: String(v.unit), tcOnReceipt: c?.tc || '', proofUrl }, { action: 'payment recorded' })
-    if (r) { slot.done(); notify(ledger ? 'Ledger entry saved (no receipt)' : `Receipt ${receiptNo} created`); onClose(ledger ? { ...r, ledger: true } : r) }
+    if (r) { slot.done(); notify(`Receipt ${receiptNo} created`); onClose(r) }
   }
   const close = () => { slot.close(); setConfirm(null); onClose() }
   return (

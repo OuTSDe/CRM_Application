@@ -56,7 +56,7 @@ export function deriveCrm(db) {
   const clients = db.clients.map((c) => {
     const u = units[c.unit] || {}
     const received = recvByUnit[c.unit] || 0
-    const tc = n(c.tc), basis = tc - n(c.adjustment)
+    const tc = n(c.tc), basis = tc
     const billed = NON_BILLED.includes(c.status) ? 0 : billedPct
     const schedule = clientSchedule(c, { rules, gst, clpStages, letters: rawLetters, calls: cum, payments: payByUnit[c.unit] || [] })
     const sched = scheduleSummary(schedule)

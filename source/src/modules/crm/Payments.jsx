@@ -87,9 +87,9 @@ function FinancePayments() {
               {k.inferred && <div className="small" style={{ color: 'var(--warn)' }}>Not recorded. Taken as no later than {d(k.raisedAt)}</div>}</td>
             <td>{d(k.due)}{k.inferred && <div className="small muted">at the latest</div>}</td>
             {!crm.perClient && <td>{canRecordPayment(user) && <RaiseLetters call={k} />}</td>}</tr>)}</tbody></table></div>
-        <p className="small muted" style={{ padding: '0 16px 12px' }}>{crm.perClient ? 'Stages these calls cover count as demanded on the call date in each client\'s schedule (15 days from the booking for a later booking), unless an Accord demand letter covers them. ' : `Demand per client = (consideration − adjustment) × cumulative % × (1 + GST ${(crm.gst * 100).toFixed(0)}%). `}Due {crm.rules.dueDays} days after the call is raised. A call without a raised date is taken as raised no later than the next call that has one, so its clients show as overdue for at least that long; enter the actual date for the exact ageing.</p>
+        <p className="small muted" style={{ padding: '0 16px 12px' }}>{crm.perClient ? 'Stages these calls cover count as demanded on the call date in each client\'s schedule (15 days from the booking for a later booking), unless an Accord demand letter covers them. ' : `Demand per client = consideration × cumulative % × (1 + GST ${(crm.gst * 100).toFixed(0)}%). `}Due {crm.rules.dueDays} days after the call is raised. A call without a raised date is taken as raised no later than the next call that has one, so its clients show as overdue for at least that long; enter the actual date for the exact ageing.</p>
       </Card>}
-      <PaymentForm open={open} onClose={(p) => { setOpen(false); if (p?.id && !p.ledger) nav('/crm/payments/receipt/' + p.id) }} />
+      <PaymentForm open={open} onClose={(p) => { setOpen(false); if (p?.id) nav('/crm/payments/receipt/' + p.id) }} />
     </Page>
   )
 }
@@ -104,7 +104,6 @@ export function Receipt() {
   if (!seesMoney(user)) return <Page title="Receipt" back={true}><span className="locked">Receipts are issued and shared by finance</span></Page>
   if (!p) return <Page title="Receipt not found" back={true} />
   const c = crm.byUnit[p.unit]
-  if (p.ledgerOnly === 'Yes') return <Page title="Ledger entry" back={true} subtitle={`${p.unit} · ${p.towards} · ${inr(p.amount)}`} actions={canRecordPayment(user) && <Button onClick={() => setEdit(true)}>Edit entry</Button>}><div className="note info">This is a ledger entry only (for example a furniture or barter adjustment). No receipt is issued for it.</div><EditHistory p={p} />{edit && <PaymentForm open edit={p} unit={p.unit} onClose={() => setEdit(false)} />}</Page>
   return (
     <div>
       <div className="doc-tools no-print"><Link className="btn" to={c ? '/crm/clients/' + c.id : '/crm/payments'}>← Back</Link>{canRecordPayment(user) && <Button onClick={() => setEdit(true)}>Edit entry</Button>}<Button variant="primary" onClick={() => window.print()}>Print or save as PDF</Button></div>
@@ -122,7 +121,7 @@ export function BulkReceipts() {
   const [qs, setQs] = useSearchParams()
   const from = qs.get('from') || today().slice(0, 8) + '01', to = qs.get('to') || today(), unit = qs.get('unit') || '', all = qs.get('all') === '1'
   if (!seesMoney(user)) return <Page title="Receipts" back={true}><span className="locked">Receipts are issued and shared by finance</span></Page>
-  const list = db.payments.filter((p) => p.ledgerOnly !== 'Yes' && (all || p.counted === 'Yes') && String(p.date) >= from && String(p.date) <= to && (!unit || String(p.unit) === unit)).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.receiptNo).localeCompare(String(b.receiptNo)))
+  const list = db.payments.filter((p) => (all || p.counted === 'Yes') && String(p.date) >= from && String(p.date) <= to && (!unit || String(p.unit) === unit)).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.receiptNo).localeCompare(String(b.receiptNo)))
   const set = (k, v) => { const n = new URLSearchParams(qs); if (v) n.set(k, v); else n.delete(k); setQs(n, { replace: true }) }
   return (
     <div>
@@ -300,9 +299,9 @@ function RaiseLetters({ call }) {
     // money already received before demand letters existed (receipts not coded to any letter) first covers the earlier
     // stages; whatever is left over counts towards this letter, so old clients are not asked twice
     const k = crm.cum.findIndex((x) => x.id === call.id), cumBefore = k > 0 ? crm.cum[k - 1].cum : 0
-    todo.forEach((c) => { const basis = Number(c.tc || 0) - Number(c.adjustment || 0)
+    todo.forEach((c) => { const basis = Number(c.tc || 0)
       const amount = Math.round(basis * Number(call.pct) * (1 + crm.gst))
-      const unlinked = db.payments.filter((p) => String(p.unit) === String(c.unit) && p.counted === 'Yes' && !p.demandLetter && p.ledgerOnly !== 'Yes').reduce((a, p) => a + Number(p.amount || 0) + Number(p.tds || 0), 0)
+      const unlinked = db.payments.filter((p) => String(p.unit) === String(c.unit) && p.counted === 'Yes' && !p.demandLetter).reduce((a, p) => a + Number(p.amount || 0) + Number(p.tds || 0), 0)
       const credit = Math.round(Math.min(amount, Math.max(0, unlinked - basis * cumBefore * (1 + crm.gst))))
       upsert('demandLetters', { credit, id: 'DL-' + String(no++).padStart(3, '0'), date, callId: call.id, stage: call.description || call.stage, unit: c.unit, bookingId: c.bookingId, clientId: c.clientId, name: c.name,
         pct: call.pct, basis, gst: crm.gst, amount, dueDate: due.toISOString().slice(0, 10), status: 'Raised', by: user.name }, { silent: true }) })
@@ -401,7 +400,7 @@ function DemandLetterDoc({ letters }) {
     const arrears = crm.perClient ? arrearRows.reduce((a, r) => a + r.balance, 0) : 0
     const intr = crm.perClient && rate ? lateInterest(sched.filter((r) => r.due && r.due < L.date), (cl.payments || []), R, L.date).total : 0
     const base = Number(L.amount) ? Math.round(Number(L.amount) / (1 + Number(L.gst || 0))) : 0
-    const received = (cl.payments || []).filter((p) => p.counted === 'Yes' && p.ledgerOnly !== 'Yes').reduce((a, p) => a + Number(p.amount || 0) + Number(p.tds || 0), 0)
+    const received = (cl.payments || []).filter((p) => p.counted === 'Yes').reduce((a, p) => a + Number(p.amount || 0) + Number(p.tds || 0), 0)
     const u = crm.units.find((x) => String(x.unit) === String(L.unit))
     return { L, c: cl, u, base, gstAmt: Number(L.amount) - base, arrears, intr, received, payable: L.balance + arrears + intr }
   })
@@ -428,7 +427,7 @@ function DemandLetterDoc({ letters }) {
       <div className="sec">Payment summary</div>
       {flats.map((f) => <table key={f.L.id} style={{ marginBottom: 8 }}><tbody>
         {flats.length > 1 && <tr><th colSpan={2}>Flat {f.L.unit} · {f.L.id}</th></tr>}
-        <tr><th style={{ width: '62%' }}>Total consideration (agreement value less adjustments)</th><td className="right">{inr(f.L.basis)}</td></tr>
+        <tr><th style={{ width: '62%' }}>Total consideration (agreement value)</th><td className="right">{inr(f.L.basis)}</td></tr>
         <tr><th>Instalment for this milestone ({(Number(f.L.pct) * 100).toFixed(1)}%)</th><td className="right">{inr(f.base)}</td></tr>
         <tr><th>GST ({(Number(f.L.gst) * 100).toFixed(0)}%)</th><td className="right">{inr(f.gstAmt)}</td></tr>
         <tr className="total"><th>Amount demanded under this notice</th><td className="right"><b>{inr(f.L.amount)}</b></td></tr>

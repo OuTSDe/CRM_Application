@@ -204,7 +204,7 @@ One file per customer, labelled with the residence number and client ID, in the 
     summary: 'Steps 20 to 27: demand letters raised from construction stages, reminders at 7 and 2 days, same-day confirmation, receipts within one working day, and escalation at 7 days overdue.',
     body: `## Demand letters
 - A stage demand is raised only when the stage is certified by the architect or engineer. The certificate is attached to the demand letter in Accord.
-- Demand = (consideration minus adjustments) times the stage percentage, plus GST. Due 15 days after it is raised.
+- Demand = consideration times the stage percentage, plus GST. Due 15 days after it is raised.
 
 ## Reminders
 | When | What | Who |

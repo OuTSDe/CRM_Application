@@ -96,7 +96,7 @@ export function letterRows(L, calls, clpStages) {
 export function clientSchedule(c, ctx) {
   const { rules, gst = 0.05, clpStages = [], letters = [], calls = [], payments = [] } = ctx
   const rows = planRows(c, clpStages)
-  const basis = n(c.tc) - n(c.adjustment)
+  const basis = n(c.tc)
   const stageById = Object.fromEntries(clpStages.map((x) => [x.id, x]))
   const registered = c.agreement === 'Registered'
   const agreeDate = registered ? (c.agreementDate || null) : null
@@ -135,7 +135,7 @@ export function clientSchedule(c, ctx) {
       projected: st?.planned || null, stageStatus: st?.status || '' }
   })
   // receipts (counted, plus TDS) settle the oldest instalment first
-  const counted = payments.filter((p) => p.counted === 'Yes' && p.ledgerOnly !== 'Yes')
+  const counted = payments.filter((p) => p.counted === 'Yes')
   let pool = counted.reduce((a, p) => a + n(p.amount) + n(p.tds), 0)
   const t = today()
   return out.map((r) => {
@@ -176,7 +176,7 @@ export const currentRate = (rules) => rateOn(rules.interestRates, today())
  */
 export function lateInterest(rows, payments, rules, asOf = today()) {
   const grace = n(rules.interestGraceDays)
-  const recs = payments.filter((p) => p.counted === 'Yes' && p.ledgerOnly !== 'Yes' && p.date).map((p) => ({ date: String(p.date).slice(0, 10), amt: n(p.amount) + n(p.tds) })).sort((a, b) => a.date.localeCompare(b.date))
+  const recs = payments.filter((p) => p.counted === 'Yes' && p.date).map((p) => ({ date: String(p.date).slice(0, 10), amt: n(p.amount) + n(p.tds) })).sort((a, b) => a.date.localeCompare(b.date))
   const bal = rows.map((r) => r.amount)
   const per = rows.map(() => 0)
   const starts = rows.map((r) => (r.due ? addDays(r.due, grace) : null))
@@ -219,8 +219,8 @@ export function collectionSteps(rows, rules, t = today()) {
  */
 export function cancellationCalc(c, { rules, payments = [], initiatedBy = 'Client', promoterFault = false, onDate = today(), interestOwed = 0, brokeragePaid = 0, waivers = {} }) {
   const R = rules.cancellation
-  const basis = n(c.tc) - n(c.adjustment)
-  const counted = payments.filter((p) => p.counted === 'Yes' && p.ledgerOnly !== 'Yes')
+  const basis = n(c.tc)
+  const counted = payments.filter((p) => p.counted === 'Yes')
   const cash = counted.reduce((a, p) => a + n(p.amount), 0)
   const tds = counted.reduce((a, p) => a + n(p.tds), 0)
   const received = cash + tds

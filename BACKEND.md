@@ -108,7 +108,7 @@ The interaction log works out from the ID whether a record is a lead or a client
 | Time log | Everyone; can correct | Everyone | Own | Own | Own |
 
 **How the server enforces it.**
-- `pull` filters every collection per person and strips money fields: consideration, adjustment, loan amount and payment amounts.
+- `pull` filters every collection per person and strips money fields: consideration, loan amount and payment amounts.
 - When a client advisor edits their client, the server merges only the fields they are allowed to change.
 - The server refuses edits to someone else's client.
 
@@ -198,7 +198,7 @@ My Drive / Accord_CRM_Application / Accord_Data /
 ## 5 Nov additions
 
 - **New tabs.** `demandLetters` (one row per letter; `credit` is money received before letters existed) and `partners` (channel partners with codes).
-- **New payment fields.** `demandLetter` and `ledgerOnly`.
+- **New payment fields.** `demandLetter`.
 - **Roles.**
   - `consultant`: `pull` goes through `consultantView_`, which strips contact fields (`CONTACT_FIELDS`), interaction text, files, messages, cost sheets and the inbox.
   - `bank`: `pull` goes through `bankView_`, which keeps loan clients only. Bank users are notified of payments and demand letters on those clients.

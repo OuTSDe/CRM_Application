@@ -43,7 +43,7 @@ export const CLIENT_FIELDS = (team, { money = true, assign = true } = {}) => [
   assign ? { k: 'owner', l: 'Relationship owner', t: 'select', o: team } : { k: 'owner', l: 'Relationship owner', auto: true },
   assign ? { k: 'coOwners', l: 'Also responsible', t: 'chips', o: team, span: 'all', hint: 'They see this client in full and get its reminders' } : { k: 'coOwners', l: 'Also responsible', auto: true, fmt: (v) => (v || []).join(', ') },
   ...(money ? [{ section: 'Unit and deal', n: '₹', note: 'Visible to finance, senior sales and admins only' },
-    { k: 'tc', l: 'Total consideration (₹)', t: 'number' }, { k: 'adjustment', l: 'Adjustment (₹)', t: 'number' }, { k: 'adjType', l: 'Adjustment type', t: 'select', o: 'Adjustment type' },
+    { k: 'tc', l: 'Total consideration (₹)', t: 'number' },
     { k: 'plan', l: 'Payment plan', t: 'select', o: 'Payment plan' }, { k: 'agreement', l: 'Agreement for sale', t: 'select', o: 'Agreement status' },
     { k: 'agreementDate', l: 'Agreement registered on', t: 'date', hint: 'The agreement instalment and any catch-up stages fall due on this date' },
     { k: 'possessionOfferDate', l: 'Possession offered on', t: 'date' }, { k: 'parkingEntitlement', l: 'Car parks entitled', t: 'number' }] : []),
@@ -151,7 +151,7 @@ function Client360Body({ c, edit, setEdit, editSlot, log, setLog, pay, setPay })
         <span className={'health ' + c.health}>{c.health}</span>
       </div>
       {money ? <Grid cols={5}>
-        <Stat label="Consideration" value={lakh(c.tc)} sub={c.adjustment ? `Adjustment ${lakh(c.adjustment)} (${c.adjType})` : 'No adjustment'} />
+        <Stat label="Consideration" value={lakh(c.tc)} />
         <Stat label="Received" value={lakh(c.received)} sub={pct(c.pct) + ' of consideration'} tone="good" />
         <Stat label="Demanded to date" value={lakh(c.demand)} sub={pct(crm.billedPct) + ' + GST'} />
         <Stat label="Outstanding" value={c.outstanding > 0 ? lakh(c.outstanding) : 'Paid up'} sub={c.age + (c.due ? ' · due ' + d(c.due) : '')} tone={c.outstanding > 0 ? 'bad' : 'good'} />
@@ -211,7 +211,7 @@ function Client360Body({ c, edit, setEdit, editSlot, log, setLog, pay, setPay })
       <LogInteraction open={log} onClose={() => { setLog(false); if (focus) { const nq = new URLSearchParams(qs); nq.delete('focus'); setQs(nq, { replace: true }) } }} recordId={c.clientId} />
       {payEdit && <PaymentForm open edit={payEdit} onClose={() => setPayEdit(null)} unit={payEdit.unit} />}
       {changes.modals}
-      <PaymentForm open={pay} onClose={(p) => { setPay(false); if (p?.id && !p.ledger) nav('/crm/payments/receipt/' + p.id) }} unit={c.unit} />
+      <PaymentForm open={pay} onClose={(p) => { setPay(false); if (p?.id) nav('/crm/payments/receipt/' + p.id) }} unit={c.unit} />
     </Page>
   )
 }
@@ -241,7 +241,7 @@ function PaymentMonths({ c, money, crm }) {
   const months = []; const t0 = new Date(first.slice(0, 7) + '-01'), now = new Date()
   for (let t = new Date(t0); t <= now; t.setMonth(t.getMonth() + 1)) months.push(t.toISOString().slice(0, 7))
   const gst = crm.gst ?? 0.05
-  const basis = n(c.tc) - n(c.adjustment)
+  const basis = n(c.tc)
   const rows = months.map((m) => {
     const paid = counted.filter((p) => ym(p.date) === m)
     const dueCalls = crm.cum.filter((k) => k.due && ym(k.due) === m)

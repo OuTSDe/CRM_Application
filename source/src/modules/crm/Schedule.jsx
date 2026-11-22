@@ -61,7 +61,7 @@ function CustomPlan({ c, onClose }) {
   const stages = [...(db.clpStages || [])].sort((a, b) => n(a.no) - n(b.no))
   const raw = db.clients.find((x) => x.id === c.id)
   const [rows, setRows] = useState(() => (c.customPlan?.length ? c.customPlan : planRows({}, stages)).map((r, i) => ({ key: r.key || 'C' + (i + 1), stage: r.stage, pct: n(r.pct), fixed: r.fixed ? n(r.fixed) : '', trigger: r.trigger, clpStage: r.clpStage || '' })))
-  const basis = n(c.tc) - n(c.adjustment)
+  const basis = n(c.tc)
   const sum = rows.reduce((a, r) => a + (r.fixed ? (basis ? n(r.fixed) / basis : 0) : n(r.pct)), 0)
   const set = (i, k, v) => setRows(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)))
   const ok = Math.abs(sum - 1) < 0.0005

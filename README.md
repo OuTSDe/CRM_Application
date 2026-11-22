@@ -272,7 +272,6 @@ From then on, every push to `main` rebuilds and republishes the site. Changing t
 - **Receipts coded to a letter.** Record payment picks the residence's open demand letter. The receipt then says either:
   - *Part payment n against demand letter DL-041 … balance due ₹…*, or
   - that this receipt completes the letter.
-- **Ledger entry without a receipt.** Use it for furniture, barter and other adjustments; it is chosen automatically for *Furniture adjustment*. Payment proof stays optional.
 - **Reports** (Team › Reports). One A4 report, portrait or landscape, to print or save as PDF.
   - Covers the whole sales team or one person, for today, 7 days, 30 days or chosen dates.
   - Shows hours worked, interactions with charts, new leads by name, bookings, collections, and pending follow-ups and tasks.

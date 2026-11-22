@@ -65,7 +65,7 @@ export default function Reports() {
     const leadsOpen = db.leads.filter((l) => !['Lost', 'Booked', 'Dormant'].includes(l.stage) && (who === 'team' || mine(l.owner) || (l.coOwners || []).some(mine)))
     const booked = crm.clients.filter((c) => inRange(c.bookingDate, from, to) && BOOKED.includes(c.status) && (who === 'team' || mine(c.owner) || mine(c.closedBy)))
     const myUnits = new Set(crm.clients.filter((c) => who === 'team' || mine(c.owner) || (c.coOwners || []).some(mine)).map((c) => String(c.unit)))
-    const paid = db.payments.filter((p) => p.counted === 'Yes' && inRange(p.date, from, to) && myUnits.has(String(p.unit)) && p.ledgerOnly !== 'Yes')
+    const paid = db.payments.filter((p) => p.counted === 'Yes' && inRange(p.date, from, to) && myUnits.has(String(p.unit)))
     const owners = (i) => (i.nextOwners?.length ? i.nextOwners : [i.nextOwner || i.by])
     const pending = db.interactions.filter((i) => i.status === 'Open' && i.nextDate && i.nextDate <= to && owners(i).some(mine)).sort((a, b) => String(a.nextDate).localeCompare(String(b.nextDate)))
     const tasks = db.tasks.filter((x) => mine(x.owner) && x.status === 'Open')

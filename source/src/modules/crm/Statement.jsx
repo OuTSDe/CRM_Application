@@ -34,7 +34,6 @@ export function PaymentSummary() {
         <div className="sec">Position</div>
         <table><tbody>
           <tr><td>Total consideration</td><td className="right">{inr(c.tc)}</td></tr>
-          {Number(c.adjustment) > 0 && <tr><td>Less adjustment ({c.adjType || 'adjustment'})</td><td className="right">− {inr(c.adjustment)}</td></tr>}
           <tr><td>Demanded to date ({(crm.billedPct * 100).toFixed(1)}% of the plan, with GST {(crm.gst * 100).toFixed(0)}%)</td><td className="right">{inr(c.demand)}</td></tr>
           <tr><td>Received to date ({pays.length} receipts)</td><td className="right">{inr(c.received)}</td></tr>
           {c.tds > 0 && <tr><td>TDS deducted (Form 16B)</td><td className="right">{inr(c.tds)}</td></tr>}

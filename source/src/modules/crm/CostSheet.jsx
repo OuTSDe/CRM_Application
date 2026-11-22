@@ -132,7 +132,7 @@ export default function CostSheet() {
         const bookingId = nextId('clients', 'YSC-B-', 3)
         const cIds = db.clients.map((c) => Number(String(c.clientId).replace(/\D/g, ''))).filter(Boolean)
         const clientId = 'YSC-C-' + String(Math.max(0, ...cIds) + 1).padStart(3, '0')
-        const cl = upsert('clients', { id: bookingId, bookingId, clientId, unit: unit.unit, status: 'Active', category: 'Retail', buyerType: convert.coapp ? 'Joint' : 'Individual', residency: lead?.residency || 'Resident', funding: v.funding, tc: Math.round(cs.av), adjustment: 0, plan: 'Construction-linked plan', agreement: 'Not executed', source: lead?.source, leadId: lead?.id, interests: lead?.interests || [], parkingEntitlement: v.parking, costSheetId: v.id, city: lead?.city, country: lead?.country, ...convert }, { action: 'booked', system: true })
+        const cl = upsert('clients', { id: bookingId, bookingId, clientId, unit: unit.unit, status: 'Active', category: 'Retail', buyerType: convert.coapp ? 'Joint' : 'Individual', residency: lead?.residency || 'Resident', funding: v.funding, tc: Math.round(cs.av), plan: 'Construction-linked plan', agreement: 'Not executed', source: lead?.source, leadId: lead?.id, interests: lead?.interests || [], parkingEntitlement: v.parking, costSheetId: v.id, city: lead?.city, country: lead?.country, ...convert }, { action: 'booked', system: true })
         if (!cl) return
         if (lead?.id?.startsWith('YSC-L')) upsert('leads', { ...db.leads.find((l) => l.id === lead.id), stage: 'Booked', bookedAs: clientId }, { silent: true })
         const prior = db.interactions.filter((i) => i.recordId === lead?.id)

@@ -170,7 +170,7 @@ export const canAssignTasks = (u) => has(u, 'assign')
 export const canEditTemplates = (u) => has(u, 'templates')
 export const canRecordPayment = (u) => has(u, 'recordPayments')
 
-export const MONEY_FIELDS = ['tc', 'adjustment', 'adjType', 'adjReason', 'receivedPerCollections', 'outstandingPerCollections', 'loanAmount', 'customPlan', 'cancelCalc', 'waivers', 'refunds']
+export const MONEY_FIELDS = ['tc', 'receivedPerCollections', 'outstandingPerCollections', 'loanAmount', 'customPlan', 'cancelCalc', 'waivers', 'refunds']
 
 // Local mode: filter the full database the way the server's pull() does.
 // 5 Nov: what a consultant and a bank contact may never receive
@@ -274,10 +274,10 @@ export function redactForConsultant(db, u) {
 // A bank or DSA contact (e.g. SBI) sees only the clients funding with a bank loan, with their payments and demand letters.
 export function scopeForBank(db, u) {
   const loan = db.clients.filter(isLoanClient), units = new Set(loan.map((c) => String(c.unit)))
-  const keep = ['id', 'bookingId', 'clientId', 'unit', 'title', 'name', 'coapp', 'status', 'funding', 'loanBank', 'loanAmount', 'loanStatus', 'tc', 'adjustment', 'plan', 'agreement', 'bookingDate', 'phone', 'email', 'owner', 'residency']
+  const keep = ['id', 'bookingId', 'clientId', 'unit', 'title', 'name', 'coapp', 'status', 'funding', 'loanBank', 'loanAmount', 'loanStatus', 'tc', 'plan', 'agreement', 'bookingDate', 'phone', 'email', 'owner', 'residency']
   return { ...db,
     clients: loan.map((c) => Object.fromEntries(keep.filter((k) => c[k] !== undefined).map((k) => [k, c[k]]))),
-    payments: db.payments.filter((p) => units.has(String(p.unit))).map((p) => ({ id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, amount: p.amount, tds: p.tds, towards: p.towards, mode: p.mode, counted: p.counted, demandLetter: p.demandLetter, ledgerOnly: p.ledgerOnly })),
+    payments: db.payments.filter((p) => units.has(String(p.unit))).map((p) => ({ id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, amount: p.amount, tds: p.tds, towards: p.towards, mode: p.mode, counted: p.counted, demandLetter: p.demandLetter })),
     demandLetters: (db.demandLetters || []).filter((x) => units.has(String(x.unit))),
     leads: [], interactions: [], documents: [], issues: [], costSheets: [], messages: [], files: [], leadInbox: [], clientForms: [], viewings: [], accordSessions: [], audit: [], attendance: [], timeEvents: [], partners: [], paymentEdits: [],
     users: db.users.map((x) => ({ id: x.id, name: x.name, designation: x.designation, appRole: x.appRole, team: x.team, active: x.active })),

@@ -39,7 +39,8 @@
  *  - Records made in demo mode carry _test = Yes: they send no reminders and are listed for clean-up.
  */
 
-var VERSION = '3.8.7';   // 12 Nov (h): a new user or partner whose number is already taken gets the next free one
+var VERSION = '3.9.0';   // 22 Nov: booking adjustments, ledger-only (furniture / barter) entries and receipts without an official payment mode removed. See ACCORD_CHANGES_2026-11-22_ADJUSTMENTS.md
+// var VERSION = '3.8.7';   // 12 Nov (h): a new user or partner whose number is already taken gets the next free one
 // var VERSION = '3.8.6';   // 12 Nov (g): follow-ups close when anyone logs contact; ticks for adding partners and project documents.
 // var VERSION = '3.8.5';   // 12 Nov (f): sign-in picks the account row that has the password when a username is duplicated
 // var VERSION = '3.8.4';   // 12 Nov (e): no duplicate user accounts (dedupeUsers, push and seed checks)
@@ -59,7 +60,7 @@ var ROUNDS = 1000;
 /* ───────────────────────── schema: tab columns (key, heading) ───────────────────────── */
 var SCHEMA = {
   users: [['id','Member ID'],['name','Name'],['username','Username'],['team','Team'],['department','Department'],['employment','On roll / off roll'],['company','Company'],['designation','Designation'],['photo','Profile picture'],['extraAccess','Extra access (ticked by admin)'],['role','Responsibilities'],['appRole','Access role'],['reportsTo','Reports to'],['workspaces','Workspaces'],['phone','Phone'],['email','Email'],['shiftStart','Shift start'],['shiftEnd','Shift end'],['workDays','Work days'],['remoteAllowed','Remote allowed'],['active','Active'],['deviceLock','Device lock'],['devices','Approved devices'],['mustChange','Must change password'],['mfa','Authenticator'],['pwSalt','_salt'],['pwHash','_hash'],['totpSecret','_totp'],['totpPending','_totp pending'],['totpLast','_totp last'],['failed','_failed'],['lockedUntil','_locked until']],
-  clients: [['bookingId','Booking ID'],['clientId','Client ID'],['unit','Unit No.'],['status','Booking status'],['category','Customer category'],['title','Title'],['name','Primary applicant'],['coapp','Co-applicant(s)'],['buyerType','Buyer type'],['phone','Mobile (primary)'],['phone2','Mobile (alternate)'],['whatsapp','WhatsApp'],['email','Email'],['address','Correspondence address'],['city','City'],['country','Country'],['residency','Residential status'],['pan','PAN'],['aadhaar4','Aadhaar (last 4)'],['dob','Date of birth'],['language','Preferred language'],['contactPref','Preferred contact'],['purpose','Buying purpose'],['occupant','Who will live there'],['funding','Funding mode'],['loanBank','Lender'],['loanAmount','Loan amount (₹)'],['loanStatus','Loan status'],['occupation','Occupation'],['employer','Employer / business'],['income','Income band'],['marital','Marital status'],['familyProfile','Family profile'],['decisionMaker','Key decision-maker'],['source','Lead source'],['leadId','Lead ID'],['owner','Relationship owner'],['sourcedBy','Sourced by'],['closedBy','Closed by'],['bookingDate','Booking date'],['tc','Total consideration (₹)'],['adjustment','Adjustment (₹)'],['adjType','Adjustment type'],['plan','Payment plan'],['agreement','Agreement for sale'],['parkingEntitlement','Car parks entitled'],['remarks','Remarks'],['updatedAt','Updated at'],['updatedBy','Updated by']],
+  clients: [['bookingId','Booking ID'],['clientId','Client ID'],['unit','Unit No.'],['status','Booking status'],['category','Customer category'],['title','Title'],['name','Primary applicant'],['coapp','Co-applicant(s)'],['buyerType','Buyer type'],['phone','Mobile (primary)'],['phone2','Mobile (alternate)'],['whatsapp','WhatsApp'],['email','Email'],['address','Correspondence address'],['city','City'],['country','Country'],['residency','Residential status'],['pan','PAN'],['aadhaar4','Aadhaar (last 4)'],['dob','Date of birth'],['language','Preferred language'],['contactPref','Preferred contact'],['purpose','Buying purpose'],['occupant','Who will live there'],['funding','Funding mode'],['loanBank','Lender'],['loanAmount','Loan amount (₹)'],['loanStatus','Loan status'],['occupation','Occupation'],['employer','Employer / business'],['income','Income band'],['marital','Marital status'],['familyProfile','Family profile'],['decisionMaker','Key decision-maker'],['source','Lead source'],['leadId','Lead ID'],['owner','Relationship owner'],['sourcedBy','Sourced by'],['closedBy','Closed by'],['bookingDate','Booking date'],['tc','Total consideration (₹)'],['plan','Payment plan'],['agreement','Agreement for sale'],['parkingEntitlement','Car parks entitled'],['remarks','Remarks'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   leads: [['id','Lead ID'],['date','Date captured'],['title','Title'],['name','Name'],['phone','Mobile'],['phone2','Other numbers'],['email','Email'],['city','City'],['country','Country'],['residency','Residential status'],['source','Lead source'],['partner','Channel partner'],['referredBy','Referred by'],['config','Configuration interest'],['budget','Budget band'],['purpose','Purpose'],['timeline','Buying timeline'],['owner','Assigned to'],['coOwners','Also responsible'],['stage','Stage'],['temperature','Temperature'],['svDone','Site visit done?'],['svDate','Site visit date'],['lostReason','Lost / dormant reason'],['clientId','Converted to Client ID'],['notes','Notes'],['updatedAt','Updated at'],['updatedBy','Updated by']],
   interactions: [['id','Log ID'],['date','Date'],['time','Time'],['type','Record type'],['recordId','Client or Lead ID'],['mode','Mode'],['purpose','Purpose'],['by','Team member'],['summary','Summary of discussion'],['outcome','Outcome'],['nextAction','Next action'],['nextDate','Next action date'],['nextTime','Next action time'],['nextOwners','Follow-up owners'],['status','Status'],['updatedAt','Updated at']],
   payments: [['id','Entry No.'],['receiptNo','Receipt No.'],['date','Receipt date'],['unit','Unit No.'],['payer','Received from'],['thirdParty','Third-party payer'],['amount','Amount received (₹)'],['counted','Counted in totals?'],['towards','Towards'],['mode','Mode'],['instrument','Instrument / UTR no.'],['instrumentDate','Instrument date'],['bank','Bank'],['tds','TDS (₹)'],['realisation','Realisation'],['demandLetter','Against demand letter'],['ledgerOnly','Ledger entry only (no receipt)'],['proofUrl','Proof (Drive)'],['note','Note'],['updatedAt','Updated at'],['updatedBy','Updated by']],
@@ -110,7 +111,7 @@ var WRITE = {
   hrConfig:['admin','hr'], holidays:['admin','hr'], assets:['admin','hr'], hrComp:['admin','hr'], kbDocs:['admin','hr'],
   hrProfiles:['*'], leaves:['*'], kras:['*'], hrTickets:['*'], kbAcks:['*'], tasks:['*'], notifications:['*'], accordSessions:['*'], attendance:['admin'], timeEvents:[], audit:[]
 };
-var MONEY_FIELDS = ['tc','adjustment','adjType','adjReason','receivedPerCollections','outstandingPerCollections','loanAmount','rate','total','customPlan','cancelCalc','waivers','refunds'];
+var MONEY_FIELDS = ['tc','receivedPerCollections','outstandingPerCollections','loanAmount','rate','total','customPlan','cancelCalc','waivers','refunds'];
 // 4 Nov: extra access an admin ticks for one person (Users and access › Pages and permissions). Same list as perms.js.
 var GRANTS = { leads: ['leads','leadInbox','interactions'], clients: [], interactions: ['interactions'], payments: [], documents: ['documents','files'], messages: ['messages'],
   issues: ['issues'], costSheet: ['costSheets'], inventory: [], viewings: ['viewings'], brochure: [], experience: [], time: [], tasks: [], team: [], performance: [],
@@ -134,11 +135,105 @@ function migrate36_() {
     props.setProperty('migrated36', 'yes');
   } finally { lock.releaseLock(); }
 }
+/* 22 Nov (3.9.0): removes the booking adjustments (GST excluded, Furniture / barter, Other), the 'Adjusted sale'
+   category, the receipts that carry no official payment mode, and the issue and KB line about adjustments, from the
+   live Accord Database and from every dated copy in Accord_Data / Backups. Only the records listed below are changed:
+   they are exactly the ones in the offline record kept by Sanath (Accord_Removed_Adjustments_2026-11-22.xlsx). Anything
+   else that still looks like an adjustment is left alone and written to the execution log, never deleted unrecorded.
+   No amounts or reasons are written to the sheet or the audit tab. */
+var OFFICIAL_MODES_ = ['NEFT','RTGS','IMPS','UPI','Cheque','Demand Draft','Bank Transfer','Loan disbursement'];
+var REMOVED_TOWARDS_ = ['Furniture adjustment','Other'];
+var ADJ_BOOKINGS_390_ = ['YSC-B-001','YSC-B-002','YSC-B-003','YSC-B-005','YSC-B-006','YSC-B-007','YSC-B-009','YSC-B-010','YSC-B-011','YSC-B-012','YSC-B-014','YSC-B-015','YSC-B-016','YSC-B-018',
+  'YSC-B-019','YSC-B-020','YSC-B-021','YSC-B-022','YSC-B-023','YSC-B-025','YSC-B-027','YSC-B-028','YSC-B-029','YSC-B-030','YSC-B-032','YSC-B-033','YSC-B-041','YSC-B-043'];
+var CAT_BOOKINGS_390_ = ['YSC-B-012','YSC-B-035','YSC-B-036','YSC-B-037','YSC-B-038','YSC-B-039','YSC-B-040','YSC-B-041','YSC-B-042','YSC-B-043'];
+var PAYMENTS_390_ = ['L-0048','L-0064','L-0091'];
+var ISSUES_390_ = ['Q-065'];
+var KB_OLD_390_ = '- Demand = (consideration minus adjustments) times the stage percentage, plus GST.', KB_NEW_390_ = '- Demand = consideration times the stage percentage, plus GST.';
+function tabKeys_(sh) { var w = sh.getLastColumn(); return w ? sh.getRange(2, 1, 1, w).getValues()[0].map(String) : []; }
+function clean390_(ss) {
+  var log = { clients: 0, categories: 0, payments: 0, issues: 0, kb: 0, columns: 0, skipped: [] };
+  var sh = ss.getSheetByName('clients');
+  if (sh && sh.getLastRow() > 2) {
+    var keys = tabKeys_(sh), n = sh.getLastRow() - 2, vals = sh.getRange(3, 1, n, keys.length).getValues();
+    var ia = keys.indexOf('adjustment'), it = keys.indexOf('adjType'), ix = keys.indexOf('_extra'), ic = keys.indexOf('category'), ib = keys.indexOf('bookingId');
+    vals.forEach(function (r, i) {
+      var id = String(r[ib]), row = i + 3, ex = null;
+      if (ix >= 0 && typeof r[ix] === 'string' && r[ix].charAt(0) === '{') { try { ex = JSON.parse(r[ix]); } catch (e) {} }
+      var inEx = ex && (ex.adjustment !== undefined || ex.adjType !== undefined || ex.adjReason !== undefined);
+      if ((ia >= 0 && r[ia] !== '') || (it >= 0 && r[it] !== '') || inEx) {
+        if (ADJ_BOOKINGS_390_.indexOf(id) < 0) log.skipped.push('clients ' + id + ' (adjustment)');
+        else {
+          if (ia >= 0 && r[ia] !== '') sh.getRange(row, ia + 1).clearContent();
+          if (it >= 0 && r[it] !== '') sh.getRange(row, it + 1).clearContent();
+          if (inEx) { delete ex.adjustment; delete ex.adjType; delete ex.adjReason; var c = sh.getRange(row, ix + 1); if (Object.keys(ex).length) c.setValue(JSON.stringify(ex)); else c.clearContent(); }
+          log.clients++;
+        }
+      }
+      if (ic >= 0 && r[ic] === 'Adjusted sale') {
+        if (CAT_BOOKINGS_390_.indexOf(id) < 0) log.skipped.push('clients ' + id + ' (Adjusted sale)');
+        else { sh.getRange(row, ic + 1).setValue('Retail'); log.categories++; }
+      }
+    });
+    if (!log.skipped.length) [ia, it].filter(function (x) { return x >= 0; }).sort(function (a, b) { return b - a; }).forEach(function (x) { sh.deleteColumn(x + 1); log.columns++; });
+  }
+  sh = ss.getSheetByName('payments');
+  if (sh && sh.getLastRow() > 2) {
+    var pk = tabKeys_(sh), pv = sh.getRange(3, 1, sh.getLastRow() - 2, pk.length).getValues(), pi = pk.indexOf('id'), pm = pk.indexOf('mode'), pt = pk.indexOf('towards'), px = pk.indexOf('_extra');
+    for (var j = pv.length - 1; j >= 0; j--) {
+      var pid = String(pv[j][pi]), ledger = px >= 0 && /"ledgerOnly":"Yes"/.test(String(pv[j][px]));
+      var bad = OFFICIAL_MODES_.indexOf(String(pv[j][pm])) < 0 || REMOVED_TOWARDS_.indexOf(String(pv[j][pt])) >= 0 || ledger;
+      if (PAYMENTS_390_.indexOf(pid) >= 0) { sh.deleteRow(j + 3); log.payments++; }
+      else if (bad && pid) log.skipped.push('payments ' + pid);
+    }
+  }
+  sh = ss.getSheetByName('issues');
+  if (sh && sh.getLastRow() > 2) {
+    var ik = tabKeys_(sh).indexOf('id'), iv = sh.getRange(3, ik + 1, sh.getLastRow() - 2, 1).getValues();
+    for (var q = iv.length - 1; q >= 0; q--) if (ISSUES_390_.indexOf(String(iv[q][0])) >= 0) { sh.deleteRow(q + 3); log.issues++; }
+  }
+  sh = ss.getSheetByName('kbDocs');
+  if (sh) log.kb = sh.createTextFinder(KB_OLD_390_).matchCase(true).replaceAllWith(KB_NEW_390_);
+  return log;
+}
+function migrate390_() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('migrated390') === 'yes') return;
+  var lock = LockService.getScriptLock(); if (!lock.tryLock(10000)) return;
+  try {
+    if (props.getProperty('migrated390') === 'yes') return;
+    var log = clean390_(SpreadsheetApp.getActive());
+    READ_CACHE_ = {}; SHEETS_ = {}; BIG_MAP_ = null;
+    ['clients', 'payments', 'issues', 'kbDocs'].forEach(function (n) { try { scache_().remove('v:' + n); } catch (e) {} bump_(n); });
+    Logger.log('3.9.0 live clean-up: ' + JSON.stringify(log));
+    props.setProperty('log390', JSON.stringify(log));
+    props.setProperty('migrated390', 'yes');
+    // the dated copies are cleaned in the background, a few at a time, so no one waits for them
+    try { ScriptApp.newTrigger('cleanBackups390').timeBased().after(60 * 1000).create(); } catch (e) { Logger.log('Could not schedule cleanBackups390: ' + e + '. Run it once from the editor.'); }
+  } finally { lock.releaseLock(); }
+}
+/** 22 Nov (3.9.0): the same clean-up on every copy in Accord_Data / Backups, then a fresh Exports / Accord Database.xlsx.
+    Runs by itself after the first request on 3.9.0; it can also be run from the editor. Safe to run again. */
+function cleanBackups390() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'cleanBackups390') ScriptApp.deleteTrigger(t); });
+  var props = PropertiesService.getScriptProperties(), done = JSON.parse(props.getProperty('backups390') || '[]'), t0 = Date.now();
+  var it = folder_('Backups').getFilesByType(MimeType.GOOGLE_SHEETS), left = 0;
+  while (it.hasNext()) {
+    var f = it.next(); if (done.indexOf(f.getId()) >= 0) continue;
+    if (Date.now() - t0 > 4 * 60 * 1000) { left++; continue; }
+    try { var log = clean390_(SpreadsheetApp.openById(f.getId())); Logger.log(f.getName() + ': ' + JSON.stringify(log)); done.push(f.getId()); }
+    catch (e) { Logger.log(f.getName() + ' failed: ' + e); left++; }
+    props.setProperty('backups390', JSON.stringify(done));
+  }
+  if (left) { ScriptApp.newTrigger('cleanBackups390').timeBased().after(60 * 1000).create(); return 'continuing, ' + left + ' left'; }
+  try { exportXlsx_(); } catch (e) { Logger.log('Excel export failed: ' + e); }
+  props.setProperty('backups390done', now_());
+  return 'all ' + done.length + ' backups cleaned';
+}
 function doGet() { return out_({ ok: true, app: 'Accord', version: VERSION, hint: 'POST JSON to use the API' }); }
 function doPost(e) {
   try {
     var req = JSON.parse(e.postData.contents);
-    migrate36_(); migrate386_();
+    migrate36_(); migrate386_(); migrate390_();
     switch (req.action) {
       case 'ping': return out_({ ok: true, version: VERSION, sheet: SpreadsheetApp.getActive().getName(), users: read_('users').length, folder: DATA_PATH, folderUrl: root_().getUrl(), serverTime: now_() });
       case 'login': return out_(login_(req));
@@ -665,7 +760,7 @@ function payState_(c, recv, s, calls) {
   var gst = Number(s.gstDemand || 0.05), due = Number(s.dueDays || 15), billed = 0, cum = [], acc = 0;
   calls.forEach(function (k) { if (Number(k.pct) > 0) { acc += Number(k.pct); cum.push({ cum: acc, raisedOn: k.raisedOn }); } });
   billed = ['To verify','Cancelled','Under cancellation'].indexOf(c.status) >= 0 ? 0 : acc;
-  var basis = Number(c.tc || 0) - Number(c.adjustment || 0), demand = basis * billed * (1 + gst), out = demand - recv;
+  var basis = Number(c.tc || 0), demand = basis * billed * (1 + gst), out = demand - recv;
   if (out <= 0) return 'Paid up';
   var covered = cum.filter(function (k) { return basis * k.cum * (1 + gst) <= recv; }).length, first = cum[covered];
   if (!first || !first.raisedOn) return 'Due, date not set';
@@ -884,9 +979,9 @@ function consultantView_(db, u) {
 function isLoan_(c) { return /loan/i.test(String(c && c.funding || '')); }
 function bankView_(db, u) {
   var loan = db.clients.filter(isLoan_), units = {}; loan.forEach(function (c) { units[String(c.unit)] = 1; });
-  var KEEP = ['id','bookingId','clientId','unit','title','name','coapp','status','funding','loanBank','loanAmount','loanStatus','tc','adjustment','plan','agreement','bookingDate','phone','email','owner','residency'];
+  var KEEP = ['id','bookingId','clientId','unit','title','name','coapp','status','funding','loanBank','loanAmount','loanStatus','tc','plan','agreement','bookingDate','phone','email','owner','residency'];
   db.clients = loan.map(function (c) { var o = {}; KEEP.forEach(function (k) { if (c[k] !== undefined) o[k] = c[k]; }); return o; });
-  db.payments = db.payments.filter(function (p) { return units[String(p.unit)]; }).map(function (p) { return { id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, amount: p.amount, tds: p.tds, towards: p.towards, mode: p.mode, counted: p.counted, demandLetter: p.demandLetter, ledgerOnly: p.ledgerOnly }; });
+  db.payments = db.payments.filter(function (p) { return units[String(p.unit)]; }).map(function (p) { return { id: p.id, unit: p.unit, date: p.date, receiptNo: p.receiptNo, amount: p.amount, tds: p.tds, towards: p.towards, mode: p.mode, counted: p.counted, demandLetter: p.demandLetter }; });
   db.demandLetters = (db.demandLetters || []).filter(function (x) { return units[String(x.unit)]; });
   db.paymentEdits = [];
   ['leads','interactions','documents','issues','costSheets','messages','files','leadInbox','clientForms','viewings','accordSessions','audit','attendance','timeEvents','partners'].forEach(function (k) { db[k] = []; });
@@ -917,6 +1012,13 @@ function push_(u, ops) {
       if (op.rec) { remapRefs_(op.rec, remap); newId_(u, c, op, remap, renamed); }
       if (op.op === 'delete') { if (u.appRole !== 'admin' && ['tasks','notifications'].indexOf(c) < 0 && !(u.appRole === 'hr' && ['holidays','assets','kbDocs','kras'].indexOf(c) >= 0)) { refused.push(c + ' delete'); return; } delete_(c, op.id); audit_(u, c, op.id, 'deleted'); done++; return; }
       var rec = op.rec || {};
+      // 22 Nov (3.9.0): no booking adjustments, no ledger-only entries and only the official payment modes
+      if (c === 'clients') { delete rec.adjustment; delete rec.adjType; delete rec.adjReason; if (rec.category === 'Adjusted sale') rec.category = 'Retail'; }
+      if (c === 'payments') {
+        delete rec.ledgerOnly;
+        if (REMOVED_TOWARDS_.indexOf(String(rec.towards || '')) >= 0) { refused.push('payments (' + rec.towards + ' is no longer a payment type)'); return; }
+        if (OFFICIAL_MODES_.indexOf(String(rec.mode || '')) < 0) { refused.push('payments (mode must be one of ' + OFFICIAL_MODES_.join(', ') + ')'); return; }
+      }
       rec.updatedAt = now_(); rec.updatedBy = u.name;
       var editAll = extras_(u).indexOf('seeAll') >= 0;   // 4 Nov: ticked "See and edit every client and lead"
       if (u.appRole === 'sales') {
@@ -940,7 +1042,7 @@ function push_(u, ops) {
       // 7 Nov: editing a payment entry needs a reason; the receipt number and entry number never change
       if (c === 'payments' && before && paymentChanges_(before, rec).length) {
         if (!String(rec.editReason || '').trim()) { refused.push('payments (a reason is needed to edit a payment entry)'); return; }
-        rec.id = before.id; rec.receiptNo = before.receiptNo; rec.ledgerOnly = before.ledgerOnly;
+        rec.id = before.id; rec.receiptNo = before.receiptNo;
         rec.rev = Number(before.rev || 0) + 1; rec.lastEditedBy = u.name; rec.lastEditedAt = now_();
       }
       var newLog = c === 'interactions' && !find_('interactions', rec.id);
