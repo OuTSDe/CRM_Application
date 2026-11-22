@@ -398,11 +398,10 @@ A fourth workspace, **Accord People**, for HR (new access role *HR and admin*) a
    - The plan picker still works; the small key plan is blank for those residences.
    - Copy `Accord/Code_Base/public/editions/yamuna-sky-city/keyplans/` into `site/experience/editions/yamuna-sky-city/keyplans/`.
 11. **Experience source.** The experience runs from its built bundle, patched by `tools/patch-experience.mjs`. If the experience is rebuilt, copy its new `dist/index.html` to `experience-src/accord-experience.dist.html` and run `npm run build:site`. The patch stops with a message if the bundle has changed shape.
-12. **Brochure content.** The e-brochure uses the Accord render library for interiors and the CAD plans. The film, cultural-coast, engineering and design sections are in place with placeholder text. Still to add:
-   - the film link, and the diagrams from the DWG drawings;
-   - site progress photos;
+12. **Brochure content.** Done 22 November (see `ACCORD_CHANGES_2026-11-22_EBROCHURE.md`): the e-brochure is in the Yamuna Sky City brand (INSDe guidelines) with the design team's renders, unit plans, site photographs, the intro film and new Clubhouse, Grounds and Sky terrace sections. Still to add:
+   - the diagrams from the DWG drawings;
    - the 4 BHK Grand plan as its own section;
-   - final copy from the marketing pillar.
+   - final copy from the marketing pillar (figures are from the current sales brochure).
 13. **Push to phones while Accord is closed** needs phase 2 (see BACKEND.md). WhatsApp automation needs the WhatsApp Business API.
 14. **Leave and weekly off.** The time log has shifts and working days. Leave and weekly-off requests wait for the HR structure.
 15. **Designations.** Cyril is the Sales Lead (7 Nov). The other designations were assumed. Correct them in Users and access, because they print under the name in every message.
@@ -413,5 +412,5 @@ A fourth workspace, **Accord People**, for HR (new access role *HR and admin*) a
    - KRA and KPI scoring is waiting for HR.
    - The 4:25 pm recording was not transcribed.
    - The rendered white model will replace the drawn elevation when it is shared.
-   - The e-brochure content is still to come.
+   - The e-brochure content is in (22 Nov); marketing to confirm the figures.
 18. **Settings values to enter in Admin › Settings → Rate card:** base rate ₹10,500 per sft, car park ₹6 lakh, MWSSB / MESCOM ₹200.

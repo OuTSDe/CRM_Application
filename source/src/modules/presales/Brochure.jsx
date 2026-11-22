@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
-import { VISITS, SECTIONS } from './BrochureScroll.jsx'
+import { VISITS, SECTIONS, visitList } from './BrochureScroll.jsx'
 import { OPS } from '../../lib/seed.js'
 import { useCrm, BOOKED } from '../../lib/calc.js'
 import { canWrite } from '../../lib/perms.js'
@@ -163,8 +163,8 @@ function Editor({ onDone }) {
         <h3 style={{ margin: '20px 0 10px' }}>Visits</h3>
         <Card title="Which sections each visit shows (scrolling e-brochure)">
           <table className="table dense"><thead><tr><th>Section</th>{Object.entries(VISITS).map(([v, l]) => <th key={v} className="center">{l}</th>)}</tr></thead>
-            <tbody>{SECTIONS.map((sec) => <tr key={sec}><td>{sec}</td>{Object.keys(VISITS).map((v) => { const list = (b.visits || OPS.BROCHURE.visits)[v] || []; const on = list.includes(sec)
-              return <td key={v} className="center"><input type="checkbox" checked={on} aria-label={`${sec} on ${VISITS[v]}`} onChange={() => setB((x) => { const cur = (x.visits || OPS.BROCHURE.visits)[v] || []; const next = on ? cur.filter((y) => y !== sec) : SECTIONS.filter((y) => cur.includes(y) || y === sec); return { ...x, visits: { ...(x.visits || OPS.BROCHURE.visits), [v]: next } } })} /></td> })}</tr>)}</tbody></table>
+            <tbody>{SECTIONS.map((sec) => <tr key={sec}><td>{sec}</td>{Object.keys(VISITS).map((v) => { const list = visitList(b, v); const on = list.includes(sec)
+              return <td key={v} className="center"><input type="checkbox" checked={on} aria-label={`${sec} on ${VISITS[v]}`} onChange={() => setB((x) => { const all = Object.fromEntries(Object.keys(VISITS).map((w) => [w, visitList(x, w)])); const cur = all[v]; const next = on ? cur.filter((y) => y !== sec) : SECTIONS.filter((y) => cur.includes(y) || y === sec); return { ...x, visitsV: 2, visits: { ...all, [v]: next } } })} /></td> })}</tr>)}</tbody></table>
           <p className="small muted">A return visit also brings in the sections that match the person's interests (Engineering, Design, Sea and views…).</p>
           <Field label="How to present (SOP, shown before the e-brochure opens)"><Textarea rows={4} value={b.sop ?? OPS.BROCHURE.sop} onChange={(e) => setB((x) => ({ ...x, sop: e.target.value }))} /></Field>
         </Card>

@@ -235,22 +235,31 @@ export const BROCHURE = {
       ['Concierge, 24/7', 'Like arriving at a five-star hotel: a front desk and in-house team for anything you need.'],
       ['House management', 'For owners abroad, the team looks after the residence and keeps it ready before you arrive.'],
       ['Connected to the city', 'Cleaning, car service and errands across Mangaluru, arranged through the desk.']], image: '' },
-    { id: 'film', kind: 'film', title: 'Yamuna Sky City', body: 'The film: the coast, the tower and the people building it.', videoUrl: '', image: '' },
+    { id: 'film', kind: 'film', title: 'Yamuna Sky City', body: 'Mangaluru, the coast and the tower: one minute on where Sky City rises.', videoUrl: '', image: '' },
     { id: 'coast', kind: 'text', title: 'The cultural coast', body: 'Mangaluru sits where the Western Ghats meet the Arabian Sea: temples, fish markets, Yakshagana nights and a coastline the city has never built on. Sky City is planned around that coast.', image: '' },
     { id: 'engineering', kind: 'facts', title: 'The engineering', facts: [
       ['Piling', 'Piles drilled about 25 to 30 metres into the ground, the depth of a ten-storey building, before the first floor rose.'],
       ['The raft', 'Close to 2 metres of concrete poured in one go, with ice in the mix to hold 25 to 27 °C.'],
       ['Wind', 'About a year and a half of wind testing went into how the tower moves; it is designed to sway slightly, not crack.']], image: '' },
+    // 22 Nov: amenity sections, from the sales brochure and the design team's renders
+    { id: 'clubhouse', kind: 'text', title: 'A clubhouse the size of a resort', body: 'The third-floor podium opens onto the sea: an infinity lap pool, a wade pool and a toddler pool, a multipurpose court, an open-air amphitheatre and a floating pergola, wrapped around a 46,000 sq ft clubhouse.', image: '' },
+    { id: 'grounds', kind: 'facts', title: 'A forest at the foot of the tower', body: 'The ground is planted before it is paved. A Miyawaki forest with a reflexology trail, lawns and courts run from the gate on NH 66 to the access to the beach.', facts: [
+      ['Arrival', 'Main gate and feature wall, water features, a tree-lined driveway and park entry plaza.'],
+      ['Play', 'Kids\u2019 play area, skating rink, cricket nets and pre-cricket pitch, mini golf.'],
+      ['Gather', 'Mini amphitheatre, BBQ lawn, tree katte, elders\u2019 corner and a pet park.'],
+      ['Unwind', 'Miyawaki forest trail with reflexology path, meditation deck and lawn mounds.']], image: '' },
+    { id: 'terrace', kind: 'text', title: 'Sixty levels up, a pool on the horizon', body: 'The roof is given to the residents: an infinity pool edged in planting, a café under a sky of lights, a stage and event deck, and public binoculars trained on the coastline.', image: '' },
     { id: 'design', kind: 'text', title: 'The design', body: 'Every residence is designed around the view, then resolved room by room through Accord: a palette chosen from how you live, and finishes you can see before you choose.', image: '' },
     { id: 'privilege', kind: 'text', title: 'Founding privilege', body: 'Reservations in the current phase carry founding-privilege pricing. Your client advisor will walk you through the residence of your choice and its payment schedule.', image: '' },
     { id: 'close', kind: 'welcome', title: 'Thank you', body: 'Your client advisor will share the residence details and next steps.', image: '' },
   ],
   // 1 Nov: one e-brochure, opened three ways. General has everything; a first visit tells the whole story; a return visit is curated for the person.
   visits: {
-    general: ['film', 'address', 'coast', 'engineering', 'design', 'residences', 'interiors', 'structure', 'living', 'availability', 'close'],
-    first: ['film', 'address', 'coast', 'engineering', 'design', 'residences', 'interiors', 'structure', 'living', 'availability', 'close'],
+    general: ['film', 'address', 'coast', 'engineering', 'design', 'residences', 'interiors', 'clubhouse', 'grounds', 'terrace', 'structure', 'living', 'availability', 'close'],
+    first: ['film', 'address', 'coast', 'engineering', 'design', 'residences', 'interiors', 'clubhouse', 'grounds', 'terrace', 'structure', 'living', 'availability', 'close'],
     return: ['yours', 'residences', 'interiors', 'availability', 'living', 'close'],
   },
+  visitsV: 2,
   sop: 'Before a presentation: open the e-brochure from the lead or client (e-Brochure button), choose the visit, check the name and title on the first screen. First visit: let the film play, then scroll at the client\'s pace. Return visit: start from "Your residence". Full screen on the TV, clicker or arrow keys to move between sections. Log the presentation on their file at the end.',
   types: {
     '2 BHK': { plan: '', rooms: { Living: '', Kitchen: '', Bedroom: '', Balcony: '' }, blurb: 'Two-bedroom residences on the podium and typical floors.' },

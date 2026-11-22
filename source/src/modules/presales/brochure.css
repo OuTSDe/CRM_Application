@@ -1,68 +1,180 @@
-/* e-Brochure · one scrolling page. Uses the app's theme tokens, so it follows light and dark. */
-.eb { background: var(--bg); color: var(--fg); min-height: 100vh; scroll-behavior: smooth }
-.eb em { font-style: italic; font-weight: 300; color: var(--accent-2) }
-.eb-k { font: 400 11px var(--mono); letter-spacing: .24em; text-transform: uppercase; color: var(--accent-2) }
-.eb h1 { font: 700 clamp(56px, 10vw, 148px)/.92 var(--sans); letter-spacing: -.055em; margin: 18px 0 22px; color: #F4ECEA }
-.eb h2 { font: 600 clamp(32px, 4.4vw, 64px)/1.04 var(--sans); letter-spacing: -.04em; margin-top: 14px; max-width: 16ch }
-.eb h3 { font: 600 clamp(26px, 2.6vw, 38px)/1.1 var(--sans); letter-spacing: -.03em; margin: 10px 0 14px }
-.eb h4 { font: 500 19px/1.3 var(--sans); margin: 10px 0 6px }
-.eb-body { font: 300 clamp(16px, 1.25vw, 19px)/1.65 var(--sans); color: var(--fg2); max-width: 60ch; margin: 0 }
-.eb-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 24px; padding: 0 clamp(16px, 4vw, 56px); height: 64px; background: var(--glass); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line) }
-.eb-mark { font: 700 20px var(--sans); letter-spacing: -.04em; color: var(--fg) }
-.eb-links { display: flex; gap: 22px; flex: 1; overflow-x: auto; white-space: nowrap } .eb-links a { color: var(--fg2); font-size: 13.5px } .eb-links a:hover { color: var(--fg) }
-.eb-tools { display: flex; gap: 8px } .eb-btn { font: 400 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--fg2); border: 1px solid var(--line-3); background: none; padding: 0 12px; min-height: 36px; display: inline-flex; align-items: center }
-.eb-btn:hover { color: var(--fg) }
-.eb-hero { position: relative; min-height: calc(100vh - 64px); background: #0b0808 center/cover; display: flex; align-items: flex-end; padding: clamp(24px, 6vw, 88px) }
-.eb-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(10, 6, 6, .92) 5%, rgba(10, 6, 6, .25) 60%, rgba(10, 6, 6, .45) 100%) }
-.eb-in { position: relative; z-index: 1; max-width: 1100px } .eb-hero .eb-k { color: #D07384 } .eb-hero h1 em { color: #D07384 }
-.eb-lede { font: 300 clamp(18px, 1.6vw, 24px)/1.5 var(--sans); color: rgba(244, 236, 234, .78); max-width: 46ch; margin: 0 }
-.eb-scroll { position: absolute; z-index: 1; right: clamp(24px, 6vw, 88px); bottom: clamp(24px, 6vw, 88px); font: 400 10px var(--mono); letter-spacing: .3em; text-transform: uppercase; color: rgba(244, 236, 234, .6); writing-mode: vertical-rl }
-.eb-sec { padding: clamp(64px, 10vw, 140px) clamp(16px, 6vw, 88px); border-bottom: 1px solid var(--line) }
-.eb-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 6vw, 96px); align-items: end }
-.eb-head { margin-bottom: clamp(36px, 5vw, 72px); display: flex; flex-direction: column; gap: 14px }
-.eb-res { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 64px); align-items: center; padding: clamp(28px, 4vw, 56px) 0; border-top: 1px solid var(--line) }
-.eb-res.flip .eb-res-img { order: 2 }
-.eb-res-img { aspect-ratio: 4 / 3; background: var(--bg3) center/cover }
-.eb-dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; margin: 26px 0 }
-.eb-dl dt { font: 400 10px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--fg3) } .eb-dl dd { margin: 6px 0 0; font: 500 20px var(--sans) } .eb-dl dd.acc { color: var(--accent-2) }
-.eb-plan { width: 100%; max-height: 260px; object-fit: contain; background: #0f0c0b; border: 1px solid var(--line); padding: 10px }
-.eb-gal { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
-.eb-gal figure { margin: 0; position: relative; overflow: hidden } .eb-gal figure:nth-child(1), .eb-gal figure:nth-child(5) { grid-row: span 2 }
-.eb-gal img { width: 100%; height: 100%; min-height: 220px; object-fit: cover; display: block; transition: transform .8s } .eb-gal figure:hover img { transform: scale(1.03) }
-.eb-gal figcaption { position: absolute; left: 14px; bottom: 12px; font: 400 10px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: #F4ECEA; text-shadow: 0 1px 8px rgba(0, 0, 0, .6) }
-.eb-dark { background: var(--bg2) }
-.eb-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line) }
-.eb-facts > div { background: var(--bg2); padding: 28px 24px 32px } .eb-facts p, .eb-list p { color: var(--fg2); margin: 0; font-weight: 300; line-height: 1.6 }
-.eb-n { font: 400 11px var(--mono); color: var(--accent-2) }
-.eb-note { margin: 28px 0 0; font: 400 12px var(--mono); letter-spacing: .06em; color: var(--fg3) }
-.eb-list { display: flex; flex-direction: column; gap: 22px } .eb-list > div { border-top: 1px solid var(--line); padding-top: 14px }
-.eb-av { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px } .eb-av p { margin: 10px 0 0; color: var(--fg2) }
-.eb-bar { height: 3px; background: var(--accent-2); margin-top: 14px } .eb-bar span { display: block; height: 100%; background: var(--bg4) }
-.eb-close { text-align: left; background: var(--bg2) } .eb-close h2 { max-width: 20ch }
-.eb-sign { display: flex; flex-direction: column; gap: 4px; margin-top: 36px; border-top: 1px solid var(--line-3); padding-top: 18px; max-width: 420px } .eb-sign span { color: var(--fg3); font-size: 13.5px }
-.eb-foot { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 22px clamp(16px, 6vw, 88px); font: 400 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--fg3) }
-.rv { opacity: 0; transform: translateY(18px); transition: opacity .8s ease, transform .8s ease } .rv.in { opacity: 1; transform: none }
-@media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; transition: none } }
-@media (max-width: 900px) {
-  .eb-two, .eb-res { grid-template-columns: 1fr } .eb-res.flip .eb-res-img { order: 0 } .eb-facts, .eb-av { grid-template-columns: repeat(2, minmax(0, 1fr)) } .eb-gal { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-  .eb-links { display: none } .eb-scroll { display: none }
+/* e-Brochure · Yamuna Sky City identity (INSDe brand guidelines 2026 V1.1).
+   Fixed brand palette, not the app theme: Skycity Ember, Pearl Ivory, Black, Mist Grey and their tonal scales.
+   Layout: one 12-column grid with the same outer margin and gutter in every section, so every text block and image edge lines up. */
+.eb {
+  --ember: #B42810; --ember-4: #CB6A4F; --ember-3: #DEA894; --ember-2: #EBD3C9; --ember-6: #8C2919; --ember-7: #5C2017; --ember-8: #28120E;
+  --ivory: #F7F0E6; --mist: #C6C7C8; --n3: #E4E1DD; --n5: #929292; --n6: #626262; --n7: #333333; --ink: #000;
+  --plan: #F0EEE2;
+  --m: clamp(20px, 5.2vw, 96px); --g: clamp(14px, 1.8vw, 32px);
+  --f: 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', 'Aptos', system-ui, sans-serif;
+  --f-serif: 'DM Serif Display', 'Publico Headline', Georgia, serif;
+  --f-cond: 'Archivo', 'Archivo Extra Condensed', 'Arial Narrow', sans-serif;
+  background: var(--ivory); color: var(--ink); min-height: 100vh; scroll-behavior: smooth; font-family: var(--f); -webkit-font-smoothing: antialiased
 }
-@media print { .eb-nav { display: none } .rv { opacity: 1; transform: none } .eb-hero { min-height: 60vh } }
+.eb *, .eb *::before, .eb *::after { box-sizing: border-box }
+.eb h1, .eb h2, .eb h3, .eb h4 { font-family: var(--f); margin: 0 }
+.eb em { font-family: var(--f-serif); font-style: italic; font-weight: 400; letter-spacing: -.01em; color: var(--ember) }
+.eb-k { font: 600 11.5px/1.3 var(--f); letter-spacing: .2em; text-transform: uppercase; color: var(--ember) }
+.eb h1 { font: 500 clamp(36px, 4.2vw, 76px)/1.04 var(--f); letter-spacing: -.035em; color: var(--ivory) }
+.eb h2 { font: 500 clamp(32px, 3.8vw, 64px)/1.05 var(--f); letter-spacing: -.03em; color: var(--ember); max-width: 20ch }
+.eb h3 { font: 500 clamp(28px, 2.8vw, 46px)/1.08 var(--f); letter-spacing: -.025em }
+.eb h4 { font: 600 17px/1.3 var(--f); margin: 10px 0 6px }
+.eb-body { font: 400 clamp(16px, 1.2vw, 19px)/1.6 var(--f); color: var(--n7); max-width: 56ch; margin: 0 }
 
-/* 1 Nov: launcher (who is visiting, which visit), film, greeting, personal tags */
-.eb-launch { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: #0b0908 radial-gradient(circle at 70% 20%, rgba(122, 28, 46, .35), transparent 60%) }
-.eb-launch-card { width: min(640px, 100%); background: rgba(20, 16, 14, .92); border: 1px solid rgba(255, 255, 255, .12); padding: 36px; display: flex; flex-direction: column; gap: 18px; color: #f3ede3 }
-.eb-launch-card h1 { font: 300 44px/1.05 var(--sans); letter-spacing: -.03em; margin: 0 }
-.eb-launch-card .input { background: rgba(255, 255, 255, .06); color: #f3ede3; border-color: rgba(255, 255, 255, .18) }
-.eb-launch-card .field-label { color: rgba(243, 237, 227, .7) }
-.eb-or { font: 400 10.5px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: rgba(243, 237, 227, .5) }
+/* ── grid ─────────────────────────────────────────── */
+.eb-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--g); row-gap: clamp(28px, 3.4vw, 56px); padding-inline: var(--m); width: 100% }
+.eb-c-1-5 { grid-column: 1 / 6 } .eb-c-1-6 { grid-column: 1 / 7 } .eb-c-1-7 { grid-column: 1 / 8 } .eb-c-1-8 { grid-column: 1 / 9 } .eb-c-1-12 { grid-column: 1 / -1 }
+.eb-c-7-12 { grid-column: 7 / 13 } .eb-c-8-12 { grid-column: 8 / 13 } .eb-c-9-12 { grid-column: 9 / 13 }
+.eb-c-3 { grid-column: span 3 } .eb-c-4 { grid-column: span 4 } .eb-c-6 { grid-column: span 6 }
+.eb-stack { display: flex; flex-direction: column; gap: 18px; align-self: end }
+.eb-al-end { align-self: end }
+.eb-pad { padding-block: clamp(72px, 9vw, 150px) } .eb-pad-s { padding-block: clamp(40px, 5vw, 80px) } .eb-pad-t { padding-top: clamp(72px, 9vw, 150px); padding-bottom: clamp(28px, 3vw, 48px) }
+
+/* section rule, after the guidelines' page header: two hairlines, number in ember */
+.eb-rule { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid rgba(0, 0, 0, .25); font: 400 12px/1.2 var(--f); letter-spacing: .14em; text-transform: uppercase; color: var(--n6) }
+.eb-rule b { color: var(--ember); font-weight: 600 }
+.eb-rule.light { border-top-color: rgba(247, 240, 230, .9); border-bottom-color: rgba(247, 240, 230, .3); color: rgba(247, 240, 230, .75) } .eb-rule.light b { color: var(--ember-3) }
+.eb-dark .eb-rule { border-top-color: var(--ivory); border-bottom-color: rgba(247, 240, 230, .25); color: rgba(247, 240, 230, .65) } .eb-dark .eb-rule b { color: var(--ember-4) }
+
+/* ── nav ──────────────────────────────────────────── */
+.eb-nav { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 28px; padding: 0 var(--m); height: 64px; background: rgba(0, 0, 0, .82); backdrop-filter: blur(14px); color: var(--ivory) }
+.eb-mark { display: flex; align-items: center; color: var(--ivory) } .eb-logo-nav { display: block; width: 120px; color: var(--ivory) } .eb-logo-nav svg, .eb-logo-h svg, .eb-logo-v svg, .eb-logo-hero svg, .eb-logo-mark svg { display: block; width: 100%; height: auto }
+.eb-links { display: flex; gap: 24px; flex: 1; overflow-x: auto; white-space: nowrap; scrollbar-width: none } .eb-links a { color: rgba(247, 240, 230, .7); font: 400 13.5px var(--f) } .eb-links a:hover { color: var(--ivory) }
+.eb-tools { display: flex; gap: 8px }
+.eb-btn { font: 600 11px var(--f); letter-spacing: .12em; text-transform: uppercase; color: var(--ivory); border: 1px solid rgba(247, 240, 230, .35); background: none; padding: 0 14px; min-height: 36px; display: inline-flex; align-items: center; cursor: pointer; white-space: nowrap }
+.eb-btn:hover { border-color: var(--ivory); color: var(--ivory) }
+
+/* ── full-bleed photographs with vignettes ─────────── */
+.eb-bleed { position: relative; min-height: max(620px, calc(100svh - 64px)); display: flex; align-items: flex-end; overflow: hidden; background: var(--ember-8); color: var(--ivory); isolation: isolate }
+.eb-bleed.tall { min-height: max(700px, 100svh) }
+.eb-bleed-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2 }
+.eb-bleed::before, .eb-bleed::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none }
+.eb-bleed::after { background: linear-gradient(180deg, rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, 0) 18%) }
+.eb-bleed.v-left::before { background: linear-gradient(90deg, rgba(10, 5, 4, .86) 0%, rgba(10, 5, 4, .55) 34%, rgba(10, 5, 4, 0) 62%), linear-gradient(0deg, rgba(10, 5, 4, .7) 0%, rgba(10, 5, 4, 0) 42%), radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, .35) 100%) }
+.eb-bleed.v-right::before { background: linear-gradient(270deg, rgba(10, 5, 4, .86) 0%, rgba(10, 5, 4, .55) 34%, rgba(10, 5, 4, 0) 62%), linear-gradient(0deg, rgba(10, 5, 4, .7) 0%, rgba(10, 5, 4, 0) 42%), radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, .35) 100%) }
+.eb-bleed.v-bottom::before { background: linear-gradient(0deg, rgba(10, 5, 4, .9) 0%, rgba(10, 5, 4, .6) 30%, rgba(10, 5, 4, 0) 62%), radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, .35) 100%) }
+.eb-bleed.v-hero::before { background: linear-gradient(270deg, rgba(8, 4, 3, .82) 0%, rgba(8, 4, 3, .5) 32%, rgba(8, 4, 3, 0) 58%), linear-gradient(0deg, rgba(8, 4, 3, .75) 0%, rgba(8, 4, 3, 0) 40%), linear-gradient(180deg, rgba(0, 0, 0, .45) 0%, rgba(0, 0, 0, 0) 22%) }
+.eb-bleed.v-close::before { background: linear-gradient(90deg, rgba(40, 18, 14, .94) 0%, rgba(92, 32, 23, .7) 42%, rgba(40, 18, 14, .2) 75%), linear-gradient(0deg, rgba(40, 18, 14, .8) 0%, rgba(40, 18, 14, 0) 45%) }
+.eb-bleed-in { position: relative; padding-block: clamp(20px, 3vw, 40px) clamp(40px, 6vw, 96px); min-height: inherit; align-self: stretch; align-content: end }
+.eb-bleed-in:has(> .eb-rule) { grid-template-rows: auto 1fr; align-content: stretch }
+.eb-bleed-in > .eb-rule:first-child { align-self: start }
+.eb-bleed h2, .eb-bleed h3 { color: var(--ivory) } .eb-bleed em { color: var(--ember-3) } .eb-bleed .eb-k { color: var(--ember-3) }
+.eb-bleed .eb-body { color: rgba(247, 240, 230, .86) }
+
+/* hero */
+.eb-hero { min-height: calc(100svh - 64px) }
+.eb-hero-txt { gap: 20px }
+.eb-logo-hero { display: block; width: clamp(150px, 13vw, 230px); color: var(--ivory); margin-bottom: clamp(12px, 3vh, 40px) }
+.eb-hero .eb-k { color: var(--ember-3) }
+.eb-lede { font: 400 clamp(17px, 1.35vw, 22px)/1.55 var(--f); color: rgba(247, 240, 230, .85); max-width: 44ch; margin: 0 }
+.eb-greet { font: 400 clamp(20px, 2vw, 30px)/1.2 var(--f-serif); font-style: italic; color: var(--ivory) }
+.eb-scroll { position: absolute; right: var(--m); top: 50%; font: 600 10px var(--f); letter-spacing: .3em; text-transform: uppercase; color: rgba(247, 240, 230, .6); writing-mode: vertical-rl }
+
+/* stats row along the foot of a photograph */
+.eb-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: var(--g); border-top: 1px solid rgba(247, 240, 230, .45); padding-top: 18px }
+.eb-stats > div { display: flex; flex-direction: column; gap: 6px } .eb-stats b { font: 500 clamp(30px, 3.2vw, 54px)/1 var(--f-cond); font-stretch: 72%; letter-spacing: -.01em; color: var(--ivory) }
+.eb-stats span { font: 400 13px/1.35 var(--f); color: rgba(247, 240, 230, .72) }
+#clubhouse .eb-stats { grid-template-columns: repeat(4, minmax(0, 1fr)) }
+.eb-dist { margin: 0; align-self: end; display: flex; flex-direction: column; background: rgba(10, 5, 4, .62); backdrop-filter: blur(10px); padding: 14px 20px 6px; border-top: 2px solid var(--ember) } .eb-dist div { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid rgba(247, 240, 230, .2) } .eb-dist div:last-child { border-bottom: 0 }
+.eb-dist dt { font: 400 14px var(--f); color: rgba(247, 240, 230, .8) } .eb-dist dd { margin: 0; font: 600 14px var(--f); color: var(--ivory); white-space: nowrap }
+
+/* film */
+.eb-film { position: relative; background: #000; height: calc(100svh - 64px); min-height: 520px; overflow: hidden; color: var(--ivory) }
+.eb-film video, .eb-film iframe { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border: 0 }
+.eb-film::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0, 0, 0, .7) 0%, rgba(0, 0, 0, 0) 35%); pointer-events: none }
+.eb-film-cap { position: absolute; left: 0; right: 0; bottom: clamp(32px, 5vw, 72px); z-index: 1; align-items: end }
+.eb-film-txt { grid-column: 1 / 7 } .eb-film-txt p { margin: 10px 0 0; font: 400 clamp(17px, 1.4vw, 22px)/1.5 var(--f); color: rgba(247, 240, 230, .9) } .eb-film .eb-k { color: var(--ember-3) }
+.eb-sound { grid-column: 12 / 13; justify-self: end }
+
+/* ivory and dark sections */
+.eb-ivory { background: var(--ivory) }
+.eb-dark { background: #000; color: var(--ivory) } .eb-dark h2 { color: var(--ivory) } .eb-dark em { color: var(--ember-3) } .eb-dark .eb-body { color: rgba(247, 240, 230, .78) } .eb-dark .eb-k { color: var(--ember-4) }
+.eb-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--g); row-gap: 28px }
+.eb-facts.four { grid-template-columns: repeat(4, minmax(0, 1fr)) }
+.eb-facts > div { border-top: 1px solid rgba(247, 240, 230, .3); padding-top: 16px } .eb-facts p { margin: 0; color: rgba(247, 240, 230, .72); line-height: 1.6; font-size: 15px }
+.eb-n { font: 600 12px var(--f); letter-spacing: .12em; color: var(--ember-4) }
+.eb-note { margin: 0; font: 400 13px var(--f); letter-spacing: .04em; color: rgba(247, 240, 230, .6) }
+.eb-sub { border-top: 1px solid rgba(247, 240, 230, .3); padding-top: 14px; margin-top: clamp(8px, 2vw, 24px) }
+.eb-team { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--g); row-gap: 22px }
+.eb-team dt { font: 600 11px var(--f); letter-spacing: .16em; text-transform: uppercase; color: rgba(247, 240, 230, .55) } .eb-team dd { margin: 6px 0 0; font: 400 16px/1.4 var(--f); color: var(--ivory) }
+
+/* image tiles: cropped to the grid, captions on a small vignette */
+.eb-tile { position: relative; margin: 0; overflow: hidden; background: var(--n3) }
+.eb-tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 1.2s ease }
+.eb-tile:hover img { transform: scale(1.03) }
+.eb-tile.r45 { aspect-ratio: 4 / 5 } .eb-tile.r32 { aspect-ratio: 3 / 2 } .eb-tile.r43 { aspect-ratio: 4 / 3 }
+.eb-tile figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 48px 18px 16px; background: linear-gradient(0deg, rgba(0, 0, 0, .72), rgba(0, 0, 0, 0)); color: var(--ivory); display: flex; flex-direction: column; gap: 3px }
+.eb-tile figcaption b { font: 600 15px var(--f) } .eb-tile figcaption span { font: 400 13px var(--f); color: rgba(247, 240, 230, .75) }
+.eb-mosaic { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--g); grid-auto-rows: clamp(220px, 30vw, 560px) }
+.eb-mosaic .wide { grid-column: span 8 } .eb-mosaic .narrow { grid-column: span 4 }
+
+/* residences */
+.eb-res-wrap { background: var(--ivory) }
+.eb-res .eb-bleed { min-height: max(560px, 82svh) }
+.eb-dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; margin: 8px 0 0; border-top: 1px solid rgba(247, 240, 230, .4); padding-top: 18px }
+.eb-dl dt { font: 600 10.5px var(--f); letter-spacing: .16em; text-transform: uppercase; color: rgba(247, 240, 230, .6) } .eb-dl dd { margin: 6px 0 0; font: 500 20px var(--f); color: var(--ivory) } .eb-dl dd.acc { color: var(--ember-3) }
+.eb-plan { margin: 0; background: var(--ivory); padding: clamp(24px, 4vw, 64px) var(--m) clamp(20px, 3vw, 40px); display: flex; flex-direction: column; align-items: center; gap: 16px }
+.eb-plan img { width: 100%; max-width: 1240px; height: auto; display: block }
+.eb-plan figcaption { width: 100%; max-width: 1240px; border-top: 1px solid rgba(0, 0, 0, .2); padding-top: 10px; font: 400 12.5px var(--f); letter-spacing: .06em; color: var(--n6) }
+.eb-plan.flat { padding: clamp(20px, 3vw, 48px) clamp(16px, 3vw, 48px) 20px }
+
+/* grounds columns, house team list */
+.eb-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: var(--g) } .eb-cols > div { border-top: 1px solid var(--ink); padding-top: 14px }
+.eb-cols h4 { color: var(--ember) } .eb-cols p { margin: 0; color: var(--n7); line-height: 1.6; font-size: 15px }
+.eb-list { display: flex; flex-direction: column; gap: 14px; margin-top: 6px } .eb-list > div { border-top: 1px solid rgba(247, 240, 230, .35); padding-top: 12px }
+.eb-list p { margin: 0; color: rgba(247, 240, 230, .78); line-height: 1.55; font-size: 15px }
+
+/* availability */
+.eb-big { font-size: 1.25em }
+.eb-av { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: var(--g) } .eb-av > div { border-top: 1px solid var(--ink); padding-top: 14px }
+.eb-av-n { display: block; font: 500 clamp(56px, 6vw, 104px)/1 var(--f-cond); font-stretch: 70%; color: var(--ember); margin: 12px 0 10px }
+.eb-av p { margin: 10px 0 0; color: var(--n6); font-size: 14px }
+.eb-bar { height: 4px; background: var(--ember) } .eb-bar span { display: block; height: 100%; background: var(--mist) }
+
+/* close */
+.eb-thanks { font-size: clamp(44px, 6vw, 104px) !important; max-width: 14ch !important }
+.eb-sign { display: flex; flex-direction: column; gap: 4px; margin-top: 18px; border-top: 1px solid rgba(247, 240, 230, .4); padding-top: 16px; max-width: 420px } .eb-sign span { color: rgba(247, 240, 230, .7); font-size: 14px }
+.eb-close-mark { align-self: end; justify-self: end } .eb-logo-v { display: block; width: clamp(140px, 14vw, 240px); color: var(--ivory) }
+
+.eb-tags { display: flex; gap: 8px; flex-wrap: wrap } .eb-tags span { border: 1px solid var(--ember); color: var(--ember); padding: 4px 12px; font-size: 13px }
+.eb-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 22px var(--m); background: #000; font: 400 11px var(--f); letter-spacing: .1em; text-transform: uppercase; color: rgba(247, 240, 230, .55) }
+.eb-logo-mark { display: block; width: 32px; color: var(--ember-4) }
+
+.rv { opacity: 0; transform: translateY(18px); transition: opacity .9s ease, transform .9s ease } .rv.in { opacity: 1; transform: none }
+@media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; transition: none } .eb-tile img { transition: none } }
+
+@media (max-width: 1100px) {
+  .eb-links { display: none }
+  .eb-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 18px }
+  .eb-team { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .eb-c-9-12 { grid-column: 8 / 13 }
+}
+@media (max-width: 760px) {
+  .eb-grid, .eb-mosaic { grid-template-columns: repeat(4, minmax(0, 1fr)) }
+  .eb-c-1-5, .eb-c-1-6, .eb-c-1-7, .eb-c-1-8, .eb-c-7-12, .eb-c-8-12, .eb-c-9-12, .eb-c-6, .eb-film-txt { grid-column: 1 / -1 }
+  .eb-c-4, .eb-c-3 { grid-column: span 2 } .eb-c-4.r45 { grid-column: 1 / -1 }
+  .eb-mosaic { grid-auto-rows: 260px } .eb-mosaic .wide, .eb-mosaic .narrow { grid-column: 1 / -1 }
+  .eb-stats, #clubhouse .eb-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .eb-facts, .eb-facts.four, .eb-cols, .eb-av, .eb-team { grid-template-columns: 1fr; row-gap: 20px }
+  .eb-bleed::before { background: linear-gradient(0deg, rgba(10, 5, 4, .92) 0%, rgba(10, 5, 4, .6) 50%, rgba(10, 5, 4, .15) 100%) !important }
+  .eb-scroll, .eb-tools .eb-btn:not(:first-child) { display: none } .eb-sound { grid-column: 1 / -1; justify-self: start }
+  .eb-close-mark { justify-self: start }
+}
+@media print { .eb-nav, .eb-sound { display: none } .rv { opacity: 1; transform: none } .eb-bleed, .eb-film { min-height: 0; height: auto; aspect-ratio: 16 / 9; break-inside: avoid } }
+
+/* launcher (who is visiting, which visit) */
+.eb-launch { position: relative; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: #000; overflow: hidden }
+.eb-launch-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .38; filter: saturate(.85) }
+.eb-launch::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0, 0, 0, .8), rgba(0, 0, 0, .35)); z-index: 1 }
+.eb-launch-card { position: relative; z-index: 2; width: min(640px, 100%); background: rgba(10, 6, 5, .9); border-top: 3px solid var(--ember); padding: 36px; display: flex; flex-direction: column; gap: 18px; color: var(--ivory) }
+.eb-logo-h { display: block; width: 150px; color: var(--ivory); margin-bottom: 8px }
+.eb-launch-card .eb-k { color: var(--ember-3) }
+.eb-launch-card h1 { font: 500 44px/1.05 var(--f); letter-spacing: -.03em; margin: 0; color: var(--ivory) }
+.eb-launch-card .input { background: rgba(255, 255, 255, .06); color: var(--ivory); border-color: rgba(255, 255, 255, .18) }
+.eb-launch-card .field-label { color: rgba(247, 240, 230, .7) }
+.eb-or { font: 600 10.5px var(--f); letter-spacing: .18em; text-transform: uppercase; color: rgba(247, 240, 230, .5) }
 .eb-visits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 6px }
-.eb-visits button { text-align: left; background: none; border: 1px solid rgba(255, 255, 255, .18); color: #f3ede3; padding: 12px; display: flex; flex-direction: column; gap: 4px; cursor: pointer }
-.eb-visits button span { font-size: 12px; color: rgba(243, 237, 227, .65); line-height: 1.4 } .eb-visits button.on { border-color: #c2405a; background: rgba(122, 28, 46, .35) }
-.eb-go { background: #7A1C2E !important; border-color: #7A1C2E !important; color: #fff !important }
-.eb-sop summary { cursor: pointer; font-size: 13px; color: rgba(243, 237, 227, .75) } .eb-sop p { font-size: 13px; line-height: 1.6; color: rgba(243, 237, 227, .8) }
-.eb-greet { font: 300 clamp(20px, 3vw, 30px)/1.2 var(--sans); margin-bottom: 10px; color: #f3ede3 }
-.eb-film { position: relative; background: #000; min-height: 70vh; display: grid } .eb-film video, .eb-film iframe { width: 100%; height: 100%; min-height: 70vh; object-fit: cover; border: 0 }
-.eb-film-cap { position: absolute; left: 6vw; bottom: 6vh; max-width: 520px; color: #fff; text-shadow: 0 2px 20px rgba(0, 0, 0, .6) }
-.eb-img { background-size: cover; background-position: center }
-.eb-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px } .eb-tags span { border: 1px solid currentColor; padding: 4px 12px; font-size: 12px; opacity: .8 }
+.eb-visits button { text-align: left; background: none; border: 1px solid rgba(255, 255, 255, .18); color: var(--ivory); padding: 12px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; font-family: var(--f) }
+.eb-visits button span { font-size: 12px; color: rgba(247, 240, 230, .65); line-height: 1.4 } .eb-visits button.on { border-color: var(--ember-4); background: rgba(180, 40, 16, .28) }
+.eb-go { background: var(--ember) !important; border-color: var(--ember) !important; color: #fff !important }
+.eb-sop summary { cursor: pointer; font-size: 13px; color: rgba(247, 240, 230, .75) } .eb-sop p { font-size: 13px; line-height: 1.6; color: rgba(247, 240, 230, .8) }
