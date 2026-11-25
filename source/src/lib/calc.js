@@ -113,8 +113,16 @@ export function useCrm() {
   return useMemo(() => deriveCrm(db), [db])
 }
 
+// 25 Nov: preferential location charges (PLC) on corner residences. Admin → Settings → Rate card ticks which positions
+// in each band are corners (F1 and F8 on the 3rd to 32nd floors to start with) and the lump sum (₹2,00,000).
+export const DEFAULT_CORNER_PLC = { amount: 200000, positions: { '3rd – 32nd  |  Podium & Typical': ['F1', 'F8'] } }
+export const cornerPlcOf = (rateCard) => rateCard?.cornerPlc || DEFAULT_CORNER_PLC
+export const isCorner = (unit, rateCard) => !!unit && (cornerPlcOf(rateCard).positions?.[unit.band] || []).includes(unit.pos)
+export const cornerPlcFor = (unit, rateCard) => (isCorner(unit, rateCard) ? n(cornerPlcOf(rateCard).amount) : 0)
+
 // Cost sheet maths (rate card from Settings; floor rise from the configured start floor)
-export function costSheet({ unit, rateCard, rate, discountPct = 0, plc = 0, terrace = 0, parking = 1, funding = 'Self', plans, roundTo = 0 }) {
+// plcAmount: a lump-sum PLC typed on the cost sheet; left empty, the corner PLC for the residence applies.
+export function costSheet({ unit, rateCard, rate, discountPct = 0, plc = 0, plcAmount, terrace = 0, parking = 1, funding = 'Self', plans, roundTo = 0 }) {
   const area = n(unit?.area)
   const base = n(rate ?? rateCard.baseRate) * (1 - n(discountPct) / 100)
   const riseFloors = Math.max(0, n(unit?.floor) - n(rateCard.floorRiseStart))
@@ -122,7 +130,10 @@ export function costSheet({ unit, rateCard, rate, discountPct = 0, plc = 0, terr
   const lines = [
     { label: 'Indicative saleable area and base rate', qty: area, rate: base, amount: area * base },
     { label: `Floor rise (${riseFloors} floors above ${rateCard.floorRiseStart} × ₹${rateCard.floorRisePerFloor})`, qty: area, rate: riseRate, amount: area * riseRate },
-    { label: 'Preferential location charges (PLC)', qty: plc ? area : 0, rate: n(plc), amount: plc ? area * n(plc) : 0 },
+    ...(() => { const lump = plcAmount === '' || plcAmount === undefined || plcAmount === null ? cornerPlcFor(unit, rateCard) : n(plcAmount)
+      const corner = isCorner(unit, rateCard)
+      if (n(plc)) return [{ label: 'Preferential location charges (PLC)', qty: area, rate: n(plc), amount: area * n(plc) + lump }]
+      return [{ label: `Preferential location charges (PLC)${lump && corner ? ', corner residence' : ''}`, qty: lump ? 1 : 0, rate: lump, amount: lump }] })(),
     { label: 'Private terrace area charge', qty: n(terrace || unit?.terrace), rate: n(rateCard.terraceRate), amount: n(terrace || unit?.terrace) * n(rateCard.terraceRate) },
     // 2 Nov: the car parks that come with the type, and additional ones at their own rate (Admin → rate card)
     ...(() => { const ent = Math.min(n(parking), n(rateCard.parkingSlots?.[unit?.type] ?? 1)), extra = Math.max(0, n(parking) - ent), xr = n(rateCard.parkingExtraRate || rateCard.parkingRate)

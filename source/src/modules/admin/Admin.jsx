@@ -10,6 +10,7 @@ import { getLocation } from '../../lib/geo.js'
 import { deviceId } from '../../lib/crypto.js'
 import { Link } from 'react-router-dom'
 import { useLogo } from '../../lib/logo.js'
+import { useCrm, cornerPlcOf } from '../../lib/calc.js'
 
 function BrandCard({ s, setS }) {
   const { upload, online, notify } = useStore()
@@ -97,6 +98,12 @@ export function AdminSettings() {
   const [s, setS] = useState(() => JSON.parse(JSON.stringify(settings)))
   const co = (k, v) => setS({ ...s, company: { ...s.company, [k]: v } })
   const rc = (k, v) => setS({ ...s, rateCard: { ...s.rateCard, [k]: v } })
+  // 25 Nov: corner residences and their PLC
+  const crm = useCrm()
+  const corner = cornerPlcOf(s.rateCard)
+  const bands = (() => { const m = new Map(); (crm.units || []).forEach((u) => { if (!m.has(u.band)) m.set(u.band, new Set()); m.get(u.band).add(u.pos) }); return [...m].map(([b, p]) => [b, [...p].sort((x, y) => Number(x.slice(1)) - Number(y.slice(1)))]) })()
+  const togglePos = (band, pos) => { const cur = corner.positions?.[band] || []; const next = cur.includes(pos) ? cur.filter((x) => x !== pos) : [...cur, pos]; rc('cornerPlc', { ...corner, positions: { ...corner.positions, [band]: next } }) }
+  const cornerCount = (crm.units || []).filter((u) => (corner.positions?.[u.band] || []).includes(u.pos)).length
   const planSum = (p) => (s.plans[p] || []).reduce((a, x) => a + Number(x.pct || 0), 0)
   const clpSum = (s.clpMaster || []).reduce((a, x) => a + Number(x.pct || 0), 0)
   const save = () => { if ((s.clpMaster || []).length && Math.abs(clpSum - 1) > 0.001) return notify(`The master CLP schedule adds up to ${(clpSum * 100).toFixed(1)}%, not 100%`, 'bad'); for (const p of Object.keys(s.plans)) if (Math.abs(planSum(p) - 1) > 0.001) return notify(`${p} plan adds up to ${(planSum(p) * 100).toFixed(1)}%, not 100%`, 'bad'); setSettings(s); notify('Settings saved') }
@@ -111,6 +118,13 @@ export function AdminSettings() {
           <Field label="Founding privilege steps (% off, comma separated)" span="all"><Input value={(s.rateCard.discountSteps || []).join(', ')} onChange={(e) => rc('discountSteps', e.target.value.split(',').map((x) => Number(x.trim())).filter((x) => !isNaN(x)))} /></Field>
           {Object.keys(s.rateCard.parkingSlots || {}).map((t) => <Field key={t} label={`Car parks for ${t}`}><Input type="number" value={s.rateCard.parkingSlots[t]} onChange={(e) => rc('parkingSlots', { ...s.rateCard.parkingSlots, [t]: Number(e.target.value) })} /></Field>)}
         </div><p className="small muted">Example: base {inr(s.rateCard.baseRate)}; a 12th-floor residence pays {inr((12 - s.rateCard.floorRiseStart) * s.rateCard.floorRisePerFloor)}/sft floor rise.</p></Card>
+        <Card title="Preferential location charges (corner residences)">
+          <div className="form fc2"><Field label="PLC for a corner residence (₹, lump sum)"><Input type="number" value={corner.amount} onChange={(e) => rc('cornerPlc', { ...corner, amount: Number(e.target.value) })} /></Field></div>
+          <p className="small muted">Tick the corner positions in each band. Every cost sheet for a ticked residence gets this PLC automatically; a PLC can also be typed on any cost sheet. {cornerCount} residences are corners now.</p>
+          <table className="table"><thead><tr><th>Band</th><th>Corner positions</th></tr></thead><tbody>
+            {bands.map(([band, pos]) => <tr key={band}><td className="small">{band.replace(/\s*\|\s*/, ' · ')}</td><td><div className="chips">{pos.map((p) => <button key={p} type="button" className={'chip' + ((corner.positions?.[band] || []).includes(p) ? ' on' : '')} onClick={() => togglePos(band, p)}>{p}</button>)}</div></td></tr>)}
+          </tbody></table>
+        </Card>
       </div>
       <div className="grid g2"><SignInCard s={s} setS={setS} /><BrandCard s={s} setS={setS} /></div>
       <DriveCard s={s} setS={setS} />

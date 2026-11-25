@@ -22,6 +22,8 @@ export const SETTINGS = {
     floorRiseStart: 5,                            // floors at or below this pay no floor rise (29-10 meeting: "floor rise starting is 5th floor")
     floorRisePerFloor: 100,                       // ₹ per sft per floor above start
     plc: 0, terraceRate: 5000, parkingRate: 400000,
+    // 25 Nov: corner residences pay a lump-sum PLC; positions per band, edited in Admin → Settings → Rate card
+    cornerPlc: { amount: 200000, positions: { '3rd – 32nd  |  Podium & Typical': ['F1', 'F8'] } },
     parkingSlots: { '2 BHK': 1, '3 BHK': 1, '4 BHK': 1, '5 BHK': 1 },
     gst: 0.05,
     mwssb: 140, clubhouse: 500000, maintenance: 60, sinking: 60,

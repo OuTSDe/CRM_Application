@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useStore } from '../../lib/store.jsx'
-import { useCrm, costSheet, BOOKED } from '../../lib/calc.js'
+import { useCrm, costSheet, BOOKED, cornerPlcFor } from '../../lib/calc.js'
 import { canWrite, isAdmin } from '../../lib/perms.js'
 import { Page, Card, Button, Badge, Field, Select, Input, Textarea, Seg, Modal, DraftNote } from '../../components/ui.jsx'
 import { useDraft } from '../../lib/drafts.js'
@@ -44,7 +44,12 @@ export default function CostSheet() {
   const parkMax = parkDefault + (isAdmin(user) ? Math.max(8, n(rc.parkingExtraMax ?? 2)) : n(rc.parkingExtraMax ?? 2))
   useEffect(() => { if (unit) set('parking', parkDefault) }, [v.unit]) // eslint-disable-line
   const canRound = ['admin', 'senior'].includes(user.appRole)
-  const cs = useMemo(() => unit && costSheet({ unit, rateCard: rc, rate, plc: v.plc, parking: v.parking, funding: v.funding === 'Bank loan' ? 'Bank loan' : 'Self', plans: settings.plans, roundTo: v.roundTo }), [unit, rc, rate, v.plc, v.parking, v.funding, settings.plans, v.roundTo])
+  // 25 Nov: PLC. A corner residence gets the rate-card PLC on its own; anyone can add a PLC to any sheet,
+  // and only admins and senior sales can lower or remove the corner PLC.
+  const autoPlc = cornerPlcFor(unit, rc)
+  const plcTyped = v.plcAmount === '' || v.plcAmount === undefined || v.plcAmount === null ? '' : n(v.plcAmount)
+  const plcAmount = plcTyped !== '' && !canRound && plcTyped < autoPlc ? autoPlc : plcTyped
+  const cs = useMemo(() => unit && costSheet({ unit, rateCard: rc, rate, plc: v.plc, plcAmount, parking: v.parking, funding: v.funding === 'Bank loan' ? 'Bank loan' : 'Self', plans: settings.plans, roundTo: v.roundTo }), [unit, rc, rate, v.plc, plcAmount, v.parking, v.funding, settings.plans, v.roundTo])
   // 8 Nov: the car parks this residence would be allotted if booked now (indicative)
   const park = useMemo(() => unit ? proposeForUnit({ parking: db.parking, clients: crm.clients, units: crm.units, settings, unit: unit.unit, count: n(v.parking) }) : { slots: [] }, [unit, db.parking, crm.clients, crm.units, settings, v.parking])
   const rep0 = db.users.find((x) => x.name === (lead?.owner || v.preparedBy || user.name)) || user
@@ -55,7 +60,7 @@ export default function CostSheet() {
     if (!lead) return notify('Pick the lead or client this cost sheet is for. Add a new lead first if they are not in Accord yet.', 'bad')
     const gap = [!lead.name && 'name', !lead.phone && 'mobile', !lead.email && !String(v.leadId).startsWith('YSC-C') && 'e-mail'].filter(Boolean)
     if (gap.length) return notify(`${lead.name || 'This lead'} has no ${gap.join(', ')}. Add it to the lead first, then save the cost sheet.`, 'bad')
-    const rec = { ...v, proposedParking: park.slots.map((p) => p.id), id: v.id || nextId('costSheets', 'CS-', 4), date: v.date || today(), validTill: v.validTill || addDays(today(), n(rc.validityDays) || 15), rate, effDisc: Number(effDisc.toFixed(2)), total: Math.round(cs.total), av: Math.round(cs.av),
+    const rec = { ...v, proposedParking: park.slots.map((p) => p.id), id: v.id || nextId('costSheets', 'CS-', 4), date: v.date || today(), validTill: v.validTill || addDays(today(), n(rc.validityDays) || 15), rate, effDisc: Number(effDisc.toFixed(2)), total: Math.round(cs.total), av: Math.round(cs.av), plcAmount: plcAmount === '' ? '' : plcAmount, plcTotal: Math.round(cs.lines.find((l) => /^Preferential/.test(l.label))?.amount || 0),
       name: lead?.name || v.name || '', owner: lead?.owner || user.name, preparedBy: v.preparedBy || user.name, status: needsApproval && !['Approved', 'Converted'].includes(status) ? 'Pending approval' : status === 'Draft' ? 'Ready' : status, ...patch }
     const r = upsert('costSheets', rec, { action: patch.status ? patch.status.toLowerCase() : 'saved' })
     if (r) cdraft.clear()
@@ -89,6 +94,7 @@ export default function CostSheet() {
               onClick={() => setV((x) => ({ ...x, discountPct: s, finalRate: '' }))}>{s ? `${s}% · ${inr(rc.baseRate * (1 - s / 100))}` : 'Standard'}{s > rc.approvalAbove ? ' *' : ''}</button>)}</div>
             <div className="form fc2">
               <Field label="Final rate (₹/sft)" hint="Only change for a negotiated rate; it is checked against the approval limit"><Input type="number" value={v.finalRate} disabled={locked} placeholder={String(listRate)} onChange={(e) => set('finalRate', e.target.value === '' ? '' : Number(e.target.value))} /></Field>
+              <Field label="Preferential location charges (₹)" hint={unit ? (autoPlc ? `Corner residence: ${inr(autoPlc)} added automatically.${canRound ? ' Type another amount to change it, 0 to remove it.' : ' You can add more; only an admin or senior sales can lower it.'}` : 'Not a corner residence. Type an amount to add a PLC.') : ''}><Input type="number" min={0} value={v.plcAmount ?? ''} disabled={locked || !unit} placeholder={String(autoPlc)} onChange={(e) => set('plcAmount', e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))} /></Field>
               <Field label="Car parks" hint={unit ? `${parkDefault} with a ${unit.type}, up to ${parkMax - parkDefault} more${isAdmin(user) ? '' : ' (an admin can promise more)'}` : ''}><Input type="number" min={0} max={parkMax} value={v.parking} disabled={locked} onChange={(e) => set('parking', Math.max(0, Math.min(parkMax, Number(e.target.value))))} /></Field>
             </div>
             <p className="small" style={{ margin: '10px 0 0' }}>Effective founding privilege: <b>{effDisc.toFixed(2)}%</b> {needsApproval ? <Badge tone="warn">Needs approval (above {rc.approvalAbove}%)</Badge> : <Badge tone="good">Within limit</Badge>}</p>
